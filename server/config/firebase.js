@@ -1,17 +1,30 @@
 import admin from 'firebase-admin';
-import { readFileSync } from 'fs';
+import { readFileSync, existsSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+let serviceAccount;
 
-const serviceAccount = JSON.parse(
-  readFileSync(join(__dirname, 'serviceAccountKey.json'), 'utf8')
-);
+if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+  // On Vercel, read from environment variable
+  serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+} else {
+  // On local machine, read from the JSON file
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = dirname(__filename);
+  const keyPath = join(__dirname, 'serviceAccountKey.json');
+  
+  if (existsSync(keyPath)) {
+    serviceAccount = JSON.parse(readFileSync(keyPath, 'utf8'));
+  }
+}
 
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount)
-});
+if (serviceAccount) {
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount)
+  });
+} else {
+  console.error("FIREBASE WARNING: No service account provided. Authentication checks will fail.");
+}
 
 export default admin;
