@@ -28,9 +28,11 @@ if (process.env.FIREBASE_SERVICE_ACCOUNT) {
 }
 
 if (serviceAccount) {
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount)
-  });
+  if (!admin.apps.length) {
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount)
+    });
+  }
 } else {
   console.error("FIREBASE WARNING: No service account provided. Authentication checks will fail.");
 }
