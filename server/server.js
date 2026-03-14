@@ -12,7 +12,7 @@ const app = express();
 app.use(cors({
   origin: [
     'http://localhost:3000',
-    'https://logistic-monitoring-system-bft2.vercel.app'
+    'https://logistic-monitoring-system.vercel.app'
   ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
