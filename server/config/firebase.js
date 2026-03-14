@@ -7,7 +7,15 @@ let serviceAccount;
 
 if (process.env.FIREBASE_SERVICE_ACCOUNT) {
   // On Vercel, read from environment variable
-  serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+  try {
+    serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+    // CRITICAL FIX: Vercel environment variables often escape newlines. We must unescape the private key.
+    if (serviceAccount.private_key) {
+      serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
+    }
+  } catch (error) {
+    console.error("Failed to parse FIREBASE_SERVICE_ACCOUNT environment variable:", error);
+  }
 } else {
   // On local machine, read from the JSON file
   const __filename = fileURLToPath(import.meta.url);
