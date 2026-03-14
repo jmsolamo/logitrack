@@ -8,7 +8,16 @@ dotenv.config();
 
 const app = express();
 
-app.use(cors());
+// Allow specific origins and credentials
+app.use(cors({
+  origin: [
+    'http://localhost:3000',
+    'https://logistic-monitoring-system-bft2.vercel.app'
+  ],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 app.use(express.json());
 
 mongoose.connect(process.env.MONGODB_URI)
