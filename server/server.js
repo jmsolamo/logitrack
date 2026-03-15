@@ -25,7 +25,7 @@ mongoose.connect(process.env.MONGODB_URI)
   .catch(err => console.error('MongoDB connection error:', err));
 
 app.get('/', (req, res) => {
-  res.json({ message: 'Logistics Monitoring API', version: '1.0.0' });
+  res.send('server is running');
 });
 
 app.get('/api/health', (req, res) => {
