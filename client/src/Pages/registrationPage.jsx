@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
+import { createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, sendEmailVerification } from 'firebase/auth';
 import { auth } from '../config/firebase';
 import { toast } from 'react-toastify';
 import axios from 'axios';
@@ -14,10 +14,31 @@ function RegistrationPage() {
     confirmPassword: ''
   });
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isPasswordFocused, setIsPasswordFocused] = useState(false);
+  const [hasPasswordBeenBlurred, setHasPasswordBeenBlurred] = useState(false);
+  const [isConfirmPasswordFocused, setIsConfirmPasswordFocused] = useState(false);
+  const [hasConfirmPasswordBeenBlurred, setHasConfirmPasswordBeenBlurred] = useState(false);
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    let value = e.target.value;
+    // Prevent numbers and special characters in firstName and lastName
+    if (e.target.name === 'firstName' || e.target.name === 'lastName') {
+      value = value.replace(/[^A-Za-z\s-]/g, '');
+    }
+    setFormData({ ...formData, [e.target.name]: value });
   };
+
+  // Password requirement checks
+  const password = formData.password;
+  const isLengthValid = password.length >= 8;
+  const hasUppercase = /[A-Z]/.test(password);
+  const hasLowercase = /[a-z]/.test(password);
+  const hasNumber = /[0-9]/.test(password);
+  const hasSpecialChar = /[^A-Za-z0-9]/.test(password);
+  const criteriaCount = [hasUppercase, hasLowercase, hasNumber, hasSpecialChar].filter(Boolean).length;
+  const hasThreeCriteria = criteriaCount >= 3;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -27,21 +48,12 @@ function RegistrationPage() {
     }
 
     // Password policy enforcement
-    const password = formData.password;
-    if (password.length < 6) {
-      toast.error('Password should be at least 6 characters');
+    if (!isLengthValid) {
+      toast.error('Password must be at least 8 characters long');
       return;
     }
-    if (!/[A-Z]/.test(password)) {
-      toast.error('Password must contain at least one uppercase letter');
-      return;
-    }
-    if (!/[a-z]/.test(password)) {
-      toast.error('Password must contain at least one lowercase letter');
-      return;
-    }
-    if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
-      toast.error('Password must contain at least one special character');
+    if (!hasThreeCriteria) {
+      toast.error('Password must contain at least 3 of the following: uppercase, lowercase, numbers, or special characters');
       return;
     }
 
@@ -54,6 +66,9 @@ function RegistrationPage() {
         formData.email,
         formData.password
       );
+
+      // Send Email Verification
+      await sendEmailVerification(userCredential.user);
 
       // Get Firebase ID token
       const idToken = await userCredential.user.getIdToken();
@@ -70,14 +85,19 @@ function RegistrationPage() {
         }
       });
 
-      toast.success('Registration successful!');
+      // Sign out since they need to verify their email first
+      await auth.signOut();
+
+      toast.success('Registration successful! Please check your email to verify your account.');
       setFormData({ firstName: '', lastName: '', email: '', password: '', confirmPassword: '' });
+      setHasPasswordBeenBlurred(false);
+      setHasConfirmPasswordBeenBlurred(false);
     } catch (error) {
       // If MongoDB registration fails, delete the Firebase user to keep in sync
       if (auth.currentUser) {
         await auth.currentUser.delete().catch(() => { });
       }
-      
+
       let errorMessage = 'Registration failed';
       if (error.response && error.response.status === 409) {
         errorMessage = 'This email is already registered. Please login instead.';
@@ -88,7 +108,7 @@ function RegistrationPage() {
       } else if (error.code === 'auth/invalid-email') {
         errorMessage = 'Invalid email address format';
       }
-      
+
       toast.error(errorMessage);
     } finally {
       setLoading(false);
@@ -173,24 +193,117 @@ function RegistrationPage() {
             className="px-3 py-2 text-sm bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-orange-600 transition placeholder-gray-500 text-gray-900"
             required
           />
-          <input
-            type="password"
-            name="password"
-            placeholder="Password"
-            value={formData.password}
-            onChange={handleChange}
-            className="px-3 py-2 text-sm bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-orange-600 transition placeholder-gray-500 text-gray-900"
-            required
-          />
-          <input
-            type="password"
-            name="confirmPassword"
-            placeholder="Confirm Password"
-            value={formData.confirmPassword}
-            onChange={handleChange}
-            className="px-3 py-2 text-sm bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-orange-600 transition placeholder-gray-500 text-gray-900"
-            required
-          />
+          <div className="relative w-full">
+            <input
+              type={showPassword ? "text" : "password"}
+              name="password"
+              placeholder="Password"
+              value={formData.password}
+              onChange={handleChange}
+              onFocus={() => setIsPasswordFocused(true)}
+              onBlur={() => {setIsPasswordFocused(false); setHasPasswordBeenBlurred(true);}}
+              className={`w-full px-3 py-2 text-sm bg-white border ${hasPasswordBeenBlurred && !isPasswordFocused ? ((!formData.password) || (!hasThreeCriteria) || (!isLengthValid || formData.password.length > 128) ? 'border-red-600 border-l-4' : 'border-gray-300') : 'border-gray-300'} rounded-lg focus:outline-none focus:border-orange-600 transition placeholder-gray-500 text-gray-900 pr-10`}
+              required
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute inset-y-0 right-3 flex items-center text-gray-500 hover:text-gray-700"
+            >
+              <i className={`bx ${showPassword ? 'bx-show' : 'bx-hide'} text-lg`}></i>
+            </button>
+
+            {/* Password Requirements Tooltip */}
+            {isPasswordFocused && (
+              <div className="absolute z-50 top-full mt-2 left-0 w-64 sm:w-72 animate-in fade-in slide-in-from-top-2 duration-200">
+                <div className="bg-white p-3 rounded-lg shadow-xl border border-gray-200 flex flex-col gap-2 text-xs text-gray-500">
+                  <div className={`leading-snug ${isLengthValid && hasThreeCriteria ? 'text-green-600' : ''}`}>
+                    Passwords must be at least 8<br />
+                    characters long and contain at least 3<br />
+                    of the following:
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <div className={`flex items-center gap-1.5 ${hasUppercase ? 'text-green-600' : ''}`}>
+                      <i className={`bx ${hasUppercase ? 'bxs-check-circle' : 'bx-check-circle'} text-base`}></i>
+                      <span>Uppercase letters</span>
+                    </div>
+                    <div className={`flex items-center gap-1.5 ${hasLowercase ? 'text-green-600' : ''}`}>
+                      <i className={`bx ${hasLowercase ? 'bxs-check-circle' : 'bx-check-circle'} text-base`}></i>
+                      <span>Lowercase letters</span>
+                    </div>
+                    <div className={`flex items-center gap-1.5 ${hasNumber ? 'text-green-600' : ''}`}>
+                      <i className={`bx ${hasNumber ? 'bxs-check-circle' : 'bx-check-circle'} text-base`}></i>
+                      <span>Numbers</span>
+                    </div>
+                    <div className={`flex items-center gap-1.5 ${hasSpecialChar ? 'text-green-600' : ''}`}>
+                      <i className={`bx ${hasSpecialChar ? 'bxs-check-circle' : 'bx-check-circle'} text-base`}></i>
+                      <span>Non-alphanumeric characters</span>
+                    </div>
+                  </div>
+                  {/* Tooltip Arrow */}
+                  <div className="absolute -top-1.5 left-10 w-3 h-3 bg-white border-t border-l border-gray-200 rotate-45"></div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Password Warnings Below Field */}
+          <div className="text-xs px-1 -mt-1 mb-1">
+            {hasPasswordBeenBlurred && !isPasswordFocused ? (
+              <>
+                {!formData.password ? (
+                  <p className="text-red-600 leading-tight">
+                    A password is required.
+                  </p>
+                ) : (!isLengthValid || formData.password.length > 128) ? (
+                  <p className="text-red-600 leading-tight">
+                    Your password must have a minimum of 8 characters and a maximum of 128 characters.
+                  </p>
+                ) : !hasThreeCriteria ? (
+                  <p className="text-red-600 leading-tight">
+                    Your password must include a minimum of three of the following mix of character types: uppercase, lowercase, numbers, and ! @ # $ % ^ &amp; * () &lt;&gt; [] {'{}'} | _+-= symbols.
+                  </p>
+                ) : null}
+              </>
+            ) : null}
+          </div>
+
+          <div className="relative w-full">
+            <input
+              type={showConfirmPassword ? "text" : "password"}
+              name="confirmPassword"
+              placeholder="Confirm Password"
+              value={formData.confirmPassword}
+              onChange={handleChange}
+              onFocus={() => setIsConfirmPasswordFocused(true)}
+              onBlur={() => {setIsConfirmPasswordFocused(false); setHasConfirmPasswordBeenBlurred(true);}}
+              className={`w-full px-3 py-2 text-sm bg-white border ${hasConfirmPasswordBeenBlurred && !isConfirmPasswordFocused ? ((!formData.confirmPassword) || (formData.password !== formData.confirmPassword) ? 'border-red-600 border-l-4' : 'border-gray-300') : 'border-gray-300'} rounded-lg focus:outline-none focus:border-orange-600 transition placeholder-gray-500 text-gray-900 pr-10`}
+              required
+            />
+            <button
+              type="button"
+              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+              className="absolute inset-y-0 right-3 flex items-center text-gray-500 hover:text-gray-700"
+            >
+              <i className={`bx ${showConfirmPassword ? 'bx-show' : 'bx-hide'} text-lg`}></i>
+            </button>
+          </div>
+
+          <div className="text-xs px-1 -mt-1 mb-1">
+            {hasConfirmPasswordBeenBlurred && !isConfirmPasswordFocused ? (
+              <>
+                {!formData.confirmPassword ? (
+                  <p className="text-red-600 leading-tight">
+                    You must confirm your password.
+                  </p>
+                ) : formData.password !== formData.confirmPassword ? (
+                  <p className="text-red-600 leading-tight">
+                    The passwords don't match.
+                  </p>
+                ) : null}
+              </>
+            ) : null}
+          </div>
           <button type="submit" disabled={loading} className="px-3 py-2 text-sm bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition font-semibold disabled:opacity-50">
             {loading ? 'Registering...' : 'Register'}
           </button>

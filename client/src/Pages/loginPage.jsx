@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
+import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, updatePassword, sendPasswordResetEmail } from 'firebase/auth';
 import { auth } from '../config/firebase';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
@@ -12,7 +12,40 @@ function LoginPage() {
     password: ''
   });
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showGooglePassword, setShowGooglePassword] = useState(false);
+  const [showGoogleConfirmPassword, setShowGoogleConfirmPassword] = useState(false);
+  const [isPasswordFocused, setIsPasswordFocused] = useState(false);
+  const [isConfirmPasswordFocused, setIsConfirmPasswordFocused] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetLoading, setResetLoading] = useState(false);
   const navigate = useNavigate();
+
+  const handleForgotPassword = async (e) => {
+    e.preventDefault();
+    if (!resetEmail) {
+      toast.error('Please enter your email address');
+      return;
+    }
+    setResetLoading(true);
+    try {
+      await sendPasswordResetEmail(auth, resetEmail);
+      toast.success('Password reset email sent! Check your inbox.');
+      setShowForgotPassword(false);
+      setResetEmail('');
+    } catch (error) {
+      let errorMessage = 'Failed to send reset email';
+      if (error.code === 'auth/user-not-found') {
+        errorMessage = 'No user found with this email address';
+      } else if (error.code === 'auth/invalid-email') {
+        errorMessage = 'Invalid email address format';
+      }
+      toast.error(errorMessage);
+    } finally {
+      setResetLoading(false);
+    }
+  };
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -27,6 +60,13 @@ function LoginPage() {
         formData.email,
         formData.password
       );
+
+      // Check if email is verified
+      if (!userCredential.user.emailVerified) {
+        await auth.signOut();
+        toast.error('Please verify your email before logging in. Check your inbox.');
+        return;
+      }
 
       const idToken = await userCredential.user.getIdToken();
       localStorage.setItem('token', idToken);
@@ -71,6 +111,16 @@ function LoginPage() {
         return;
       }
 
+      // Check if user has a password provider setup in Firebase
+      // Firebase providerData contains an array of providers linked to the account.
+      // If 'password' is not in this array, we know they haven't set a local password.
+      const hasPasswordProvider = result.user.providerData.some(p => p.providerId === 'password');
+
+      if (!hasPasswordProvider) {
+        setGoogleUserContext({ user: result.user, idToken });
+        return; // Early return to let the UI show the password modal instead
+      }
+
       localStorage.setItem('token', idToken);
       toast.success('Login successful');
       navigate('/admin/dashboard');
@@ -80,6 +130,223 @@ function LoginPage() {
       setLoading(false);
     }
   };
+  const [googleUserContext, setGoogleUserContext] = useState(null);
+  const [hasPasswordBeenBlurred, setHasPasswordBeenBlurred] = useState(false);
+  const [hasConfirmPasswordBeenBlurred, setHasConfirmPasswordBeenBlurred] = useState(false);
+
+  // Password requirement checks for Google Modal
+  const password = formData.password;
+  const isLengthValid = password ? password.length >= 8 : false;
+  const hasUppercase = /[A-Z]/.test(password || '');
+  const hasLowercase = /[a-z]/.test(password || '');
+  const hasNumber = /[0-9]/.test(password || '');
+  const hasSpecialChar = /[^A-Za-z0-9]/.test(password || '');
+  const criteriaCount = [hasUppercase, hasLowercase, hasNumber, hasSpecialChar].filter(Boolean).length;
+  const hasThreeCriteria = criteriaCount >= 3;
+
+  const handleGooglePasswordSubmit = async (e) => {
+    e.preventDefault();
+    if (formData.password !== formData.confirmPassword) {
+      toast.error('Passwords do not match');
+      return;
+    }
+
+    if (!isLengthValid) {
+      toast.error('Password must be at least 8 characters long');
+      return;
+    }
+    if (!hasThreeCriteria) {
+      toast.error('Password must contain at least 3 of the following: uppercase, lowercase, numbers, or special characters');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { user } = googleUserContext;
+
+      // Update password
+      await updatePassword(user, formData.password);
+
+      const freshToken = await user.getIdToken(true);
+      localStorage.setItem('token', freshToken);
+
+      setGoogleUserContext(null);
+      setHasPasswordBeenBlurred(false);
+      setHasConfirmPasswordBeenBlurred(false);
+      toast.success('Password set successfully! Logging in...');
+      navigate('/admin/dashboard');
+
+    } catch (error) {
+      toast.error(error.message || 'Failed to set password');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (showForgotPassword) {
+    return (
+      <div className="flex justify-center items-center min-h-screen px-4">
+        <div className="bg-white/20 backdrop-blur-md p-4 sm:p-6 rounded-lg shadow-2xl w-full max-w-sm border border-white/30">
+          <div className="flex justify-center mb-4">
+            <img src={logo} alt="Logo" className="h-12 sm:h-16 w-auto" />
+          </div>
+          <h2 className="text-center text-lg font-semibold mb-2 text-gray-900">Reset Password</h2>
+          <p className="text-sm text-gray-700 mb-4 text-center">
+            Enter your email address to receive a password reset link.
+          </p>
+          <form onSubmit={handleForgotPassword} className="flex flex-col gap-2 sm:gap-3">
+            <input
+              type="email"
+              placeholder="Email address"
+              value={resetEmail}
+              onChange={(e) => setResetEmail(e.target.value)}
+              className="px-3 py-2 text-sm bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-orange-600 transition placeholder-gray-500 text-gray-900"
+              required
+            />
+            <button type="submit" disabled={resetLoading} className="mt-2 px-3 py-2 text-sm bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition font-semibold disabled:opacity-50">
+              {resetLoading ? 'Sending...' : 'Send Reset Link'}
+            </button>
+            <button type="button" onClick={() => setShowForgotPassword(false)} disabled={resetLoading} className="px-3 py-2 text-sm bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition font-semibold disabled:opacity-50">
+              Back to Login
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
+  if (googleUserContext) {
+    return (
+      <div className="flex justify-center items-center min-h-screen px-4">
+        <div className="bg-white/20 backdrop-blur-md p-4 sm:p-6 rounded-lg shadow-2xl w-full max-w-sm border border-white/30">
+          <div className="flex justify-center mb-4">
+            <img src={logo} alt="Logo" className="h-12 sm:h-16 w-auto" />
+          </div>
+          <h2 className="text-center text-lg font-semibold mb-4 text-gray-900">Set a Password</h2>
+          <p className="text-sm text-gray-700 mb-4 text-center">To use normal email/password login in the future, please set a password for your account.</p>
+          <form onSubmit={handleGooglePasswordSubmit} className="flex flex-col gap-2 sm:gap-3">
+            <div className="relative w-full">
+              <input
+                type={showGooglePassword ? "text" : "password"}
+                name="password"
+                placeholder="Password"
+                value={formData.password}
+                onChange={handleChange}
+                onFocus={() => setIsPasswordFocused(true)}
+                onBlur={() => {setIsPasswordFocused(false); setHasPasswordBeenBlurred(true);}}
+                className={`w-full px-3 py-2 text-sm bg-white border ${hasPasswordBeenBlurred && !isPasswordFocused ? ((!formData.password) || (!hasThreeCriteria) || (!isLengthValid || formData.password.length > 128) ? 'border-red-600 border-l-4' : 'border-gray-300') : 'border-gray-300'} rounded-lg focus:outline-none focus:border-orange-600 transition placeholder-gray-500 text-gray-900 pr-10`}
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowGooglePassword(!showGooglePassword)}
+                className="absolute inset-y-0 right-3 flex items-center text-gray-500 hover:text-gray-700"
+              >
+                <i className={`bx ${showGooglePassword ? 'bx-show' : 'bx-hide'} text-lg`}></i>
+              </button>
+
+              {/* Password Requirements Tooltip */}
+              {isPasswordFocused && (
+                <div className="absolute z-50 top-full mt-2 left-0 w-64 sm:w-72 animate-in fade-in slide-in-from-top-2 duration-200">
+                  <div className="bg-white p-3 rounded-lg shadow-xl border border-gray-200 flex flex-col gap-2 text-xs text-gray-500">
+                    <div className={`leading-snug ${isLengthValid && hasThreeCriteria ? 'text-green-600' : ''}`}>
+                      Passwords must be at least 8<br />
+                      characters long and contain at least 3<br />
+                      of the following:
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <div className={`flex items-center gap-1.5 ${hasUppercase ? 'text-green-600' : ''}`}>
+                        <i className={`bx ${hasUppercase ? 'bxs-check-circle' : 'bx-check-circle'} text-base`}></i>
+                        <span>Uppercase letters</span>
+                      </div>
+                      <div className={`flex items-center gap-1.5 ${hasLowercase ? 'text-green-600' : ''}`}>
+                        <i className={`bx ${hasLowercase ? 'bxs-check-circle' : 'bx-check-circle'} text-base`}></i>
+                        <span>Lowercase letters</span>
+                      </div>
+                      <div className={`flex items-center gap-1.5 ${hasNumber ? 'text-green-600' : ''}`}>
+                        <i className={`bx ${hasNumber ? 'bxs-check-circle' : 'bx-check-circle'} text-base`}></i>
+                        <span>Numbers</span>
+                      </div>
+                      <div className={`flex items-center gap-1.5 ${hasSpecialChar ? 'text-green-600' : ''}`}>
+                        <i className={`bx ${hasSpecialChar ? 'bxs-check-circle' : 'bx-check-circle'} text-base`}></i>
+                        <span>Non-alphanumeric characters</span>
+                      </div>
+                    </div>
+                    {/* Tooltip Arrow */}
+                    <div className="absolute -top-1.5 left-10 w-3 h-3 bg-white border-t border-l border-gray-200 rotate-45"></div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Password Warnings Below Field */}
+            <div className="text-xs px-1 -mt-1 mb-1">
+              {hasPasswordBeenBlurred && !isPasswordFocused ? (
+                <>
+                  {!formData.password ? (
+                    <p className="text-red-600 leading-tight">
+                      A password is required.
+                    </p>
+                  ) : (!isLengthValid || formData.password.length > 128) ? (
+                    <p className="text-red-600 leading-tight">
+                      Your password must have a minimum of 8 characters and a maximum of 128 characters.
+                    </p>
+                  ) : !hasThreeCriteria ? (
+                    <p className="text-red-600 leading-tight">
+                      Your password must include a minimum of three of the following mix of character types: uppercase, lowercase, numbers, and ! @ # $ % ^ &amp; * () &lt;&gt; [] {'{}'} | _+-= symbols.
+                    </p>
+                  ) : null}
+                </>
+              ) : null}
+            </div>
+
+            <div className="relative w-full">
+              <input
+                type={showGoogleConfirmPassword ? "text" : "password"}
+                name="confirmPassword"
+                placeholder="Confirm Password"
+                value={formData.confirmPassword || ''}
+                onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                onFocus={() => setIsConfirmPasswordFocused(true)}
+                onBlur={() => {setIsConfirmPasswordFocused(false); setHasConfirmPasswordBeenBlurred(true);}}
+                className={`w-full px-3 py-2 text-sm bg-white border ${hasConfirmPasswordBeenBlurred && !isConfirmPasswordFocused ? ((!formData.confirmPassword) || (formData.password !== formData.confirmPassword) ? 'border-red-600 border-l-4' : 'border-gray-300') : 'border-gray-300'} rounded-lg focus:outline-none focus:border-orange-600 transition placeholder-gray-500 text-gray-900 pr-10`}
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowGoogleConfirmPassword(!showGoogleConfirmPassword)}
+                className="absolute inset-y-0 right-3 flex items-center text-gray-500 hover:text-gray-700"
+              >
+                <i className={`bx ${showGoogleConfirmPassword ? 'bx-show' : 'bx-hide'} text-lg`}></i>
+              </button>
+            </div>
+
+            <div className="text-xs px-1 -mt-1 mb-1">
+              {hasConfirmPasswordBeenBlurred && !isConfirmPasswordFocused ? (
+                <>
+                  {!formData.confirmPassword ? (
+                    <p className="text-red-600 leading-tight">
+                      You must confirm your password.
+                    </p>
+                  ) : formData.password !== formData.confirmPassword ? (
+                    <p className="text-red-600 leading-tight">
+                      The passwords don't match.
+                    </p>
+                  ) : null}
+                </>
+              ) : null}
+            </div>
+            <button type="submit" disabled={loading} className="mt-2 px-3 py-2 text-sm bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition font-semibold disabled:opacity-50">
+              {loading ? 'Setting Password...' : 'Save & Continue'}
+            </button>
+            <button type="button" onClick={() => { setGoogleUserContext(null); setHasPasswordBeenBlurred(false); setHasConfirmPasswordBeenBlurred(false); auth.signOut(); }} disabled={loading} className="px-3 py-2 text-sm bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition font-semibold disabled:opacity-50">
+              Cancel
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex justify-center items-center min-h-screen px-4">
@@ -97,15 +364,36 @@ function LoginPage() {
             className="px-3 py-2 text-sm bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-orange-600 transition placeholder-gray-500 text-gray-900"
             required
           />
-          <input
-            type="password"
-            name="password"
-            placeholder="Password"
-            value={formData.password}
-            onChange={handleChange}
-            className="px-3 py-2 text-sm bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-orange-600 transition placeholder-gray-500 text-gray-900"
-            required
-          />
+          <div className="relative w-full">
+            <input
+              type={showPassword ? "text" : "password"}
+              name="password"
+              placeholder="Password"
+              value={formData.password}
+              onChange={handleChange}
+              className="w-full px-3 py-2 text-sm bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-orange-600 transition placeholder-gray-500 text-gray-900 pr-10"
+              required
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute inset-y-0 right-3 flex items-center text-gray-500 hover:text-gray-700"
+            >
+              <i className={`bx ${showPassword ? 'bx-show' : 'bx-hide'} text-lg`}></i>
+            </button>
+          </div>
+          <div className="flex justify-end -mt-1 mb-1">
+            <button
+              type="button"
+              onClick={() => {
+                setResetEmail(formData.email);
+                setShowForgotPassword(true);
+              }}
+              className="text-xs text-orange-600 hover:text-orange-700 hover:underline transition"
+            >
+              Forgot Password?
+            </button>
+          </div>
           <button type="submit" disabled={loading} className="px-3 py-2 text-sm bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition font-semibold disabled:opacity-50">
             {loading ? 'Logging in...' : 'Login'}
           </button>
