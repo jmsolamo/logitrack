@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, updatePassword, sendPasswordResetEmail } from 'firebase/auth';
 import { auth } from '../config/firebase';
 import { useNavigate } from 'react-router-dom';
-import { toast } from 'react-toastify';
+import { useAppToast } from '../components/ui/alert-toast-provider';
 import axios from 'axios';
 import logo from '../assets/images/logo.png';
 
@@ -21,6 +21,7 @@ function LoginPage() {
   const [resetEmail, setResetEmail] = useState('');
   const [resetLoading, setResetLoading] = useState(false);
   const navigate = useNavigate();
+  const toast = useAppToast();
 
   const handleForgotPassword = async (e) => {
     e.preventDefault();
@@ -185,58 +186,58 @@ function LoginPage() {
 
   if (showForgotPassword) {
     return (
-      <div className="flex justify-center items-center min-h-screen px-4">
-        <div className="bg-white/20 backdrop-blur-md p-4 sm:p-6 rounded-lg shadow-2xl w-full max-w-sm border border-white/30">
-          <div className="flex justify-center mb-4">
-            <img src={logo} alt="Logo" className="h-12 sm:h-16 w-auto" />
-          </div>
-          <h2 className="text-center text-lg font-semibold mb-2 text-gray-900">Reset Password</h2>
-          <p className="text-sm text-gray-700 mb-4 text-center">
-            Enter your email address to receive a password reset link.
-          </p>
-          <form onSubmit={handleForgotPassword} className="flex flex-col gap-2 sm:gap-3">
-            <input
-              type="email"
-              placeholder="Email address"
-              value={resetEmail}
-              onChange={(e) => setResetEmail(e.target.value)}
-              className="px-3 py-2 text-sm bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-orange-600 transition placeholder-gray-500 text-gray-900"
-              required
-            />
-            <button type="submit" disabled={resetLoading} className="mt-2 px-3 py-2 text-sm bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition font-semibold disabled:opacity-50">
-              {resetLoading ? 'Sending...' : 'Send Reset Link'}
-            </button>
-            <button type="button" onClick={() => setShowForgotPassword(false)} disabled={resetLoading} className="px-3 py-2 text-sm bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition font-semibold disabled:opacity-50">
-              Back to Login
-            </button>
-          </form>
+      <div className="flex min-h-screen p-4 overflow-y-auto">
+      <div className="m-auto bg-white/20 backdrop-blur-md p-5 sm:p-6 2xl:p-8 rounded-lg shadow-2xl w-full max-w-sm 2xl:max-w-md border border-white/30">
+        <div className="flex justify-center mb-4 2xl:mb-6">
+          <img src={logo} alt="Logo" className="h-10 sm:h-12 2xl:h-14 w-auto" />
         </div>
+        <h2 className="text-center text-lg font-semibold mb-2 text-gray-900">Reset Password</h2>
+        <p className="text-xs text-gray-700 mb-4 text-center">
+          Enter your email address to receive a password reset link.
+        </p>
+        <form onSubmit={handleForgotPassword} className="flex flex-col gap-2 sm:gap-3">
+          <input
+            type="email"
+            placeholder="Email address"
+            value={resetEmail}
+            onChange={(e) => setResetEmail(e.target.value)}
+            className="px-3 py-2 text-sm bg-white border border-gray-300 rounded-md focus:outline-none focus:border-orange-600 transition placeholder-gray-500 text-gray-900"
+            required
+          />
+          <button type="submit" disabled={resetLoading} className="mt-1 px-3 py-2 text-sm bg-orange-600 text-white rounded-md hover:bg-orange-700 transition font-semibold disabled:opacity-50">
+            {resetLoading ? 'Sending...' : 'Send Reset Link'}
+          </button>
+          <button type="button" onClick={() => setShowForgotPassword(false)} disabled={resetLoading} className="px-3 py-2 text-sm bg-gray-500 text-white rounded-md hover:bg-gray-600 transition font-semibold disabled:opacity-50">
+            Back to Login
+          </button>
+        </form>
+      </div>
       </div>
     );
   }
 
   if (googleUserContext) {
     return (
-      <div className="flex justify-center items-center min-h-screen px-4">
-        <div className="bg-white/20 backdrop-blur-md p-4 sm:p-6 rounded-lg shadow-2xl w-full max-w-sm border border-white/30">
-          <div className="flex justify-center mb-4">
-            <img src={logo} alt="Logo" className="h-12 sm:h-16 w-auto" />
-          </div>
-          <h2 className="text-center text-lg font-semibold mb-4 text-gray-900">Set a Password</h2>
-          <p className="text-sm text-gray-700 mb-4 text-center">To use normal email/password login in the future, please set a password for your account.</p>
-          <form onSubmit={handleGooglePasswordSubmit} className="flex flex-col gap-2 sm:gap-3">
-            <div className="relative w-full">
-              <input
-                type={showGooglePassword ? "text" : "password"}
-                name="password"
-                placeholder="Password"
-                value={formData.password}
-                onChange={handleChange}
-                onFocus={() => setIsPasswordFocused(true)}
-                onBlur={() => {setIsPasswordFocused(false); setHasPasswordBeenBlurred(true);}}
-                className={`w-full px-3 py-2 text-sm bg-white border ${hasPasswordBeenBlurred && !isPasswordFocused ? ((!formData.password) || (!hasThreeCriteria) || (!isLengthValid || formData.password.length > 128) ? 'border-red-600 border-l-4' : 'border-gray-300') : 'border-gray-300'} rounded-lg focus:outline-none focus:border-orange-600 transition placeholder-gray-500 text-gray-900 pr-10`}
-                required
-              />
+      <div className="flex min-h-screen p-4 overflow-y-auto">
+      <div className="m-auto bg-white/20 backdrop-blur-md p-5 sm:p-6 2xl:p-8 rounded-lg shadow-2xl w-full max-w-sm 2xl:max-w-md border border-white/30">
+        <div className="flex justify-center mb-4 2xl:mb-6">
+          <img src={logo} alt="Logo" className="h-10 sm:h-12 2xl:h-14 w-auto" />
+        </div>
+        <h2 className="text-center text-lg font-semibold mb-3 text-gray-900">Set a Password</h2>
+        <p className="text-xs text-gray-700 mb-4 text-center">To use normal email/password login in the future, please set a password for your account.</p>
+        <form onSubmit={handleGooglePasswordSubmit} className="flex flex-col gap-2 sm:gap-3">
+          <div className="relative w-full">
+            <input
+              type={showGooglePassword ? "text" : "password"}
+              name="password"
+              placeholder="Password"
+              value={formData.password}
+              onChange={handleChange}
+              onFocus={() => setIsPasswordFocused(true)}
+              onBlur={() => { setIsPasswordFocused(false); setHasPasswordBeenBlurred(true); }}
+              className={`w-full px-3 py-2 text-sm bg-white border ${hasPasswordBeenBlurred && !isPasswordFocused ? ((!formData.password) || (!hasThreeCriteria) || (!isLengthValid || formData.password.length > 128) ? 'border-red-600 border-l-4' : 'border-gray-300') : 'border-gray-300'} rounded-md focus:outline-none focus:border-orange-600 transition placeholder-gray-500 text-gray-900 pr-10`}
+              required
+            />
               <button
                 type="button"
                 onClick={() => setShowGooglePassword(!showGooglePassword)}
@@ -301,17 +302,17 @@ function LoginPage() {
             </div>
 
             <div className="relative w-full">
-              <input
-                type={showGoogleConfirmPassword ? "text" : "password"}
-                name="confirmPassword"
-                placeholder="Confirm Password"
-                value={formData.confirmPassword || ''}
-                onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                onFocus={() => setIsConfirmPasswordFocused(true)}
-                onBlur={() => {setIsConfirmPasswordFocused(false); setHasConfirmPasswordBeenBlurred(true);}}
-                className={`w-full px-3 py-2 text-sm bg-white border ${hasConfirmPasswordBeenBlurred && !isConfirmPasswordFocused ? ((!formData.confirmPassword) || (formData.password !== formData.confirmPassword) ? 'border-red-600 border-l-4' : 'border-gray-300') : 'border-gray-300'} rounded-lg focus:outline-none focus:border-orange-600 transition placeholder-gray-500 text-gray-900 pr-10`}
-                required
-              />
+            <input
+              type={showGoogleConfirmPassword ? "text" : "password"}
+              name="confirmPassword"
+              placeholder="Confirm Password"
+              value={formData.confirmPassword || ''}
+              onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+              onFocus={() => setIsConfirmPasswordFocused(true)}
+              onBlur={() => { setIsConfirmPasswordFocused(false); setHasConfirmPasswordBeenBlurred(true); }}
+              className={`w-full px-3 py-2 text-sm bg-white border ${hasConfirmPasswordBeenBlurred && !isConfirmPasswordFocused ? ((!formData.confirmPassword) || (formData.password !== formData.confirmPassword) ? 'border-red-600 border-l-4' : 'border-gray-300') : 'border-gray-300'} rounded-md focus:outline-none focus:border-orange-600 transition placeholder-gray-500 text-gray-900 pr-10`}
+              required
+            />
               <button
                 type="button"
                 onClick={() => setShowGoogleConfirmPassword(!showGoogleConfirmPassword)}
@@ -336,12 +337,12 @@ function LoginPage() {
                 </>
               ) : null}
             </div>
-            <button type="submit" disabled={loading} className="mt-2 px-3 py-2 text-sm bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition font-semibold disabled:opacity-50">
-              {loading ? 'Setting Password...' : 'Save & Continue'}
-            </button>
-            <button type="button" onClick={() => { setGoogleUserContext(null); setHasPasswordBeenBlurred(false); setHasConfirmPasswordBeenBlurred(false); auth.signOut(); }} disabled={loading} className="px-3 py-2 text-sm bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition font-semibold disabled:opacity-50">
-              Cancel
-            </button>
+          <button type="submit" disabled={loading} className="mt-1 px-3 py-2 text-sm bg-orange-600 text-white rounded-md hover:bg-orange-700 transition font-semibold disabled:opacity-50">
+            {loading ? 'Setting Password...' : 'Save & Continue'}
+          </button>
+          <button type="button" onClick={() => { setGoogleUserContext(null); setHasPasswordBeenBlurred(false); setHasConfirmPasswordBeenBlurred(false); auth.signOut(); }} disabled={loading} className="px-3 py-2 text-sm bg-gray-500 text-white rounded-md hover:bg-gray-600 transition font-semibold disabled:opacity-50">
+            Cancel
+          </button>
           </form>
         </div>
       </div>
@@ -349,10 +350,10 @@ function LoginPage() {
   }
 
   return (
-    <div className="flex justify-center items-center min-h-screen px-4">
-      <div className="bg-white/20 backdrop-blur-md p-4 sm:p-6 rounded-lg shadow-2xl w-full max-w-sm border border-white/30">
-        <div className="flex justify-center mb-4">
-          <img src={logo} alt="Logo" className="h-12 sm:h-16 w-auto" />
+    <div className="flex min-h-screen p-4 overflow-y-auto">
+      <div className="m-auto bg-white/20 backdrop-blur-md p-5 sm:p-6 2xl:p-8 rounded-lg shadow-2xl w-full max-w-sm 2xl:max-w-md border border-white/30">
+        <div className="flex justify-center mb-4 2xl:mb-6">
+          <img src={logo} alt="Logo" className="h-10 sm:h-12 2xl:h-14 w-auto" />
         </div>
         <form onSubmit={handleSubmit} className="flex flex-col gap-2 sm:gap-3">
           <input
@@ -361,7 +362,7 @@ function LoginPage() {
             placeholder="Email"
             value={formData.email}
             onChange={handleChange}
-            className="px-3 py-2 text-sm bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-orange-600 transition placeholder-gray-500 text-gray-900"
+            className="px-3 py-2 text-sm bg-white border border-gray-300 rounded-md focus:outline-none focus:border-orange-600 transition placeholder-gray-500 text-gray-900"
             required
           />
           <div className="relative w-full">
@@ -371,7 +372,7 @@ function LoginPage() {
               placeholder="Password"
               value={formData.password}
               onChange={handleChange}
-              className="w-full px-3 py-2 text-sm bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-orange-600 transition placeholder-gray-500 text-gray-900 pr-10"
+              className="w-full px-3 py-2 text-sm bg-white border border-gray-300 rounded-md focus:outline-none focus:border-orange-600 transition placeholder-gray-500 text-gray-900 pr-10"
               required
             />
             <button
@@ -382,7 +383,7 @@ function LoginPage() {
               <i className={`bx ${showPassword ? 'bx-show' : 'bx-hide'} text-lg`}></i>
             </button>
           </div>
-          <div className="flex justify-end -mt-1 mb-1">
+          <div className="flex justify-end -mt-0.5 mb-1">
             <button
               type="button"
               onClick={() => {
@@ -394,21 +395,21 @@ function LoginPage() {
               Forgot Password?
             </button>
           </div>
-          <button type="submit" disabled={loading} className="px-3 py-2 text-sm bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition font-semibold disabled:opacity-50">
+          <button type="submit" disabled={loading} className="px-3 py-2 text-sm bg-orange-600 text-white rounded-md hover:bg-orange-700 transition font-semibold disabled:opacity-50">
             {loading ? 'Logging in...' : 'Login'}
           </button>
         </form>
 
-        <div className="flex items-center gap-2 my-3">
+        <div className="flex items-center gap-2 my-2">
           <div className="flex-1 h-px bg-gray-300"></div>
-          <span className="text-xs text-gray-500">OR</span>
+          <span className="text-[11px] text-gray-500">OR</span>
           <div className="flex-1 h-px bg-gray-300"></div>
         </div>
 
         <button
           onClick={handleGoogleSignIn}
           disabled={loading}
-          className="w-full px-3 py-2 text-sm bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition font-semibold disabled:opacity-50 flex items-center justify-center gap-2"
+          className="w-full px-3 py-2 text-sm bg-white border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition font-semibold disabled:opacity-50 flex items-center justify-center gap-2"
         >
           <svg className="w-5 h-5" viewBox="0 0 24 24">
             <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -419,8 +420,8 @@ function LoginPage() {
           Continue with Google
         </button>
 
-        <p className="text-center mt-2 sm:mt-3 text-black text-xs sm:text-sm">
-          Don't have an account? <a href="/register" className="text-primary hover:underline">Register</a>
+        <p className="text-center mt-3 sm:mt-4 text-black text-xs sm:text-sm">
+          Don't have an account? <a href="/register" className="text-primary hover:underline font-medium">Register</a>
         </p>
       </div>
     </div>

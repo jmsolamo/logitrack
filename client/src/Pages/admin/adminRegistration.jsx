@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, sendEmailVerification } from 'firebase/auth';
-import { auth } from '../config/firebase';
-import { useAppToast } from '../components/ui/alert-toast-provider';
+import { auth } from '../../config/firebase';
+import { useAppToast } from '../../components/ui/alert-toast-provider';
 import axios from 'axios';
-import logo from '../assets/images/logo.png';
+import logo from '../../assets/images/logo.png';
 
-function RegistrationPage() {
+function AdminRegistration() {
   const toast = useAppToast();
   const [formData, setFormData] = useState({
     firstName: '',
@@ -58,7 +58,6 @@ function RegistrationPage() {
       return;
     }
 
-
     setLoading(true);
     try {
       // Create user in Firebase
@@ -79,7 +78,7 @@ function RegistrationPage() {
         firstName: formData.firstName,
         lastName: formData.lastName,
         email: formData.email,
-        role: 'user'
+        role: 'admin'
       }, {
         headers: {
           Authorization: `Bearer ${idToken}`
@@ -89,7 +88,7 @@ function RegistrationPage() {
       // Sign out since they need to verify their email first
       await auth.signOut();
 
-      toast.success('Registration successful! Please check your email to verify your account.');
+      toast.success('Admin registration successful! Please check your email to verify your account.');
       setFormData({ firstName: '', lastName: '', email: '', password: '', confirmPassword: '' });
       setHasPasswordBeenBlurred(false);
       setHasConfirmPasswordBeenBlurred(false);
@@ -132,17 +131,17 @@ function RegistrationPage() {
       const firstName = nameParts.join(' ');
 
       await axios.post('/api/auth/register', {
-        firstName: firstName || 'User',
+        firstName: firstName || 'Admin',
         lastName: lastName || '',
         email: user.email,
-        role: 'user'
+        role: 'admin'
       }, {
         headers: {
           Authorization: `Bearer ${idToken}`
         }
       });
 
-      toast.success('Registration successful!');
+      toast.success('Admin registration successful!');
       localStorage.setItem('token', idToken);
     } catch (error) {
       // Sign out Firebase user if MongoDB registration fails
@@ -161,7 +160,7 @@ function RegistrationPage() {
   return (
     <div className="flex min-h-screen p-4 overflow-y-auto">
       <div className="m-auto bg-white/20 backdrop-blur-md p-5 sm:p-6 2xl:p-8 rounded-lg shadow-2xl w-full max-w-sm 2xl:max-w-md border border-white/30">
-        <div className="flex justify-center mb-4 2xl:mb-6">
+        <div className="flex flex-col items-center mb-4 2xl:mb-6">
           <img src={logo} alt="Logo" className="h-10 sm:h-12 2xl:h-14 w-auto" />
         </div>
         <form onSubmit={handleSubmit} className="flex flex-col gap-2 sm:gap-3">
@@ -306,7 +305,7 @@ function RegistrationPage() {
             ) : null}
           </div>
           <button type="submit" disabled={loading} className="px-3 py-2 text-sm bg-orange-600 text-white rounded-md hover:bg-orange-700 transition font-semibold disabled:opacity-50">
-            {loading ? 'Registering...' : 'Register'}
+            {loading ? 'Registering...' : 'Register as Admin'}
           </button>
         </form>
 
@@ -338,4 +337,4 @@ function RegistrationPage() {
   );
 }
 
-export default RegistrationPage;
+export default AdminRegistration;
