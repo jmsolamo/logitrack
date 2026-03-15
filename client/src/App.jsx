@@ -3,8 +3,24 @@ import { AlertToastProvider } from './components/ui/alert-toast-provider';
 import LoginPage from './Pages/loginPage';
 import RegistrationPage from './Pages/registrationPage';
 import AdminRegistration from './Pages/admin/adminRegistration';
-import AdminDashboard from './Pages/admin/adminDashboard';
+import AdminDashboard from './Pages/admin/overview/adminDashboard';
 import AdminLayout from './components/admin/AdminLayout';
+import DeliveryPlan from './Pages/admin/overview/deliver-plan';
+import Calendar from './Pages/admin/overview/calendar';
+import ActualExpenses from './Pages/admin/overview/admin-delivery-expenses/actual-expenses';
+import DieselExpenses from './Pages/admin/overview/admin-delivery-expenses/diesel-expenses';
+import DriverExpenseBreakdown from './Pages/admin/overview/admin-delivery-expenses/driver-expese-breakdown';
+import JobOrders from './Pages/admin/overview/admin-delivery-expenses/job-orders';
+import RequestPage from './Pages/admin/overview/request';
+import ReportsPage from './Pages/admin/overview/reports';
+import PurchasesPage from './Pages/admin/overview/purchases';
+import ActiveTripsPage from './Pages/admin/management/active-trips';
+import DestinationPage from './Pages/admin/management/destination';
+import DeliveryChargePage from './Pages/admin/management/delivery-charge';
+import VehiclesPage from './Pages/admin/management/vehicles';
+import DriversPage from './Pages/admin/management/drivers';
+import MembersPage from './Pages/admin/team/members';
+import ApprovalPage from './Pages/admin/team/approval';
 import axios from 'axios';
 import './App.css';
 
@@ -26,6 +42,25 @@ function App() {
           {/* Admin routes with sidebar layout */}
           <Route path="/admin" element={<AdminLayout />}>
             <Route path="dashboard" element={<AdminDashboard />} />
+            <Route path="delivery-plan" element={<DeliveryPlan />} />
+            <Route path="calendar" element={<Calendar />} />
+            <Route path="request" element={<RequestPage />} />
+            <Route path="purchases" element={<PurchasesPage />} />
+            <Route path="reports" element={<ReportsPage />} />
+            
+            <Route path="trips" element={<ActiveTripsPage />} />
+            <Route path="destinations" element={<DestinationPage />} />
+            <Route path="delivery-charge" element={<DeliveryChargePage />} />
+            <Route path="vehicles" element={<VehiclesPage />} />
+            <Route path="drivers" element={<DriversPage />} />
+
+            <Route path="members" element={<MembersPage />} />
+            <Route path="approvals" element={<ApprovalPage />} />
+
+            <Route path="delivery-expenses/actual" element={<ActualExpenses />} />
+            <Route path="delivery-expenses/diesel" element={<DieselExpenses />} />
+            <Route path="delivery-expenses/breakdown" element={<DriverExpenseBreakdown />} />
+            <Route path="delivery-expenses/job-orders" element={<JobOrders />} />
           </Route>
         </Routes>
       </AlertToastProvider>

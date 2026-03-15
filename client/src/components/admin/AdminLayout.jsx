@@ -2,13 +2,14 @@ import { useState, useEffect } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import AdminSidebar from './AdminSidebar';
-import { PanelLeft } from 'lucide-react';
+import { Menu } from 'lucide-react';
 
 function AdminLayout() {
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [user, setUser] = useState(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -63,17 +64,26 @@ function AdminLayout() {
         collapsed={sidebarCollapsed}
         onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
         user={user}
+        mobileOpen={mobileOpen}
+        onMobileClose={() => setMobileOpen(false)}
       />
 
       {/* Main content */}
       <div
-        className={`flex flex-1 flex-col transition-all duration-300 ${
-          sidebarCollapsed ? 'ml-14 md:ml-[60px]' : 'ml-[240px] md:ml-[260px]'
+        className={`flex flex-1 flex-col transition-all duration-300 ml-0 ${
+          sidebarCollapsed ? 'md:ml-[56px]' : 'md:ml-[235px]'
         }`}
       >
         {/* Top bar */}
-        <header className="sticky top-0 z-30 flex h-11 md:h-12 items-center gap-2.5 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 md:px-5">
-          {/* Top bar content can go here in the future if needed */}
+        <header className="sticky top-0 z-30 flex h-11 items-center gap-2.5 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 md:px-5">
+          {/* Mobile hamburger button */}
+          <button
+            onClick={() => setMobileOpen(true)}
+            className="flex md:hidden h-7 w-7 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+            title="Open sidebar"
+          >
+            <Menu className="h-4 w-4" />
+          </button>
         </header>
 
         {/* Page content */}
