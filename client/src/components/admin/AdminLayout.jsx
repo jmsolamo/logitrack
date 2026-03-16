@@ -90,7 +90,7 @@ function AdminLayout() {
 
       {/* Main content */}
       <div
-        className={`flex flex-1 flex-col transition-all duration-300 ml-0 ${sidebarCollapsed ? 'md:ml-[56px]' : 'md:ml-[235px]'
+        className={`flex flex-1 flex-col min-w-0 transition-all duration-300 ml-0 ${sidebarCollapsed ? 'md:ml-[56px]' : 'md:ml-[235px]'
           }`}
       >
         {/* Top bar */}

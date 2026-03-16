@@ -237,8 +237,8 @@ function DeliveryChargePage() {
 
                 {/* Info Section */}
                 <div className="flex items-start gap-2.5">
-                  <div className="flex w-8 shrink-0 flex-col gap-1 items-center justify-center py-2 rounded bg-primary/5 text-primary border border-primary/10">
-                    <Banknote className="h-3.5 w-3.5" />
+                  <div className="flex w-8 shrink-0 flex-col gap-1 items-center justify-center py-2 rounded bg-primary/5 text-primary">
+                    <Banknote className="h-5 w-5" />
                   </div>
 
                   <div className="flex flex-1 flex-col gap-0.5 min-w-0">

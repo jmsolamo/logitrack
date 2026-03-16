@@ -215,7 +215,7 @@ function VehiclesPage() {
                 {/* Vehicle Info Section */}
                 <div className="flex items-stretch gap-2.5">
                   <div className="flex w-8 shrink-0 items-center justify-center rounded bg-primary/10 text-primary">
-                    <Truck className="h-4.5 w-4.5" />
+                    <Truck className="h-5 w-5" />
                   </div>
 
                   <div className="flex flex-1 flex-col gap-0.5 min-w-0">
