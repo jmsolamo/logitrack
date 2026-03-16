@@ -18,7 +18,7 @@ import ActiveTripsPage from './Pages/admin/management/active-trips';
 import DestinationPage from './Pages/admin/management/destination';
 import DeliveryChargePage from './Pages/admin/management/delivery-charge';
 import VehiclesPage from './Pages/admin/management/vehicles';
-import DriversPage from './Pages/admin/management/drivers';
+import PersonnelsPage from './Pages/admin/management/personnels';
 import MembersPage from './Pages/admin/team/members';
 import ApprovalPage from './Pages/admin/team/approval';
 import axios from 'axios';
@@ -52,7 +52,7 @@ function App() {
             <Route path="destinations" element={<DestinationPage />} />
             <Route path="delivery-charge" element={<DeliveryChargePage />} />
             <Route path="vehicles" element={<VehiclesPage />} />
-            <Route path="drivers" element={<DriversPage />} />
+            <Route path="personnels" element={<PersonnelsPage />} />
 
             <Route path="members" element={<MembersPage />} />
             <Route path="approvals" element={<ApprovalPage />} />

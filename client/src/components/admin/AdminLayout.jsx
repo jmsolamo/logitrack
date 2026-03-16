@@ -14,8 +14,8 @@ function AdminLayout() {
 
   const [isDark, setIsDark] = useState(() => {
     if (typeof window !== 'undefined') {
-      return document.documentElement.classList.contains('dark') || 
-             localStorage.getItem('theme') === 'dark';
+      return document.documentElement.classList.contains('dark') ||
+        localStorage.getItem('theme') === 'dark';
     }
     return false;
   });
@@ -90,9 +90,8 @@ function AdminLayout() {
 
       {/* Main content */}
       <div
-        className={`flex flex-1 flex-col transition-all duration-300 ml-0 ${
-          sidebarCollapsed ? 'md:ml-[56px]' : 'md:ml-[235px]'
-        }`}
+        className={`flex flex-1 flex-col transition-all duration-300 ml-0 ${sidebarCollapsed ? 'md:ml-[56px]' : 'md:ml-[235px]'
+          }`}
       >
         {/* Top bar */}
         <header className="sticky top-0 z-30 flex h-11 items-center justify-between border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 md:px-5">
@@ -106,7 +105,7 @@ function AdminLayout() {
               <Menu className="h-4 w-4" />
             </button>
           </div>
-          
+
           <div className="flex items-center gap-3 sm:gap-4">
             <div className="flex items-center gap-1 sm:gap-2 sm:border-r sm:border-border sm:pr-4">
               <button
@@ -123,7 +122,7 @@ function AdminLayout() {
                 <Bell className="h-4 w-4" />
               </button>
             </div>
-            
+
             {/* User Profile */}
             <button
               className="flex items-center gap-2.5 hover:opacity-80 transition-opacity"
@@ -134,8 +133,8 @@ function AdminLayout() {
               </div>
               <div className="hidden sm:flex flex-col items-start text-left">
                 <span className="text-[12px] font-medium leading-none text-foreground">
-                  {user?.firstName && user?.lastName 
-                    ? `${user.firstName} ${user.lastName}` 
+                  {user?.firstName && user?.lastName
+                    ? `${user.firstName} ${user.lastName}`
                     : user?.name || user?.email?.split('@')[0] || 'Admin User'}
                 </span>
                 <span className="text-[10px] text-muted-foreground leading-none mt-1 capitalize">

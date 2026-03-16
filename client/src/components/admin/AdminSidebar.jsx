@@ -60,7 +60,7 @@ const navGroups = [
       { name: 'Destinations', icon: MapPin, path: '/admin/destinations' },
       { name: 'Delivery Charge', icon: Banknote, path: '/admin/delivery-charge' },
       { name: 'Vehicles', icon: Car, path: '/admin/vehicles' },
-      { name: 'Drivers', icon: UserCheck, path: '/admin/drivers' },
+      { name: 'Personnels', icon: UserCheck, path: '/admin/personnels' },
     ],
   },
   {
@@ -87,12 +87,12 @@ function AdminSidebar({ collapsed, onToggle, user, mobileOpen, onMobileClose }) 
     return () => document.removeEventListener('click', handleClickOutside);
   }, [activeMenu]);
 
-  const userName = user?.firstName && user?.lastName 
-    ? `${user.firstName} ${user.lastName}` 
+  const userName = user?.firstName && user?.lastName
+    ? `${user.firstName} ${user.lastName}`
     : user?.name || user?.email?.split('@')[0] || 'Admin User';
   const userEmail = user?.email || 'admin@logitrack.com';
-  const userInitial = user?.firstName 
-    ? user.firstName.charAt(0).toUpperCase() 
+  const userInitial = user?.firstName
+    ? user.firstName.charAt(0).toUpperCase()
     : userName.charAt(0).toUpperCase();
 
   const toggleExpand = (itemName) => {
@@ -205,8 +205,8 @@ function AdminSidebar({ collapsed, onToggle, user, mobileOpen, onMobileClose }) 
                       }}
                       title={!item.children || item.children.length === 0 ? item.name : undefined}
                       className={`flex h-8 w-8 items-center justify-center rounded transition-colors ${isGroupActive(item)
-                          ? 'bg-primary text-primary-foreground'
-                          : 'text-sidebar-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+                        ? 'bg-primary text-primary-foreground'
+                        : 'text-sidebar-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
                         }`}
                     >
                       <Icon className="h-4 w-4" />
@@ -227,7 +227,7 @@ function AdminSidebar({ collapsed, onToggle, user, mobileOpen, onMobileClose }) 
 
         {/* Floating Menu for Collapsed Sidebar */}
         {activeMenu && (
-          <div 
+          <div
             className="fixed z-50 w-48 rounded-md border border-sidebar-border bg-sidebar text-sidebar-foreground shadow-md outline-none animate-in fade-in zoom-in-95"
             style={{ top: activeMenu.y, left: activeMenu.x }}
             onClick={(e) => e.stopPropagation()}
@@ -243,11 +243,10 @@ function AdminSidebar({ collapsed, onToggle, user, mobileOpen, onMobileClose }) 
                     handleNavClick(child.path);
                     setActiveMenu(null);
                   }}
-                  className={`w-full text-left cursor-pointer items-center rounded-sm px-2 py-1.5 text-xs outline-none transition-colors ${
-                    isActive(child.path) 
-                      ? 'bg-primary text-primary-foreground font-medium' 
+                  className={`w-full text-left cursor-pointer items-center rounded-sm px-2 py-1.5 text-xs outline-none transition-colors ${isActive(child.path)
+                      ? 'bg-primary text-primary-foreground font-medium'
                       : 'text-sidebar-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground'
-                  }`}
+                    }`}
                 >
                   {child.name}
                 </button>
@@ -342,8 +341,8 @@ function AdminSidebar({ collapsed, onToggle, user, mobileOpen, onMobileClose }) 
                           }
                         }}
                         className={`group flex w-full items-center gap-2 rounded px-1.5 py-1 text-[12px] font-medium transition-colors ${active
-                            ? 'bg-primary text-primary-foreground'
-                            : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+                          ? 'bg-primary text-primary-foreground'
+                          : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
                           }`}
                       >
                         <Icon className="h-3.5 w-3.5 shrink-0" />
@@ -367,8 +366,8 @@ function AdminSidebar({ collapsed, onToggle, user, mobileOpen, onMobileClose }) 
                               <button
                                 onClick={() => handleNavClick(child.path)}
                                 className={`flex w-full items-center rounded px-1.5 py-1 text-[11px] transition-colors ${isActive(child.path)
-                                    ? 'font-medium text-primary-foreground bg-primary'
-                                    : 'text-sidebar-muted-foreground hover:text-sidebar-accent-foreground hover:bg-sidebar-accent'
+                                  ? 'font-medium text-primary-foreground bg-primary'
+                                  : 'text-sidebar-muted-foreground hover:text-sidebar-accent-foreground hover:bg-sidebar-accent'
                                   }`}
                               >
                                 {child.name}
@@ -504,8 +503,8 @@ function MobileSidebarContent({
                         }
                       }}
                       className={`group flex w-full items-center gap-2 rounded px-1.5 py-1 text-[12px] font-medium transition-colors ${active
-                          ? 'bg-primary text-primary-foreground'
-                          : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+                        ? 'bg-primary text-primary-foreground'
+                        : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
                         }`}
                     >
                       <Icon className="h-3.5 w-3.5 shrink-0" />
@@ -528,8 +527,8 @@ function MobileSidebarContent({
                             <button
                               onClick={() => handleNavClick(child.path)}
                               className={`flex w-full items-center rounded px-1.5 py-1 text-[11px] transition-colors ${isActive(child.path)
-                                  ? 'font-medium text-primary-foreground bg-primary'
-                                  : 'text-sidebar-muted-foreground hover:text-sidebar-accent-foreground hover:bg-sidebar-accent'
+                                ? 'font-medium text-primary-foreground bg-primary'
+                                : 'text-sidebar-muted-foreground hover:text-sidebar-accent-foreground hover:bg-sidebar-accent'
                                 }`}
                             >
                               {child.name}

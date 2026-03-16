@@ -3,6 +3,10 @@ import mongoose from 'mongoose';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import authRoutes from './routes/auth.js';
+import personnelsRoutes from './routes/personnels.js';
+import vehiclesRoutes from './routes/vehicles.js';
+import destinationsRoutes from './routes/destinations.js';
+import deliveryChargesRoutes from './routes/deliveryCharges.js';
 
 dotenv.config();
 
@@ -44,11 +48,17 @@ app.get('/', (req, res) => {
   res.send('server is running');
 });
 
+app.get('/favicon.ico', (req, res) => res.status(204).end());
+
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Server is running' });
 });
 
 app.use('/api/auth', authRoutes);
+app.use('/api/personnels', personnelsRoutes);
+app.use('/api/vehicles', vehiclesRoutes);
+app.use('/api/destinations', destinationsRoutes);
+app.use('/api/delivery-charges', deliveryChargesRoutes);
 
 if (process.env.NODE_ENV !== 'production') {
   const PORT = process.env.PORT || 5000;
