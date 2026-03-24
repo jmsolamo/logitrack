@@ -99,7 +99,7 @@ function LoginPage() {
       localStorage.setItem('token', idToken);
 
       // Check if user exists in MongoDB - use direct axios call without interceptor
-      const { data } = await axios.get('http://localhost:5000/api/auth/check', {
+      const { data } = await axios.get('/api/auth/check', {
         headers: { Authorization: `Bearer ${idToken}` }
       });
 
