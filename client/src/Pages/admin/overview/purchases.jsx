@@ -8,8 +8,10 @@ import {
   Loader2,
   RotateCcw,
   ShoppingBag,
-  Calendar
+  Calendar,
+  Printer
 } from 'lucide-react';
+import { Button } from '../../../components/ui/button';
 import axios from 'axios';
 import { useAppToast } from '../../../components/ui/alert-toast-provider';
 import AlertDialog from '../../../components/ui/alert-dialog';
@@ -188,13 +190,35 @@ function PurchasesPage() {
 
   const uniqueCategories = [...new Set(purchases.map(p => p.category).filter(Boolean))].sort();
 
+  const formatDate = (dateStr) => {
+    if (!dateStr) return '—';
+    const d = new Date(dateStr);
+    return d.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
+  };
+
+  const generateFiltersText = () => {
+    const f = [];
+    if (searchQuery) f.push(`Search: ${searchQuery}`);
+    if (categoryFilter) f.push(`Category: ${categoryFilter}`);
+    return f.length ? f.join(' | ') : 'None';
+  };
+
+  const totalAmount = filteredPurchases.reduce((sum, p) => sum + Number(p.amount || 0), 0);
+
   return (
-    <div className="flex h-full flex-col bg-background p-[5px] overflow-hidden animate-in fade-in duration-500">
+    <>
+    <div className="flex h-full flex-col bg-background p-[5px] overflow-hidden animate-in fade-in duration-500 print:hidden">
       {/* Header */}
       <div className="mb-4 flex flex-col justify-between gap-3 md:flex-row md:items-center">
         <div>
           <h1 className="text-sm font-bold tracking-tight text-foreground md:text-base uppercase">Purchases</h1>
           <p className="text-[10px] text-muted-foreground uppercase tracking-widest">Manage inventory and expenses</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <Button size="sm" onClick={() => window.print()} className="h-8 gap-1.5 text-[10px] uppercase font-bold tracking-wider">
+            <Printer className="h-3.5 w-3.5" />
+            Print Report
+          </Button>
         </div>
       </div>
 
@@ -489,7 +513,67 @@ function PurchasesPage() {
         variant="destructive"
       />
     </div>
+
+    {/* ====== PRINT UI ====== */}
+    <style>{`
+      @media print {
+        @page { size: landscape; margin: 10mm; }
+      }
+    `}</style>
+    <div className="hidden print:block print:absolute print:inset-0 print:bg-white print:text-black print:z-[99999] font-sans">
+      <div className="text-center mb-4">
+        <div className="text-[14pt] font-bold tracking-tight">ENERTECH SYSTEM INDUSTRIES, INC</div>
+        <div className="text-[11pt]">LOGISTIC DEPARTMENT</div>
+        <div className="text-[11pt] font-medium tracking-wide mt-1">PURCHASES REPORT</div>
+      </div>
+
+      <div className="flex justify-between items-end mb-1 text-[8pt]">
+        <div className="font-medium">Filters: {generateFiltersText()}</div>
+        <div className="font-medium">Date Generated: {(new Date().getMonth() + 1).toString().padStart(2, '0')}-{(new Date().getDate()).toString().padStart(2, '0')}-{new Date().getFullYear()}</div>
+      </div>
+
+      <table className="w-full border-collapse border border-black text-[7pt] leading-tight" style={{ tableLayout: 'auto' }}>
+        <thead className="bg-[#f2f2f2]">
+          <tr>
+            <th className="border border-black px-1 py-1 font-bold whitespace-nowrap align-middle">DATE</th>
+            <th className="border border-black px-1 py-1 font-bold align-middle whitespace-nowrap">CATEGORY</th>
+            <th className="border border-black px-1 py-1 font-bold align-middle whitespace-nowrap">ITEMS</th>
+            <th className="border border-black px-1 py-1 font-bold align-middle whitespace-nowrap">QTY</th>
+            <th className="border border-black px-1 py-1 font-bold align-middle text-right whitespace-nowrap">AMOUNT</th>
+            <th className="border border-black px-1 py-1 font-bold align-middle whitespace-nowrap">SUPPLIER</th>
+            <th className="border border-black px-1 py-1 font-bold align-middle whitespace-nowrap">INVOICE NO.</th>
+            <th className="border border-black px-1 py-1 font-bold align-middle whitespace-nowrap">PURCHASED BY</th>
+            <th className="border border-black px-1 py-1 font-bold align-middle whitespace-nowrap">NOTE</th>
+          </tr>
+        </thead>
+        <tbody>
+          {filteredPurchases.map(p => (
+            <tr key={p._id} className="break-inside-avoid">
+              <td className="border border-black px-1 py-1 align-top whitespace-nowrap">{formatDate(p.date)}</td>
+              <td className="border border-black px-1 py-1 align-top uppercase whitespace-nowrap font-medium">{p.category || '-'}</td>
+              <td className="border border-black px-1 py-1 align-top uppercase font-medium">{p.items}</td>
+              <td className="border border-black px-1 py-1 align-top uppercase text-center">{p.qty}</td>
+              <td className="border border-black px-1 py-1 align-top text-right font-bold whitespace-nowrap">{Number(p.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+              <td className="border border-black px-1 py-1 align-top uppercase">{p.supplier || '-'}</td>
+              <td className="border border-black px-1 py-1 align-top uppercase whitespace-nowrap">{p.invoiceNo || '-'}</td>
+              <td className="border border-black px-1 py-1 align-top uppercase whitespace-nowrap">{p.purchasedBy || '-'}</td>
+              <td className="border border-black px-1 py-1 align-top uppercase leading-tight">{p.usedForNote || '-'}</td>
+            </tr>
+          ))}
+          {/* Total Row */}
+          <tr className="bg-[#f2f2f2] break-inside-avoid">
+            <td className="border border-black px-1 py-1 font-bold bg-white" colSpan={3}></td>
+            <td className="border border-black px-1 py-1 font-bold text-center">TOTAL</td>
+            <td className="border border-black px-1 py-1 font-bold text-right whitespace-nowrap">{totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+            <td className="border border-black px-1 py-1 font-bold bg-white" colSpan={4}></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    </>
   );
 }
 
 export default PurchasesPage;
+

@@ -8,7 +8,8 @@ import {
   RotateCcw,
   Calendar,
   CalendarDays,
-  Truck
+  Truck,
+  Printer
 } from 'lucide-react';
 import { Input } from '../../../../components/ui/input';
 import { Button } from '../../../../components/ui/button';
@@ -172,15 +173,53 @@ export default function DieselExpenses() {
     return vObj ? `${plateNumber} - ${vObj.model}` : plateNumber || '—';
   };
 
+  const formatDriverInitials = (arr) => {
+    if (!arr || !Array.isArray(arr)) return '—';
+    const filtered = arr.filter(Boolean);
+    if (filtered.length === 0) return '—';
+    return filtered.map(name => {
+      const parts = name.trim().split(/\s+/);
+      if (parts.length === 1) return parts[0].toUpperCase();
+      const lastName = parts.pop();
+      const initials = parts.map(p => p[0].toUpperCase()).join('.');
+      return `${initials}. ${lastName.toUpperCase()}`;
+    }).join(' / ');
+  };
+
+  const generateFiltersText = () => {
+    const f = [];
+    if (searchQuery) f.push(`Search: ${searchQuery}`);
+    if (dateFilter) f.push(`Date: ${formatDate(dateFilter)}`);
+    if (monthFilter !== 'all') f.push(`Month: ${formatMonthLabel(monthFilter)}`);
+    if (vehicleFilter !== 'all') f.push(`Vehicle: ${getVehicleDisplay(vehicleFilter)}`);
+    return f.length ? f.join(' | ') : 'None';
+  };
+
+  const totals = useMemo(() => {
+    let totalLiters = 0, totalAmount = 0;
+    filteredRows.forEach(row => {
+      totalLiters += Number(row.liters || 0);
+      totalAmount += Number(row.amount || 0);
+    });
+    return { totalLiters, totalAmount };
+  }, [filteredRows]);
+
   const hasActiveFilters = searchQuery || dateFilter || monthFilter !== 'all' || vehicleFilter !== 'all';
 
   return (
-    <div className="flex h-full flex-col bg-background p-[5px] overflow-hidden animate-in fade-in duration-500">
+    <>
+    <div className="flex h-full flex-col bg-background p-[5px] overflow-hidden animate-in fade-in duration-500 print:hidden">
       {/* Header */}
       <div className="mb-4 flex flex-col justify-between gap-3 md:flex-row md:items-center shrink-0">
         <div>
           <h1 className="text-sm font-bold tracking-tight text-foreground md:text-base uppercase">Diesel Expenses</h1>
           <p className="text-[10px] text-muted-foreground uppercase tracking-widest">Fuel consumption tracking for all completed deliveries</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <Button size="sm" onClick={() => window.print()} className="h-8 gap-1.5 text-[10px] uppercase font-bold tracking-wider">
+            <Printer className="h-3.5 w-3.5" />
+            Print Report
+          </Button>
         </div>
       </div>
 
@@ -324,5 +363,65 @@ export default function DieselExpenses() {
         </div>
       </div>
     </div>
+
+    {/* ====== PRINT UI ====== */}
+    <style>{`
+      @media print {
+        @page { size: landscape; margin: 10mm; }
+      }
+    `}</style>
+    <div className="hidden print:block print:absolute print:inset-0 print:bg-white print:text-black print:z-[99999] font-sans">
+      <div className="text-center mb-4">
+        <div className="text-[14pt] font-bold tracking-tight">ENERTECH SYSTEM INDUSTRIES, INC</div>
+        <div className="text-[11pt]">LOGISTIC DEPARTMENT</div>
+        <div className="text-[11pt] font-medium tracking-wide mt-1">DIESEL EXPENSES REPORT</div>
+      </div>
+
+      <div className="flex justify-between items-end mb-1 text-[8pt]">
+        <div className="font-medium">Filters: {generateFiltersText()}</div>
+        <div className="font-medium">Date Generated: {(new Date().getMonth() + 1).toString().padStart(2, '0')}-{(new Date().getDate()).toString().padStart(2, '0')}-{new Date().getFullYear()}</div>
+      </div>
+
+      <table className="w-full border-collapse border border-black text-[7pt] leading-tight" style={{ tableLayout: 'auto' }}>
+        <thead className="bg-[#f2f2f2]">
+          <tr>
+            <th className="border border-black px-1 py-1 font-bold whitespace-nowrap align-middle">DATE</th>
+            <th className="border border-black px-1 py-1 font-bold align-middle whitespace-nowrap">DRIVER</th>
+            <th className="border border-black px-1 py-1 font-bold align-middle whitespace-nowrap">JOB ORDER NO.</th>
+            <th className="border border-black px-1 py-1 font-bold align-middle whitespace-nowrap">DESTINATION</th>
+            <th className="border border-black px-1 py-1 font-bold align-middle whitespace-nowrap">VEHICLE</th>
+            <th className="border border-black px-1 py-1 font-bold align-middle whitespace-nowrap">GAS STATION</th>
+            <th className="border border-black px-1 py-1 font-bold align-middle text-right whitespace-nowrap">LITERS</th>
+            <th className="border border-black px-1 py-1 font-bold align-middle text-right whitespace-nowrap">AMOUNT</th>
+            <th className="border border-black px-1 py-1 font-bold align-middle whitespace-nowrap">INVOICE NO.</th>
+          </tr>
+        </thead>
+        <tbody>
+          {filteredRows.map(row => (
+            <tr key={row._id} className="break-inside-avoid">
+              <td className="border border-black px-1 py-1 align-top whitespace-nowrap">{formatDate(row.dateFrom).toUpperCase()}</td>
+              <td className="border border-black px-1 py-1 align-top uppercase whitespace-nowrap font-medium text-center">{formatDriverInitials(row.driver)}</td>
+              <td className="border border-black px-1 py-1 align-top text-center">{joinArray(row.jobOrderNo)}</td>
+              <td className="border border-black px-1 py-1 align-top uppercase">{joinArray(row.destination)}</td>
+              <td className="border border-black px-1 py-1 align-top uppercase whitespace-nowrap font-bold text-center">{row.vehicleEquipment || '—'}</td>
+              <td className="border border-black px-1 py-1 align-top uppercase whitespace-nowrap">{row.gasStation}</td>
+              <td className="border border-black px-1 py-1 align-top text-right whitespace-nowrap">{row.liters.toLocaleString()}</td>
+              <td className="border border-black px-1 py-1 align-top text-right font-bold whitespace-nowrap">{row.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+              <td className="border border-black px-1 py-1 align-top uppercase whitespace-nowrap">{row.invoiceNo}</td>
+            </tr>
+          ))}
+          {/* Total Row */}
+          <tr className="bg-[#f2f2f2] break-inside-avoid">
+            <td className="border border-black px-1 py-1 font-bold bg-white" colSpan={5}></td>
+            <td className="border border-black px-1 py-1 font-bold text-center">TOTAL</td>
+            <td className="border border-black px-1 py-1 font-bold text-right whitespace-nowrap">{totals.totalLiters.toLocaleString()}</td>
+            <td className="border border-black px-1 py-1 font-bold text-right whitespace-nowrap">{totals.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+            <td className="border border-black px-1 py-1 font-bold bg-white"></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    </>
   );
 }
