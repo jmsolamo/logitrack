@@ -5,53 +5,70 @@ import { dirname, join } from 'path';
 
 let serviceAccount;
 
+// Try environment variable first
 if (process.env.FIREBASE_SERVICE_ACCOUNT) {
   try {
     serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
     if (serviceAccount.private_key) {
       serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
     }
+    console.log('Firebase: Using FIREBASE_SERVICE_ACCOUNT env variable');
   } catch (error) {
-    console.error("FIREBASE ERROR: Failed to parse FIREBASE_SERVICE_ACCOUNT. Using manual env vars fallback.", error.message);
+    console.error("FIREBASE ERROR: Failed to parse FIREBASE_SERVICE_ACCOUNT.", error.message);
   }
-} 
+}
 
+// Try individual env variables
+if (!serviceAccount && process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_PRIVATE_KEY && process.env.FIREBASE_CLIENT_EMAIL) {
+  try {
+    serviceAccount = {
+      projectId: process.env.FIREBASE_PROJECT_ID,
+      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+      privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n')
+    };
+    console.log('Firebase: Using individual env variables (PROJECT_ID, PRIVATE_KEY, CLIENT_EMAIL)');
+  } catch (error) {
+    console.error("FIREBASE ERROR: Failed to parse individual env variables.", error.message);
+  }
+}
+
+// Try local JSON file
 if (!serviceAccount) {
-  // If no environment variable, try to load the JSON file (for local development)
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = dirname(__filename);
   const keyPath = join(__dirname, 'serviceAccountKey.json');
   
   if (existsSync(keyPath)) {
-    serviceAccount = JSON.parse(readFileSync(keyPath, 'utf8'));
+    try {
+      serviceAccount = JSON.parse(readFileSync(keyPath, 'utf8'));
+      console.log('Firebase: Using local serviceAccountKey.json file');
+    } catch (error) {
+      console.error("FIREBASE ERROR: Failed to read serviceAccountKey.json.", error.message);
+    }
   }
 }
 
-try {
-  if (serviceAccount) {
+// Initialize Firebase Admin
+if (serviceAccount) {
+  try {
     if (!admin.apps.length) {
       admin.initializeApp({
         credential: admin.credential.cert(serviceAccount)
       });
-      console.log("Firebase Admin initialized via full service account.");
+      console.log('✓ Firebase Admin initialized successfully');
+    } else {
+      console.log('✓ Firebase Admin already initialized');
     }
-  } else if (process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_PRIVATE_KEY && process.env.FIREBASE_CLIENT_EMAIL) {
-    // Vercel strict fallback: Initialize using individual separated variables if the massive JSON fails
-    if (!admin.apps.length) {
-      admin.initializeApp({
-        credential: admin.credential.cert({
-          projectId: process.env.FIREBASE_PROJECT_ID,
-          clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-          privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n')
-        })
-      });
-      console.log("Firebase Admin initialized via individual environment variables.");
-    }
-  } else {
-    console.error("FIREBASE CRITICAL WARNING: No service account or required variables provided (FIREBASE_PROJECT_ID, FIREBASE_PRIVATE_KEY, FIREBASE_CLIENT_EMAIL). Firebase will crash.");
+  } catch (error) {
+    console.error('✗ FIREBASE INITIALIZATION ERROR:', error.message);
+    throw error;
   }
-} catch (error) {
-  console.error("FIREBASE INITIALIZATION CRASH: ", error.message);
+} else {
+  console.error('✗ FIREBASE CRITICAL ERROR: No valid credentials found!');
+  console.error('  Please set one of the following:');
+  console.error('  1. FIREBASE_SERVICE_ACCOUNT (full JSON)');
+  console.error('  2. FIREBASE_PROJECT_ID, FIREBASE_PRIVATE_KEY, FIREBASE_CLIENT_EMAIL');
+  console.error('  3. config/serviceAccountKey.json file');
 }
 
 export default admin;

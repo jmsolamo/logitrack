@@ -21,13 +21,8 @@ import VehiclesPage from './Pages/admin/management/vehicles';
 import PersonnelsPage from './Pages/admin/management/personnels';
 import MembersPage from './Pages/admin/team/members';
 import ApprovalPage from './Pages/admin/team/approval';
-import axios from 'axios';
+import './lib/axios';
 import './App.css';
-
-// Set global axios base URL if defined in environment variables
-if (import.meta.env.VITE_API_URL) {
-  axios.defaults.baseURL = import.meta.env.VITE_API_URL;
-}
 
 function App() {
   return (

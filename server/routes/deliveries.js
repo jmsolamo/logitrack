@@ -1,7 +1,34 @@
 import express from 'express';
 import Delivery from '../models/Delivery.js';
+import DeliveryCharge from '../models/DeliveryCharge.js';
 
 const router = express.Router();
+
+// Helper to reliably compute delivery charge based on vehicle and destinations
+const calculateDeliveryCharge = async (plateNumber, destinations) => {
+  if (!plateNumber || !destinations || destinations.length === 0) return 0;
+  
+  try {
+    const upperDestinations = destinations.map(d => String(d).toUpperCase());
+    
+    // Find all matching delivery charges for this exact plate number + destinations
+    const availableCharges = await DeliveryCharge.find({
+      plateNumber: String(plateNumber).toUpperCase(),
+      destination: { $in: upperDestinations }
+    });
+    
+    let totalCharge = 0;
+    destinations.forEach(dest => {
+      const matched = availableCharges.find(c => c.destination === String(dest).toUpperCase());
+      if (matched) totalCharge += matched.charge;
+    });
+    
+    return totalCharge;
+  } catch (err) {
+    console.error('Error computing delivery charge:', err);
+    return 0;
+  }
+};
 
 // Generate a unique reference number based on delivery type
 // Field Trip → FT-YYYYMMDD-XXX
@@ -72,9 +99,16 @@ router.post('/', async (req, res) => {
 
     const referenceNo = await generateReferenceNo(deliveryType);
 
+    // Calculate integrated delivery charge based on destinations
+    let finalDeliveryCharge = 0;
+    if (req.body.vehicleEquipment && req.body.destination) {
+      finalDeliveryCharge = await calculateDeliveryCharge(req.body.vehicleEquipment, req.body.destination);
+    }
+
     const newDelivery = new Delivery({
       referenceNo,
-      ...req.body
+      ...req.body,
+      deliveryCharge: finalDeliveryCharge
     });
 
     const savedDelivery = await newDelivery.save();
@@ -96,6 +130,16 @@ router.put('/:id', async (req, res) => {
   try {
     // Prevent overwriting the referenceNo
     const { referenceNo, ...updateData } = req.body;
+
+    // Dynamically recalculate delivery charge if vehicle or destination array is modified
+    if (updateData.vehicleEquipment !== undefined || updateData.destination !== undefined) {
+      const existingDelivery = await Delivery.findById(req.params.id);
+      if (existingDelivery) {
+        const vehicle = updateData.vehicleEquipment !== undefined ? updateData.vehicleEquipment : existingDelivery.vehicleEquipment;
+        const dests = updateData.destination !== undefined ? updateData.destination : existingDelivery.destination;
+        updateData.deliveryCharge = await calculateDeliveryCharge(vehicle, dests);
+      }
+    }
 
     const updatedDelivery = await Delivery.findByIdAndUpdate(
       req.params.id,

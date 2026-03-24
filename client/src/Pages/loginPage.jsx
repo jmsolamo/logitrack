@@ -96,9 +96,10 @@ function LoginPage() {
       const result = await signInWithPopup(auth, provider);
 
       const idToken = await result.user.getIdToken();
+      localStorage.setItem('token', idToken);
 
-      // Check if user exists in MongoDB
-      const { data } = await axios.get('/api/auth/check', {
+      // Check if user exists in MongoDB - use direct axios call without interceptor
+      const { data } = await axios.get('http://localhost:5000/api/auth/check', {
         headers: { Authorization: `Bearer ${idToken}` }
       });
 
@@ -122,10 +123,10 @@ function LoginPage() {
         return; // Early return to let the UI show the password modal instead
       }
 
-      localStorage.setItem('token', idToken);
       toast.success('Login successful');
       navigate('/admin/dashboard');
     } catch (error) {
+      localStorage.removeItem('token');
       toast.error(error.message || 'Google sign-in failed');
     } finally {
       setLoading(false);

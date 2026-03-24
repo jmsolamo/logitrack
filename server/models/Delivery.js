@@ -47,6 +47,15 @@ const deliverySchema = new mongoose.Schema({
   arrivalDate: {
     type: Date
   },
+  timeline: [{
+    type: {
+      type: String,
+      enum: ['departure', 'arrival']
+    },
+    destination: String,
+    timestamp: Date,
+    destinationIndex: Number
+  }],
 
   // Fuel (array of entries)
   fuel: [{
@@ -56,23 +65,29 @@ const deliverySchema = new mongoose.Schema({
     invoiceNo: { type: String, trim: true }
   }],
 
-  // Expenses (arrays of amounts)
+  // Expenses (arrays of amounts and details)
   tollFee: [{
+    details: { type: String, trim: true },
     amt: { type: Number, default: 0 }
   }],
   pierExpenses: [{
+    details: { type: String, trim: true },
     amt: { type: Number, default: 0 }
   }],
   repairAndMaintenance: [{
+    details: { type: String, trim: true },
     amt: { type: Number, default: 0 }
   }],
   mealExpenses: [{
+    details: { type: String, trim: true },
     amt: { type: Number, default: 0 }
   }],
   loadExpenses: [{
+    details: { type: String, trim: true },
     amt: { type: Number, default: 0 }
   }],
   contingency: [{
+    details: { type: String, trim: true },
     amt: { type: Number, default: 0 }
   }],
 

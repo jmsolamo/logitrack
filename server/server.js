@@ -1,15 +1,19 @@
+import dotenv from 'dotenv';
+
+// Load environment variables FIRST before any other imports
+dotenv.config();
+
 import express from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
-import dotenv from 'dotenv';
+import './config/firebase.js';
 import authRoutes from './routes/auth.js';
 import personnelsRoutes from './routes/personnels.js';
 import vehiclesRoutes from './routes/vehicles.js';
 import destinationsRoutes from './routes/destinations.js';
 import deliveryChargesRoutes from './routes/deliveryCharges.js';
 import deliveriesRoutes from './routes/deliveries.js';
-
-dotenv.config();
+import purchasesRoutes from './routes/purchases.js';
 
 const app = express();
 
@@ -61,6 +65,7 @@ app.use('/api/vehicles', vehiclesRoutes);
 app.use('/api/destinations', destinationsRoutes);
 app.use('/api/delivery-charges', deliveryChargesRoutes);
 app.use('/api/deliveries', deliveriesRoutes);
+app.use('/api/purchases', purchasesRoutes);
 
 if (process.env.NODE_ENV !== 'production') {
   const PORT = process.env.PORT || 5000;

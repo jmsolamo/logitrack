@@ -1,39 +1,493 @@
-import { Construction } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import {
+  Plus,
+  Search,
+  Edit,
+  Trash2,
+  X,
+  Loader2,
+  RotateCcw,
+  ShoppingBag,
+  Calendar
+} from 'lucide-react';
+import axios from 'axios';
+import { useAppToast } from '../../../components/ui/alert-toast-provider';
+import AlertDialog from '../../../components/ui/alert-dialog';
 
 function PurchasesPage() {
+  const [purchases, setPurchases] = useState([]);
+  const [vehicles, setVehicles] = useState([]);
+  const [personnels, setPersonnels] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSubmitLoading, setIsSubmitLoading] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [purchaseToDelete, setPurchaseToDelete] = useState(null);
+
+  const [formData, setFormData] = useState({
+    date: '',
+    category: '',
+    items: '',
+    qty: '',
+    amount: '',
+    supplier: '',
+    invoiceNo: '',
+    purchasedBy: '',
+    usedForNote: ''
+  });
+
+  const toast = useAppToast();
+
+  useEffect(() => {
+    fetchPurchases();
+    fetchVehicles();
+    fetchPersonnels();
+  }, []);
+
+  const fetchPurchases = async () => {
+    try {
+      const response = await axios.get('/api/purchases');
+      setPurchases(response.data);
+    } catch (error) {
+      console.error('Error fetching purchases:', error);
+      toast.error('Failed to load purchases');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchVehicles = async () => {
+    try {
+      const response = await axios.get('/api/vehicles');
+      setVehicles(response.data);
+    } catch (error) {
+      console.error('Error fetching vehicles:', error);
+    }
+  };
+
+  const fetchPersonnels = async () => {
+    try {
+      const response = await axios.get('/api/personnels');
+      setPersonnels(response.data);
+    } catch (error) {
+      console.error('Error fetching personnels:', error);
+    }
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const openModal = (purchase = null) => {
+    if (purchase) {
+      setFormData({
+        date: new Date(purchase.date).toISOString().split('T')[0],
+        category: purchase.category || '',
+        items: purchase.items,
+        qty: purchase.qty,
+        amount: purchase.amount,
+        supplier: purchase.supplier || '',
+        invoiceNo: purchase.invoiceNo || '',
+        purchasedBy: purchase.purchasedBy || '',
+        usedForNote: purchase.usedForNote || ''
+      });
+      setEditingId(purchase._id);
+    } else {
+      setFormData({
+        date: new Date().toISOString().split('T')[0],
+        category: '',
+        items: '',
+        qty: '',
+        amount: '',
+        supplier: '',
+        invoiceNo: '',
+        purchasedBy: '',
+        usedForNote: ''
+      });
+      setEditingId(null);
+    }
+    setIsModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setFormData({
+      date: '',
+      category: '',
+      items: '',
+      qty: '',
+      amount: '',
+      supplier: '',
+      invoiceNo: '',
+      purchasedBy: '',
+      usedForNote: ''
+    });
+    setEditingId(null);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setIsSubmitLoading(true);
+
+    try {
+      if (editingId) {
+        await axios.put(`/api/purchases/${editingId}`, formData);
+        toast.success('Purchase updated successfully');
+      } else {
+        await axios.post('/api/purchases', formData);
+        toast.success('Purchase added successfully');
+      }
+
+      fetchPurchases();
+      closeModal();
+    } catch (error) {
+      console.error('Error saving purchase:', error);
+      toast.error(error.response?.data?.message || 'Failed to save purchase');
+    } finally {
+      setIsSubmitLoading(false);
+    }
+  };
+
+  const handleDelete = (id) => {
+    setPurchaseToDelete(id);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!purchaseToDelete) return;
+
+    try {
+      await axios.delete(`/api/purchases/${purchaseToDelete}`);
+      toast.success('Purchase deleted successfully');
+      fetchPurchases();
+    } catch (error) {
+      console.error('Error deleting purchase:', error);
+      toast.error('Failed to delete purchase');
+    } finally {
+      setPurchaseToDelete(null);
+      setIsDeleteDialogOpen(false);
+    }
+  };
+
+  const handleReset = () => {
+    setSearchQuery('');
+    setCategoryFilter('');
+    toast.success('Filters cleared');
+  };
+
+  const filteredPurchases = purchases.filter(p => {
+    const searchString = `${p.category} ${p.items} ${p.supplier} ${p.invoiceNo} ${p.purchasedBy} ${p.usedForNote}`.toLowerCase();
+    const matchesSearch = searchString.includes(searchQuery.toLowerCase());
+    const matchesCategory = categoryFilter ? p.category === categoryFilter : true;
+    return matchesSearch && matchesCategory;
+  });
+
+  const uniqueCategories = [...new Set(purchases.map(p => p.category).filter(Boolean))].sort();
+
   return (
-    <div className="flex h-full items-center justify-center p-4">
-      <div className="flex max-w-sm flex-col items-center text-center">
-        <div className="relative mb-4">
-          <div className="absolute inset-0 animate-ping rounded-full bg-sidebar-primary/20" />
-          <div className="relative flex h-12 w-12 items-center justify-center rounded-full bg-sidebar-accent text-sidebar-primary">
-            <Construction className="h-5 w-5" />
-          </div>
-        </div>
-
-        <h1 className="mb-2 text-base font-bold tracking-tight text-foreground md:text-lg">
-          Purchases Coming Soon
-        </h1>
-        <p className="mb-5 text-[11px] text-muted-foreground md:text-xs">
-          We're building something amazing. This page is currently under construction
-          and will be available in the next update.
-        </p>
-
-        <div className="grid w-full grid-cols-2 gap-2 text-left">
-          <div className="rounded-lg border border-border bg-muted/30 p-3">
-            <div className="mb-0.5 text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
-              Module
-            </div>
-            <div className="text-[11px] font-medium text-foreground">Procurement</div>
-          </div>
-          <div className="rounded-lg border border-border bg-muted/30 p-3">
-            <div className="mb-0.5 text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
-              Feature
-            </div>
-            <div className="text-[11px] font-medium text-foreground">Inventory Tracking</div>
-          </div>
+    <div className="flex h-full flex-col bg-background p-[5px] overflow-hidden animate-in fade-in duration-500">
+      {/* Header */}
+      <div className="mb-4 flex flex-col justify-between gap-3 md:flex-row md:items-center">
+        <div>
+          <h1 className="text-sm font-bold tracking-tight text-foreground md:text-base uppercase">Purchases</h1>
+          <p className="text-[10px] text-muted-foreground uppercase tracking-widest">Manage inventory and expenses</p>
         </div>
       </div>
+
+      {/* Unified Search & Actions Header */}
+      <div className="mb-4 flex items-center gap-3 border-b border-border pb-4">
+        <div className="relative w-full max-w-[200px]">
+          <Search className="absolute left-2.5 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
+          <input
+            type="text"
+            placeholder="SEARCH..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="flex h-8 w-full rounded border border-input bg-card/50 px-2.5 py-1 pl-8 text-[10px] font-bold uppercase tracking-wider shadow-sm transition-all focus:border-primary focus:ring-1 focus:ring-primary focus-visible:outline-none"
+          />
+        </div>
+
+        <select
+          value={categoryFilter}
+          onChange={(e) => setCategoryFilter(e.target.value)}
+          className="flex h-8 w-auto min-w-[160px] max-w-[220px] rounded border border-input bg-card/50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider shadow-sm transition-all focus:border-primary focus:ring-1 focus:ring-primary focus-visible:outline-none cursor-pointer"
+        >
+          <option value="">ALL CATEGORIES</option>
+          {uniqueCategories.map(cat => (
+            <option key={`filter-${cat}`} value={cat}>{cat.toUpperCase()}</option>
+          ))}
+        </select>
+
+        {(searchQuery || categoryFilter) && (
+          <button
+            onClick={handleReset}
+            className="inline-flex h-8 items-center justify-center gap-1.5 rounded px-2.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground transition-all hover:bg-muted hover:text-primary active:scale-95"
+            title="Clear search"
+          >
+            <RotateCcw className="h-3 w-3" />
+            Reset
+          </button>
+        )}
+
+        <button
+          onClick={() => openModal()}
+          className="ml-auto flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm transition-all hover:bg-primary/90 active:scale-95 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          title="Add Purchase"
+        >
+          <Plus className="h-4 w-4" />
+        </button>
+      </div>
+
+      {/* Table Layout */}
+      <div className="flex-1 overflow-auto rounded-md border border-border">
+        {isLoading ? (
+          <div className="flex h-[300px] flex-col items-center justify-center gap-2">
+            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+            <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Loading purchases...</span>
+          </div>
+        ) : filteredPurchases.length === 0 ? (
+          <div className="flex h-[300px] flex-col items-center justify-center gap-1.5 text-center opacity-70">
+            <ShoppingBag className="h-8 w-8 text-muted-foreground mb-2" />
+            <p className="text-[12px] font-bold uppercase tracking-tight text-foreground">No purchases found</p>
+            <p className="text-center text-[10px] uppercase tracking-widest text-muted-foreground">Try adjusting your search or add a new record.</p>
+          </div>
+        ) : (
+          <div className="relative w-full overflow-auto">
+            <table className="w-full caption-bottom text-sm">
+              <thead className="[&_tr]:border-b bg-orange-500">
+                <tr className="border-b transition-colors hover:bg-orange-500/90 data-[state=selected]:bg-orange-500">
+                  <th className="h-10 px-4 text-left align-middle font-bold text-white text-[10px] uppercase tracking-wider">Date</th>
+                  <th className="h-10 px-4 text-left align-middle font-bold text-white text-[10px] uppercase tracking-wider">Category</th>
+                  <th className="h-10 px-4 text-left align-middle font-bold text-white text-[10px] uppercase tracking-wider">Items</th>
+                  <th className="h-10 px-4 text-left align-middle font-bold text-white text-[10px] uppercase tracking-wider">Qty</th>
+                  <th className="h-10 px-4 text-left align-middle font-bold text-white text-[10px] uppercase tracking-wider">Amount</th>
+                  <th className="h-10 px-4 text-left align-middle font-bold text-white text-[10px] uppercase tracking-wider">Supplier</th>
+                  <th className="h-10 px-4 text-left align-middle font-bold text-white text-[10px] uppercase tracking-wider">Invoice No.</th>
+                  <th className="h-10 px-4 text-left align-middle font-bold text-white text-[10px] uppercase tracking-wider">Purchased By</th>
+                  <th className="h-10 px-4 text-left align-middle font-bold text-white text-[10px] uppercase tracking-wider">Note</th>
+                  <th className="h-10 px-4 text-right align-middle font-bold text-white text-[10px] uppercase tracking-wider w-[80px]">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="[&_tr:last-child]:border-0">
+                {filteredPurchases.map((purchase) => (
+                  <tr key={purchase._id} className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted group">
+                    <td className="p-4 align-middle text-[11px] whitespace-nowrap">
+                      {new Date(purchase.date).toLocaleDateString()}
+                    </td>
+                    <td className="p-4 align-middle text-[11px] font-medium uppercase">{purchase.category || '-'}</td>
+                    <td className="p-4 align-middle text-[11px] font-medium uppercase">{purchase.items}</td>
+                    <td className="p-4 align-middle text-[11px] uppercase">{purchase.qty}</td>
+                    <td className="p-4 align-middle text-[11px] font-semibold text-primary">₱{purchase.amount?.toFixed(2)}</td>
+                    <td className="p-4 align-middle text-[11px] uppercase">{purchase.supplier || '-'}</td>
+                    <td className="p-4 align-middle text-[11px] uppercase">{purchase.invoiceNo || '-'}</td>
+                    <td className="p-4 align-middle text-[11px] uppercase">{purchase.purchasedBy || '-'}</td>
+                    <td className="p-4 align-middle text-[11px] text-muted-foreground uppercase max-w-[200px] truncate" title={purchase.usedForNote}>
+                      {purchase.usedForNote ? purchase.usedForNote.length > 30 ? purchase.usedForNote.substring(0, 30) + '...' : purchase.usedForNote : '-'}
+                    </td>
+                    <td className="p-4 align-middle text-right">
+                      <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={() => openModal(purchase)}
+                          className="text-muted-foreground hover:text-primary transition-colors"
+                          title="Edit"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(purchase._id)}
+                          className="text-muted-foreground hover:text-destructive transition-colors"
+                          title="Delete"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Modern Compact Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background/60 p-4 backdrop-blur-[2px] animate-in fade-in duration-300">
+          <div className="w-full max-w-[540px] rounded-xl border border-border bg-card p-5 shadow-2xl animate-in zoom-in-95 slide-in-from-bottom-4 duration-300">
+            <div className="mb-4 flex items-center justify-between border-b border-border pb-3">
+              <div className="flex items-center gap-2">
+                <div className="flex h-6 w-6 items-center justify-center rounded bg-primary/10 text-primary">
+                  {editingId ? <Edit className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
+                </div>
+                <h2 className="text-[12px] font-bold text-foreground">
+                  {editingId ? 'EDIT PURCHASE' : 'NEW PURCHASE'}
+                </h2>
+              </div>
+              <button
+                onClick={closeModal}
+                className="flex h-5.5 w-5.5 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Date *</label>
+                  <div className="relative w-full">
+                    <input
+                      type="date"
+                      name="date"
+                      value={formData.date}
+                      onChange={handleInputChange}
+                      required
+                      className="block h-8 w-full rounded border border-input bg-background px-2.5 py-1 pr-8 text-[11px] font-bold uppercase tracking-wider shadow-sm transition-all focus:border-primary focus:ring-1 focus:ring-primary focus-visible:outline-none [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-2.5 [&::-webkit-calendar-picker-indicator]:cursor-pointer"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Category *</label>
+                  <select
+                    name="category"
+                    value={formData.category}
+                    onChange={handleInputChange}
+                    required
+                    className="flex h-8 w-full rounded border border-input bg-background px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider shadow-sm transition-all focus:border-primary focus:ring-1 focus:ring-primary focus-visible:outline-none"
+                  >
+                    <option value="" disabled>SELECT CATEGORY</option>
+                    <option value="00012 - MOTORPOOL">00012 - MOTORPOOL</option>
+                    <option value="4078 - PLANT & FACILITIES">4078 - PLANT & FACILITIES</option>
+                    <option value="100E - MAINTENANCE">100E - MAINTENANCE</option>
+                    {vehicles.map(v => (
+                      <option key={v._id} value={v.plateNumber}>{v.plateNumber.toUpperCase()} - {v.model.toUpperCase()}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Items *</label>
+                  <input
+                    type="text"
+                    name="items"
+                    value={formData.items}
+                    onChange={handleInputChange}
+                    required
+                    className="flex h-8 w-full rounded border border-input bg-background px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider shadow-sm transition-all focus:border-primary focus:ring-1 focus:ring-primary focus-visible:outline-none"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Quantity *</label>
+                  <input
+                    type="text"
+                    name="qty"
+                    value={formData.qty}
+                    onChange={handleInputChange}
+                    required
+                    className="flex h-8 w-full rounded border border-input bg-background px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider shadow-sm transition-all focus:border-primary focus:ring-1 focus:ring-primary focus-visible:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Amount (₱) *</label>
+                  <input
+                    type="number"
+                    step="any"
+                    name="amount"
+                    value={formData.amount}
+                    onChange={handleInputChange}
+                    required
+                    className="flex h-8 w-full rounded border border-input bg-background px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider shadow-sm transition-all focus:border-primary focus:ring-1 focus:ring-primary focus-visible:outline-none"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Supplier</label>
+                  <input
+                    name="supplier"
+                    value={formData.supplier}
+                    onChange={handleInputChange}
+                    className="flex h-8 w-full rounded border border-input bg-background px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider shadow-sm transition-all focus:border-primary focus:ring-1 focus:ring-primary focus-visible:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Invoice No.</label>
+                  <input
+                    name="invoiceNo"
+                    value={formData.invoiceNo}
+                    onChange={handleInputChange}
+                    className="flex h-8 w-full rounded border border-input bg-background px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider shadow-sm transition-all focus:border-primary focus:ring-1 focus:ring-primary focus-visible:outline-none"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Purchased By</label>
+                  <select
+                    name="purchasedBy"
+                    value={formData.purchasedBy}
+                    onChange={handleInputChange}
+                    className="flex h-8 w-full rounded border border-input bg-background px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider shadow-sm transition-all focus:border-primary focus:ring-1 focus:ring-primary focus-visible:outline-none"
+                  >
+                    <option value="">SELECT PERSONNEL</option>
+                    {personnels.map(p => (
+                      <option key={p._id} value={`${p.firstname} ${p.lastname}`}>{p.firstname.toUpperCase()} {p.lastname.toUpperCase()}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1 col-span-2">
+                  <label className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Used For/Note</label>
+                  <input
+                    name="usedForNote"
+                    value={formData.usedForNote}
+                    onChange={handleInputChange}
+                    className="flex h-8 w-full rounded border border-input bg-background px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider shadow-sm transition-all focus:border-primary focus:ring-1 focus:ring-primary focus-visible:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-3">
+                <button
+                  type="submit"
+                  disabled={isSubmitLoading}
+                  className="inline-flex h-8 min-w-[90px] items-center justify-center rounded-lg bg-primary px-4 text-[10px] font-bold uppercase tracking-wider text-primary-foreground shadow-sm transition-all hover:bg-primary/90 active:scale-95 disabled:opacity-50"
+                >
+                  {isSubmitLoading ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    'SUBMIT'
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog
+        isOpen={isDeleteDialogOpen}
+        onClose={() => {
+          setIsDeleteDialogOpen(false);
+          setPurchaseToDelete(null);
+        }}
+        onConfirm={confirmDelete}
+        title="Delete Purchase?"
+        description="Are you sure you want to remove this purchase record? This action cannot be undone."
+        confirmText="REMOVE"
+        variant="destructive"
+      />
     </div>
   );
 }
