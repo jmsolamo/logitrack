@@ -394,23 +394,46 @@ function DeliveryPlan() {
       const rows = Math.max(dests.length, supps.length, jobs.length, purps.length, 4);
 
       let detailRows = '';
+      const formatTs = (ts) => {
+        if (!ts) return { top: '', bottom: '' };
+        const d = new Date(ts);
+        return {
+          top: `${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`,
+          bottom: `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+        };
+      };
+
       for (let i = 0; i < rows; i++) {
         let etdTop = '', etdBottom = '';
         let etaTop = '', etaBottom = '';
         
-        if (delivery.timeline && delivery.timeline.length > 0) {
-           const dep = delivery.timeline.find(t => t.type === 'departure' && t.destinationIndex === i);
-           const arr = delivery.timeline.find(t => t.type === 'arrival' && t.destinationIndex === i);
-           
-           if (dep) {
-             const d = new Date(dep.timestamp);
-             etdTop = `${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-             etdBottom = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+         if (delivery.timeline && delivery.timeline.length > 0) {
+           let depEvent, arrEvent;
+
+           if (i === 0) {
+             // Outbound: Company → First destination
+             depEvent = delivery.timeline.find(t => t.type === 'departure' && t.destinationIndex === -1);
+             arrEvent = delivery.timeline.find(t => t.type === 'arrival' && t.destinationIndex === 0);
+           } else if (i > 0 && i < dests.length) {
+             // Intermediate/subsequent destination: show arrival AT and departure FROM this destination
+             depEvent = delivery.timeline.find(t => t.type === 'departure' && t.destinationIndex === i);
+             arrEvent = delivery.timeline.find(t => t.type === 'arrival' && t.destinationIndex === i);
+           } else if (i === dests.length) {
+             // Return row: arrive back at Company
+             // Only show departure if single destination (otherwise it was already shown on the last dest row)
+             if (dests.length === 1) {
+               depEvent = delivery.timeline.find(t => t.type === 'departure' && t.destinationIndex === 0);
+             }
+             arrEvent = delivery.timeline.find(t => t.type === 'arrival' && t.destinationIndex === -1);
            }
-           if (arr) {
-             const d = new Date(arr.timestamp);
-             etaTop = `${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-             etaBottom = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+           
+           if (depEvent) {
+             const f = formatTs(depEvent.timestamp);
+             etdTop = f.top; etdBottom = f.bottom;
+           }
+           if (arrEvent) {
+             const f = formatTs(arrEvent.timestamp);
+             etaTop = f.top; etaBottom = f.bottom;
            }
         }
 

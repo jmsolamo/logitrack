@@ -87,6 +87,7 @@ function Calendar() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [vehicleFilter, setVehicleFilter] = useState('all');
   const [destinationFilter, setDestinationFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
 
   const toast = useAppToast();
 
@@ -122,15 +123,17 @@ function Calendar() {
     return deliveries.filter(d => {
       const vehicleMatch = vehicleFilter === 'all' || d.vehicleEquipment === vehicleFilter;
       const destinationMatch = destinationFilter === 'all' || (d.destination || []).includes(destinationFilter);
-      return vehicleMatch && destinationMatch;
+      const statusMatch = statusFilter === 'all' || (d.status || 'Pending') === statusFilter;
+      return vehicleMatch && destinationMatch && statusMatch;
     });
-  }, [deliveries, vehicleFilter, destinationFilter]);
+  }, [deliveries, vehicleFilter, destinationFilter, statusFilter]);
 
-  const hasActiveFilters = vehicleFilter !== 'all' || destinationFilter !== 'all';
+  const hasActiveFilters = vehicleFilter !== 'all' || destinationFilter !== 'all' || statusFilter !== 'all';
 
   const resetFilters = () => {
     setVehicleFilter('all');
     setDestinationFilter('all');
+    setStatusFilter('all');
   };
 
   // Build a map of dateKey -> deliveries for that date
@@ -737,6 +740,23 @@ function Calendar() {
               {uniqueDestinations.map(d => (
                 <DropdownMenuCheckboxItem key={d} className="text-[10px]" checked={destinationFilter === d} onCheckedChange={() => setDestinationFilter(d)}>{d}</DropdownMenuCheckboxItem>
               ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="flex items-center gap-1.5 h-8 bg-background">
+                <i className='bx bx-check-circle text-sm'></i>
+                <span className="text-[10px]">Status</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="text-[10px] max-h-[200px] overflow-y-auto">
+              <DropdownMenuLabel className="text-[10px]">Filter by Status</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuCheckboxItem className="text-[10px]" checked={statusFilter === 'all'} onCheckedChange={() => setStatusFilter('all')}>All</DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem className="text-[10px]" checked={statusFilter === 'Pending'} onCheckedChange={() => setStatusFilter('Pending')}>Pending</DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem className="text-[10px]" checked={statusFilter === 'In Transit'} onCheckedChange={() => setStatusFilter('In Transit')}>In Transit</DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem className="text-[10px]" checked={statusFilter === 'Completed'} onCheckedChange={() => setStatusFilter('Completed')}>Completed</DropdownMenuCheckboxItem>
             </DropdownMenuContent>
           </DropdownMenu>
 
