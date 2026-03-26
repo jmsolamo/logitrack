@@ -93,7 +93,7 @@ export default function DieselExpenses() {
             deliveryId: d._id,
             dateFrom: d.dateFrom,
             driver: d.driver,
-            destination: d.destination,
+            destination: d.customerSupplier,
             jobOrderNo: d.jobOrderNo,
             gasStation: f.gasStation || '—',
             liters: f.liters || 0,

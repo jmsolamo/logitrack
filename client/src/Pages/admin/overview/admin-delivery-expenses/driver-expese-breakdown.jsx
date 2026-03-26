@@ -65,7 +65,7 @@ export default function DriverExpenseBreakdown() {
       ]);
       setVehicles(vehiclesRes.data);
       let completed = deliveriesRes.data.filter(d => d.status === 'Completed');
-      
+
       // Exclude ENERSERVE records and deduct their amounts from totalExpenses
       completed = completed.map(d => {
         if (!d.fuel || d.fuel.length === 0) return d;
@@ -74,7 +74,7 @@ export default function DriverExpenseBreakdown() {
           if (f.gasStation?.toUpperCase().includes('ENERSERVE')) return sum + (f.amount || 0);
           return sum;
         }, 0);
-        
+
         return {
           ...d,
           fuel: filteredFuel,
@@ -183,7 +183,7 @@ export default function DriverExpenseBreakdown() {
       const searchMatch = !q || (
         (d.referenceNo || '').toLowerCase().includes(q) ||
         (d.vehicleEquipment || '').toLowerCase().includes(q) ||
-        (d.destination || []).join(' ').toLowerCase().includes(q) ||
+        (d.customerSupplier || []).join(' ').toLowerCase().includes(q) ||
         (d.driver || []).join(' ').toLowerCase().includes(q) ||
         (d.helper || []).join(' ').toLowerCase().includes(q) ||
         (d.jobOrderNo || []).join(' ').toLowerCase().includes(q) ||
@@ -253,7 +253,7 @@ export default function DriverExpenseBreakdown() {
     const dateLines = [];
     printItems.forEach(d => {
       const jos = d.jobOrderNo || [];
-      const dests = d.destination || [];
+      const dests = d.customerSupplier || [];
       const rowDate = d.dateFrom ? new Date(d.dateFrom).toLocaleDateString('en-US') : '';
       const maxLen = Math.max(jos.length, dests.length);
       for (let i = 0; i < Math.max(1, maxLen); i++) {
@@ -267,13 +267,25 @@ export default function DriverExpenseBreakdown() {
       }
     });
 
-    const purposeLines = [...new Set(printItems.flatMap(d => d.purpose).filter(Boolean))];
+    const purposeLines = [...new Set(printItems.flatMap(d => {
+      const pArr = d.purpose || [];
+      const aArr = d.activity || [];
+      const maxLen = Math.max(pArr.length, aArr.length, 1);
+      const combined = [];
+      for (let i = 0; i < maxLen; i++) {
+        const p = pArr[i] || '';
+        const a = aArr[i] || '';
+        const pair = [p, a].filter(Boolean).join(' - ');
+        if (pair) combined.push(pair);
+      }
+      return combined;
+    }))];
 
-    return { 
-      driver: drivers || '\u2014', 
-      helper: helpers || '', 
-      jobDestLines: jobDestPairs, 
-      purposeLines, 
+    return {
+      driver: drivers || '\u2014',
+      helper: helpers || '',
+      jobDestLines: jobDestPairs,
+      purposeLines,
       dateLines: dateLines.length > 0 ? dateLines : ['\u2014']
     };
   }, [printItems]);
@@ -434,7 +446,8 @@ export default function DriverExpenseBreakdown() {
                     <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Helper</th>
                     <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-center align-middle">Job Order No.</th>
                     <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Destination</th>
-                    <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Activities</th>
+                    <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Purpose</th>
+                    <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Activity</th>
                     <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Date</th>
                     <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Vehicle</th>
                     <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Particulars</th>
@@ -452,25 +465,27 @@ export default function DriverExpenseBreakdown() {
                   {filteredDeliveries.map((item, index) => (
                     <tr
                       key={item._id}
-                      className={`border-b border-border/50 hover:bg-muted/30 transition-colors ${index % 2 === 0 ? 'bg-card/30' : ''} ${selectedIds.has(item._id) ? 'bg-primary/5' : ''}`}
+                      onClick={() => toggleSelect(item._id)}
+                      className={`cursor-pointer border-b border-border/50 hover:bg-muted/30 transition-colors ${index % 2 === 0 ? 'bg-card/30' : ''} ${selectedIds.has(item._id) ? 'bg-primary/5' : ''}`}
                     >
                       <td className="w-[40px] px-3 py-2 text-center">
                         <input
                           type="checkbox"
+                          readOnly
                           checked={selectedIds.has(item._id)}
-                          onChange={() => toggleSelect(item._id)}
-                          className="h-3.5 w-3.5 accent-primary cursor-pointer"
+                          className="h-3.5 w-3.5 accent-primary cursor-pointer pointer-events-none"
                         />
                       </td>
                       <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-foreground uppercase tracking-tight">{joinArray(item.driver)}</td>
                       <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-foreground uppercase tracking-tight">{joinArray(item.helper)}</td>
                       <td className="whitespace-nowrap px-3 py-2 text-[10px] font-bold text-primary tracking-tight text-center">{joinArray(item.jobOrderNo)}</td>
-                      <td className="px-3 py-2 text-[10px] font-medium text-foreground uppercase tracking-tight max-w-[200px] truncate" title={joinArray(item.destination)}>{joinArray(item.destination)}</td>
+                      <td className="px-3 py-2 text-[10px] font-medium text-foreground uppercase tracking-tight max-w-[200px] truncate" title={joinArray(item.customerSupplier)}>{joinArray(item.customerSupplier)}</td>
                       <td className="px-3 py-2 text-[10px] font-medium text-foreground uppercase tracking-tight max-w-[180px] truncate" title={joinArray(item.purpose)}>{joinArray(item.purpose)}</td>
+                      <td className="px-3 py-2 text-[10px] font-medium text-foreground uppercase tracking-tight max-w-[180px] truncate" title={joinArray(item.activity)}>{joinArray(item.activity)}</td>
                       <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-foreground tracking-tight">
                         {item.dateFrom && item.dateTo ? `${formatDate(item.dateFrom)} - ${formatDate(item.dateTo)}` : formatDate(item.dateFrom)}
                       </td>
-                      <td className="whitespace-nowrap px-3 py-2 text-[10px] font-semibold text-foreground uppercase tracking-tight">{getVehicleDisplay(item.vehicleEquipment)}</td>
+                      <td className="whitespace-nowrap px-3 py-2 text-[10px] font-semibold text-foreground uppercase tracking-tight">{item.vehicleEquipment || '—'}</td>
                       <td className="px-3 py-2 text-[10px] font-medium text-muted-foreground max-w-[300px] truncate uppercase" title={buildParticulars(item).toUpperCase()}>{buildParticulars(item)}</td>
                       <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-foreground text-right">{fmt(sumField(item.fuel, 'amount'))}</td>
                       <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-foreground text-right">{fmt(sumField(item.tollFee, 'amt'))}</td>
@@ -495,13 +510,16 @@ export default function DriverExpenseBreakdown() {
       <style>{`
       @media print {
         @page { size: letter landscape; margin: 0.5cm; }
-        body { -webkit-print-color-adjust: exact; print-color-adjust: exact; background: white !important; }
+        body { -webkit-print-color-adjust: exact; print-color-adjust: exact; background: white !important; margin: 0; padding: 0; }
+        * { box-sizing: border-box; }
       }
       .deb-print-report { display: none; }
-      @media print { .deb-print-report { display: block !important; } }
-      .deb-rtable { width: 100%; border-collapse: collapse; }
-      .deb-rtable th, .deb-rtable td { border: 1px solid #000; padding: 0.08cm 0.15cm; }
-      .deb-meta-table { width: 100%; border-collapse: collapse; }
+      @media print { .deb-print-report { display: block !important; width: 100%; margin: 0; padding: 0; } }
+      .deb-rtable { width: 100%; border-collapse: collapse; table-layout: auto; }
+      .deb-rtable th, .deb-rtable td { border: 1px solid #000; padding: 0.05cm 0.1cm; font-size: 8pt; white-space: nowrap; }
+      .deb-rtable th { font-weight: bold; }
+      .deb-rtable td:nth-child(3) { white-space: normal; }
+      .deb-meta-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
       .deb-meta-table td { border: none; padding: 0.08cm 0.15cm; }
     `}</style>
 
@@ -542,7 +560,7 @@ export default function DriverExpenseBreakdown() {
         </table>
 
         {/* MAIN TABLE */}
-        <table className="deb-rtable" style={{ fontSize: '9pt', pageBreakInside: 'avoid' }}>
+        <table className="deb-rtable" style={{ fontSize: '8pt', pageBreakInside: 'avoid' }}>
           <thead>
             <tr style={{ fontWeight: 'bold', textAlign: 'left' }}>
               <th>DATE</th>
@@ -609,7 +627,7 @@ export default function DriverExpenseBreakdown() {
               ));
             })}
             {printItems.length === 0 && (
-              <tr><td colSpan={11} style={{ textAlign: 'center', padding: '0.5cm', fontStyle: 'italic' }}>No records</td></tr>
+              <tr><td colSpan={12} style={{ textAlign: 'center', padding: '0.5cm', fontStyle: 'italic' }}>No records</td></tr>
             )}
             <tr style={{ fontWeight: 'bold' }}>
               <td colSpan={2}></td>

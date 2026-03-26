@@ -10,6 +10,7 @@ function AdminRegistration() {
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
+    initials: '',
     email: '',
     password: '',
     confirmPassword: ''
@@ -77,6 +78,7 @@ function AdminRegistration() {
       await axios.post('/api/auth/register', {
         firstName: formData.firstName,
         lastName: formData.lastName,
+        initials: formData.initials,
         email: formData.email,
         role: 'admin'
       }, {
@@ -89,7 +91,7 @@ function AdminRegistration() {
       await auth.signOut();
 
       toast.success('Admin registration successful! Please check your email to verify your account.');
-      setFormData({ firstName: '', lastName: '', email: '', password: '', confirmPassword: '' });
+      setFormData({ firstName: '', lastName: '', initials: '', email: '', password: '', confirmPassword: '' });
       setHasPasswordBeenBlurred(false);
       setHasConfirmPasswordBeenBlurred(false);
     } catch (error) {
@@ -184,6 +186,14 @@ function AdminRegistration() {
               required
             />
           </div>
+          <input
+            type="text"
+            name="initials"
+            placeholder="Nickname"
+            value={formData.initials}
+            onChange={handleChange}
+            className="px-3 py-2 text-sm bg-background border border-border rounded-md focus:outline-none focus:border-primary transition placeholder-muted-foreground text-foreground"
+          />
           <input
             type="email"
             name="email"

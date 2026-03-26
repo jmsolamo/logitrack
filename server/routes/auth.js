@@ -7,7 +7,7 @@ const router = express.Router();
 // Register user (after Firebase auth)
 router.post('/register', verifyToken, async (req, res) => {
   try {
-    const { firstName, lastName, email, role } = req.body;
+    const { firstName, lastName, initials, email, role } = req.body;
     const firebaseUid = req.user.uid;
 
     // Check if user already exists by email
@@ -27,6 +27,7 @@ router.post('/register', verifyToken, async (req, res) => {
       firebaseUid,
       firstName,
       lastName,
+      initials: initials || '',
       email,
       role: role || 'user'
     });

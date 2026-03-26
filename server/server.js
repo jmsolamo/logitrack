@@ -14,6 +14,7 @@ import destinationsRoutes from './routes/destinations.js';
 import deliveryChargesRoutes from './routes/deliveryCharges.js';
 import deliveriesRoutes from './routes/deliveries.js';
 import purchasesRoutes from './routes/purchases.js';
+import deliveryRequestsRoutes from './routes/deliveryRequests.js';
 
 const app = express();
 
@@ -66,6 +67,7 @@ app.use('/api/destinations', destinationsRoutes);
 app.use('/api/delivery-charges', deliveryChargesRoutes);
 app.use('/api/deliveries', deliveriesRoutes);
 app.use('/api/purchases', purchasesRoutes);
+app.use('/api/delivery-requests', deliveryRequestsRoutes);
 
 if (process.env.NODE_ENV !== 'production') {
   const PORT = process.env.PORT || 5000;

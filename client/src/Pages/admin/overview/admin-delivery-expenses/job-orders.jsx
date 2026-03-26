@@ -138,7 +138,7 @@ export default function JobOrders() {
   // --- Extract filter options ---
   const uniqueDestinations = useMemo(() => {
     const list = new Set();
-    deliveries.forEach(d => (d.destination || []).forEach(dest => dest && list.add(dest)));
+    deliveries.forEach(d => (d.customerSupplier || []).forEach(dest => dest && list.add(dest)));
     return Array.from(list).sort();
   }, [deliveries]);
 
@@ -147,7 +147,7 @@ export default function JobOrders() {
     const rows = [];
     deliveries.forEach(d => {
       const jobs = d.jobOrderNo || [];
-      const dests = d.destination || [];
+      const dests = d.customerSupplier || [];
       const purposes = d.purpose || [];
       const maxLen = Math.max(jobs.length, dests.length, 1);
 
@@ -323,14 +323,15 @@ export default function JobOrders() {
                 {filteredRows.map((row, index) => (
                   <tr
                     key={row._id}
-                    className={`border-b border-border/50 hover:bg-muted/30 transition-colors ${index % 2 === 0 ? 'bg-card/30' : ''} ${selectedIds.has(row._id) ? 'bg-primary/5' : ''}`}
+                    onClick={() => toggleSelect(row._id)}
+                    className={`cursor-pointer border-b border-border/50 hover:bg-muted/30 transition-colors ${index % 2 === 0 ? 'bg-card/30' : ''} ${selectedIds.has(row._id) ? 'bg-primary/5' : ''}`}
                   >
                     <td className="w-[40px] px-3 py-2 text-center">
                       <input
                         type="checkbox"
+                        readOnly
                         checked={selectedIds.has(row._id)}
-                        onChange={() => toggleSelect(row._id)}
-                        className="h-3.5 w-3.5 accent-primary cursor-pointer"
+                        className="h-3.5 w-3.5 accent-primary cursor-pointer pointer-events-none"
                       />
                     </td>
                     <td className="whitespace-nowrap px-3 py-2 text-[10px] font-bold text-primary tracking-tight text-center">{row.jobOrderNo}</td>

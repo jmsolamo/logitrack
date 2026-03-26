@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { auth } from '../../config/firebase';
+import axios from 'axios';
 import {
   LayoutDashboard,
   CalendarDays,
@@ -78,6 +79,22 @@ function AdminSidebar({ collapsed, onToggle, user, mobileOpen, onMobileClose }) 
   const [expandedItems, setExpandedItems] = useState({});
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [activeMenu, setActiveMenu] = useState(null);
+  const [pendingRequestCount, setPendingRequestCount] = useState(0);
+
+  // Fetch pending request count
+  useEffect(() => {
+    const fetchPendingCount = async () => {
+      try {
+        const { data } = await axios.get('/api/delivery-requests/pending-count');
+        setPendingRequestCount(data.count || 0);
+      } catch (err) {
+        console.error('Error fetching pending count:', err);
+      }
+    };
+    fetchPendingCount();
+    const interval = setInterval(fetchPendingCount, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = () => setActiveMenu(null);
@@ -157,6 +174,7 @@ function AdminSidebar({ collapsed, onToggle, user, mobileOpen, onMobileClose }) 
                 handleLogout={handleLogout}
                 navigate={navigate}
                 favicon={favicon}
+                pendingRequestCount={pendingRequestCount}
               />
             </aside>
           </div>
@@ -347,6 +365,11 @@ function AdminSidebar({ collapsed, onToggle, user, mobileOpen, onMobileClose }) 
                       >
                         <Icon className="h-3.5 w-3.5 shrink-0" />
                         <span className="flex-1 text-left">{item.name}</span>
+                        {item.name === 'Request' && pendingRequestCount > 0 && (
+                          <span className="ml-auto flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold text-white">
+                            {pendingRequestCount}
+                          </span>
+                        )}
                         {hasChildren && (
                           <span className="ml-auto">
                             {isExpanded ? (
@@ -453,6 +476,7 @@ function MobileSidebarContent({
   handleLogout,
   navigate,
   favicon,
+  pendingRequestCount,
 }) {
   return (
     <>
@@ -509,6 +533,11 @@ function MobileSidebarContent({
                     >
                       <Icon className="h-3.5 w-3.5 shrink-0" />
                       <span className="flex-1 text-left">{item.name}</span>
+                      {item.name === 'Request' && pendingRequestCount > 0 && (
+                        <span className="ml-auto flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold text-white">
+                          {pendingRequestCount}
+                        </span>
+                      )}
                       {hasChildren && (
                         <span className="ml-auto">
                           {isExpanded ? (

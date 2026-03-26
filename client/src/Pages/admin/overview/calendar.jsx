@@ -79,7 +79,7 @@ function getWeekDates(date) {
   return dates;
 }
 
-function Calendar() {
+function Calendar({ userMode = false }) {
   const [deliveries, setDeliveries] = useState([]);
   const [vehicles, setVehicles] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -87,7 +87,7 @@ function Calendar() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [vehicleFilter, setVehicleFilter] = useState('all');
   const [destinationFilter, setDestinationFilter] = useState('all');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState(userMode ? 'Pending' : 'all');
 
   const toast = useAppToast();
 
@@ -116,13 +116,13 @@ function Calendar() {
 
   // Unique filter option lists
   const uniqueVehicles = useMemo(() => [...new Set(deliveries.map(d => d.vehicleEquipment).filter(Boolean))].sort(), [deliveries]);
-  const uniqueDestinations = useMemo(() => [...new Set(deliveries.flatMap(d => d.destination || []).filter(Boolean))].sort(), [deliveries]);
+  const uniqueDestinations = useMemo(() => [...new Set(deliveries.flatMap(d => d.customerSupplier || []).filter(Boolean))].sort(), [deliveries]);
 
   // Filtered deliveries
   const filteredDeliveries = useMemo(() => {
     return deliveries.filter(d => {
       const vehicleMatch = vehicleFilter === 'all' || d.vehicleEquipment === vehicleFilter;
-      const destinationMatch = destinationFilter === 'all' || (d.destination || []).includes(destinationFilter);
+      const destinationMatch = destinationFilter === 'all' || (d.customerSupplier || []).includes(destinationFilter);
       const statusMatch = statusFilter === 'all' || (d.status || 'Pending') === statusFilter;
       return vehicleMatch && destinationMatch && statusMatch;
     });
@@ -133,7 +133,7 @@ function Calendar() {
   const resetFilters = () => {
     setVehicleFilter('all');
     setDestinationFilter('all');
-    setStatusFilter('all');
+    setStatusFilter(userMode ? 'Pending' : 'all');
   };
 
   // Build a map of dateKey -> deliveries for that date
@@ -201,7 +201,7 @@ function Calendar() {
   const DeliveryCard = ({ delivery, compact = false }) => {
     const color = getPurposeColor(delivery.purpose);
     const vehicle = getVehicleDisplay(delivery.vehicleEquipment);
-    const destination = joinArray(delivery.destination);
+    const destination = joinArray(delivery.customerSupplier);
     const purpose = joinArray(delivery.purpose);
 
     const statusColor = delivery.status === 'Completed'
@@ -361,7 +361,7 @@ function Calendar() {
                 {wData.events.map((ev, eIdx) => {
                   const color = getPurposeColor(ev.delivery.purpose);
                   const vehicle = getVehicleDisplay(ev.delivery.vehicleEquipment);
-                  const destination = joinArray(ev.delivery.destination);
+                  const destination = joinArray(ev.delivery.customerSupplier);
                   const purpose = joinArray(ev.delivery.purpose);
                   const isMultiDay = ev.span > 1 || !ev.isTrueStart || !ev.isTrueEnd;
 
@@ -524,7 +524,7 @@ function Calendar() {
             {events.map((ev, eIdx) => {
               const color = getPurposeColor(ev.delivery.purpose);
               const vehicle = getVehicleDisplay(ev.delivery.vehicleEquipment);
-              const destination = joinArray(ev.delivery.destination);
+              const destination = joinArray(ev.delivery.customerSupplier);
               const purpose = joinArray(ev.delivery.purpose);
               const isMultiDay = ev.span > 1 || !ev.isTrueStart || !ev.isTrueEnd;
 
@@ -626,7 +626,7 @@ function Calendar() {
                       <div className="flex items-center gap-2 mb-1">
                         <span className={`h-2 w-2 rounded-full ${statusColor} shrink-0`} />
                         <span className={`text-[11px] font-bold ${color.text} uppercase tracking-tight truncate`}>
-                          {getVehicleDisplay(del.vehicleEquipment)} — {joinArray(del.destination)}
+                          {getVehicleDisplay(del.vehicleEquipment)} — {joinArray(del.customerSupplier)}
                         </span>
                       </div>
                       <div className="text-[10px] text-muted-foreground uppercase tracking-wider pl-4 truncate">{joinArray(del.purpose)}</div>
@@ -730,11 +730,11 @@ function Calendar() {
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm" className="flex items-center gap-1.5 h-8 bg-background">
                 <i className='bx bx-map text-sm'></i>
-                <span className="text-[10px]">Destination</span>
+                <span className="text-[10px]">Customer/Supplier</span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="text-[10px] max-h-[200px] overflow-y-auto">
-              <DropdownMenuLabel className="text-[10px]">Filter by Destination</DropdownMenuLabel>
+              <DropdownMenuLabel className="text-[10px]">Filter by Customer/Supplier</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuCheckboxItem className="text-[10px]" checked={destinationFilter === 'all'} onCheckedChange={() => setDestinationFilter('all')}>All</DropdownMenuCheckboxItem>
               {uniqueDestinations.map(d => (
@@ -743,22 +743,24 @@ function Calendar() {
             </DropdownMenuContent>
           </DropdownMenu>
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="flex items-center gap-1.5 h-8 bg-background">
-                <i className='bx bx-check-circle text-sm'></i>
-                <span className="text-[10px]">Status</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="text-[10px] max-h-[200px] overflow-y-auto">
-              <DropdownMenuLabel className="text-[10px]">Filter by Status</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuCheckboxItem className="text-[10px]" checked={statusFilter === 'all'} onCheckedChange={() => setStatusFilter('all')}>All</DropdownMenuCheckboxItem>
-              <DropdownMenuCheckboxItem className="text-[10px]" checked={statusFilter === 'Pending'} onCheckedChange={() => setStatusFilter('Pending')}>Pending</DropdownMenuCheckboxItem>
-              <DropdownMenuCheckboxItem className="text-[10px]" checked={statusFilter === 'In Transit'} onCheckedChange={() => setStatusFilter('In Transit')}>In Transit</DropdownMenuCheckboxItem>
-              <DropdownMenuCheckboxItem className="text-[10px]" checked={statusFilter === 'Completed'} onCheckedChange={() => setStatusFilter('Completed')}>Completed</DropdownMenuCheckboxItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {!userMode && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="flex items-center gap-1.5 h-8 bg-background">
+                  <i className='bx bx-check-circle text-sm'></i>
+                  <span className="text-[10px]">Status</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="text-[10px] max-h-[200px] overflow-y-auto">
+                <DropdownMenuLabel className="text-[10px]">Filter by Status</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuCheckboxItem className="text-[10px]" checked={statusFilter === 'all'} onCheckedChange={() => setStatusFilter('all')}>All</DropdownMenuCheckboxItem>
+                <DropdownMenuCheckboxItem className="text-[10px]" checked={statusFilter === 'Pending'} onCheckedChange={() => setStatusFilter('Pending')}>Pending</DropdownMenuCheckboxItem>
+                <DropdownMenuCheckboxItem className="text-[10px]" checked={statusFilter === 'In Transit'} onCheckedChange={() => setStatusFilter('In Transit')}>In Transit</DropdownMenuCheckboxItem>
+                <DropdownMenuCheckboxItem className="text-[10px]" checked={statusFilter === 'Completed'} onCheckedChange={() => setStatusFilter('Completed')}>Completed</DropdownMenuCheckboxItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
 
 
 

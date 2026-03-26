@@ -37,6 +37,7 @@ const tableColumns = [
   { key: 'dateRange', label: 'Date' },
   { key: 'duration', label: 'Duration' },
   { key: 'purpose', label: 'Purpose' },
+  { key: 'activity', label: 'Activity' },
   { key: 'vehicleEquipment', label: 'Vehicle' },
   { key: 'destination', label: 'Destination' },
   { key: 'driver', label: 'Driver' },
@@ -92,7 +93,7 @@ function DeliveryPlan() {
     delivery: null,
     departureDate: '',
     departureTime: '',
-    destinations: [], // Array of {destination, arrivalDate, arrivalTime, departureDate, departureTime}
+    customerSuppliers: [], // Array of {customerSupplier, arrivalDate, arrivalTime, departureDate, departureTime}
     returnDate: '',
     returnTime: '',
     isLoading: false
@@ -103,6 +104,7 @@ function DeliveryPlan() {
     dateFrom: '',
     dateTo: '',
     purpose: [''],
+    activity: [''],
     vehicleEquipment: '',
     destination: [''],
     driver: [''],
@@ -168,6 +170,14 @@ function DeliveryPlan() {
     }));
   };
 
+  const addPurposeAndActivity = () => {
+    setFormData(prev => ({
+      ...prev,
+      purpose: [...prev.purpose, ''],
+      activity: [...prev.activity, '']
+    }));
+  };
+
   const removeArrayField = (name, index) => {
     setFormData(prev => {
       const newArray = prev[name].filter((_, i) => i !== index);
@@ -195,6 +205,7 @@ function DeliveryPlan() {
         dateFrom: formData.dateFrom || undefined,
         dateTo: formData.dateTo || undefined,
         purpose: formData.purpose.filter(v => v.trim() !== ''),
+        activity: formData.activity.filter(v => v.trim() !== ''),
         vehicleEquipment: formData.vehicleEquipment,
         destination: formData.destination.filter(v => v.trim() !== ''),
         driver: formData.driver.filter(v => v.trim() !== ''),
@@ -233,20 +244,20 @@ function DeliveryPlan() {
 
   // --- Status Update Logic ---
   const getDeliveryProgress = (delivery) => {
-    const destinations = delivery.destination || [];
+    const customerSuppliers = delivery.customerSupplier || [];
     const timeline = delivery.timeline || [];
 
-    if (destinations.length === 0) return { step: 0, total: 0, isComplete: true };
+    if (customerSuppliers.length === 0) return { step: 0, total: 0, isComplete: true };
 
-    // 1 departure from company + 1 arrival per destination + 1 departure from last + 1 arrival back to company
-    const totalSteps = 1 + destinations.length + 1 + 1;
+    // 1 departure from Enertech + 1 arrival per customer/supplier + 1 departure from last + 1 arrival back to Enertech
+    const totalSteps = 1 + customerSuppliers.length + 1 + 1;
     const currentStep = timeline.length;
 
     return {
       step: currentStep,
       total: totalSteps,
       isComplete: currentStep >= totalSteps,
-      destinations
+      customerSuppliers
     };
   };
 
@@ -266,9 +277,9 @@ function DeliveryPlan() {
     const localDateTime = now.toISOString().slice(0, 16);
     const [localDate, localTime] = localDateTime.split('T');
 
-    // Initialize destinations array with empty values
-    const destinationsData = (delivery.destination || []).map(dest => ({
-      destination: dest,
+    // Initialize customerSuppliers array with empty values
+    const customerSuppliersData = (delivery.customerSupplier || []).map(cs => ({
+      customerSupplier: cs,
       arrivalDate: localDate,
       arrivalTime: localTime,
       departureDate: localDate,
@@ -280,7 +291,7 @@ function DeliveryPlan() {
       delivery,
       departureDate: localDate,
       departureTime: localTime,
-      destinations: destinationsData,
+      customerSuppliers: customerSuppliersData,
       returnDate: localDate,
       returnTime: localTime,
       isLoading: false
@@ -293,7 +304,7 @@ function DeliveryPlan() {
       delivery: null,
       departureDate: '',
       departureTime: '',
-      destinations: [],
+      customerSuppliers: [],
       returnDate: '',
       returnTime: '',
       isLoading: false
@@ -315,6 +326,7 @@ function DeliveryPlan() {
       dateFrom: delivery.dateFrom ? delivery.dateFrom.split('T')[0] : '',
       dateTo: delivery.dateTo ? delivery.dateTo.split('T')[0] : '',
       purpose: delivery.purpose?.length ? delivery.purpose : [''],
+      activity: delivery.activity?.length ? delivery.activity : [''],
       vehicleEquipment: delivery.vehicleEquipment || '',
       destination: delivery.destination?.length ? delivery.destination : [''],
       driver: delivery.driver?.length ? delivery.driver : [''],
@@ -391,7 +403,8 @@ function DeliveryPlan() {
       const supps = delivery.customerSupplier || [];
       const jobs = delivery.jobOrderNo || [];
       const purps = delivery.purpose || [];
-      const rows = Math.max(dests.length, supps.length, jobs.length, purps.length, 4);
+      const acts = delivery.activity || [];
+      const rows = Math.max(dests.length, supps.length, jobs.length, purps.length, acts.length, 4);
 
       let detailRows = '';
       const formatTs = (ts) => {
@@ -406,42 +419,44 @@ function DeliveryPlan() {
       for (let i = 0; i < rows; i++) {
         let etdTop = '', etdBottom = '';
         let etaTop = '', etaBottom = '';
-        
-         if (delivery.timeline && delivery.timeline.length > 0) {
-           let depEvent, arrEvent;
 
-           if (i === 0) {
-             // Outbound: Company → First destination
-             depEvent = delivery.timeline.find(t => t.type === 'departure' && t.destinationIndex === -1);
-             arrEvent = delivery.timeline.find(t => t.type === 'arrival' && t.destinationIndex === 0);
-           } else if (i > 0 && i < dests.length) {
-             // Intermediate/subsequent destination: show arrival AT and departure FROM this destination
-             depEvent = delivery.timeline.find(t => t.type === 'departure' && t.destinationIndex === i);
-             arrEvent = delivery.timeline.find(t => t.type === 'arrival' && t.destinationIndex === i);
-           } else if (i === dests.length) {
-             // Return row: arrive back at Company
-             // Only show departure if single destination (otherwise it was already shown on the last dest row)
-             if (dests.length === 1) {
-               depEvent = delivery.timeline.find(t => t.type === 'departure' && t.destinationIndex === 0);
-             }
-             arrEvent = delivery.timeline.find(t => t.type === 'arrival' && t.destinationIndex === -1);
-           }
-           
-           if (depEvent) {
-             const f = formatTs(depEvent.timestamp);
-             etdTop = f.top; etdBottom = f.bottom;
-           }
-           if (arrEvent) {
-             const f = formatTs(arrEvent.timestamp);
-             etaTop = f.top; etaBottom = f.bottom;
-           }
+        if (delivery.timeline && delivery.timeline.length > 0) {
+          let depEvent, arrEvent;
+
+          if (i === 0) {
+            // Outbound: Enertech → First destination
+            depEvent = delivery.timeline.find(t => t.type === 'departure' && t.destinationIndex === -1);
+            arrEvent = delivery.timeline.find(t => t.type === 'arrival' && t.destinationIndex === 0);
+          } else if (i > 0 && i < dests.length) {
+            // Intermediate/subsequent destination: show arrival AT and departure FROM this destination
+            depEvent = delivery.timeline.find(t => t.type === 'departure' && t.destinationIndex === i);
+            arrEvent = delivery.timeline.find(t => t.type === 'arrival' && t.destinationIndex === i);
+          } else if (i === dests.length) {
+            // Return row: arrive back at Enertech
+            // Only show departure if single destination (otherwise it was already shown on the last dest row)
+            if (dests.length === 1) {
+              depEvent = delivery.timeline.find(t => t.type === 'departure' && t.destinationIndex === 0);
+            }
+            arrEvent = delivery.timeline.find(t => t.type === 'arrival' && t.destinationIndex === -1);
+          }
+
+          if (depEvent) {
+            const f = formatTs(depEvent.timestamp);
+            etdTop = f.top; etdBottom = f.bottom;
+          }
+          if (arrEvent) {
+            const f = formatTs(arrEvent.timestamp);
+            etaTop = f.top; etaBottom = f.bottom;
+          }
         }
 
         detailRows += `<tr>
           <td style="width:3.12cm;text-align:center;vertical-align:middle;">${(dests[i] || '').toUpperCase()}</td>
           <td style="width:3.5cm;text-align:center;vertical-align:middle;">${(supps[i] || '').toUpperCase()}</td>
           <td style="width:1.64cm;text-align:center;vertical-align:middle;">${(jobs[i] || '').toUpperCase()}</td>
-          <td style="width:4.76cm;text-align:center;vertical-align:middle;">${(purps[i] || '').toUpperCase()}</td>
+          <td style="width:4.76cm;text-align:center;vertical-align:middle;">
+            ${(acts[i] || '').toUpperCase()}
+          </td>
           <td style="width:1.27cm;padding:0;text-align:center;vertical-align:middle;">
              <div style="height:0.5cm; display:flex; align-items:center; justify-content:center;">${etdTop}</div>
              <div style="height:0.5cm; display:flex; align-items:center; justify-content:center;">${etdBottom}</div>
@@ -543,7 +558,7 @@ function DeliveryPlan() {
 <body>
 
 <div class="doc-header">
-  ${logoB64 ? `<img src="${logoB64}" alt="Company Logo"><br>` : ''}
+  ${logoB64 ? `<img src="${logoB64}" alt="Enertech Logo"><br>` : ''}
   <div class="title">LOGISTICS DEPARTMENT</div>
   <div class="title">DRIVER'S DELIVERY PLAN</div>
 </div>
@@ -650,21 +665,21 @@ function DeliveryPlan() {
 
   const handleStatusUpdate = async (e) => {
     e.preventDefault();
-    const { delivery, departureDate, departureTime, destinations, returnDate, returnTime } = statusModal;
+    const { delivery, departureDate, departureTime, customerSuppliers, returnDate, returnTime } = statusModal;
 
     if (!departureDate || !departureTime) {
       toast.error('Departure date and time are required');
       return;
     }
 
-    // Validate all destination times
-    for (let i = 0; i < destinations.length; i++) {
-      if (!destinations[i].arrivalDate || !destinations[i].arrivalTime) {
-        toast.error(`Arrival date and time for ${destinations[i].destination} are required`);
+    // Validate all customer/supplier times
+    for (let i = 0; i < customerSuppliers.length; i++) {
+      if (!customerSuppliers[i].arrivalDate || !customerSuppliers[i].arrivalTime) {
+        toast.error(`Arrival date and time for ${customerSuppliers[i].customerSupplier} are required`);
         return;
       }
-      if (!destinations[i].departureDate || !destinations[i].departureTime) {
-        toast.error(`Departure date and time for ${destinations[i].destination} are required`);
+      if (!customerSuppliers[i].departureDate || !customerSuppliers[i].departureTime) {
+        toast.error(`Departure date and time for ${customerSuppliers[i].customerSupplier} are required`);
         return;
       }
     }
@@ -679,40 +694,48 @@ function DeliveryPlan() {
     try {
       const timeline = [];
 
-      // 1. Departure from company
+      // 1. Departure from Enertech
       timeline.push({
         type: 'departure',
-        destination: 'Company',
+        customerSupplier: 'Enertech',
+        destination: 'Enertech',
         timestamp: new Date(`${departureDate}T${departureTime}`).toISOString(),
+        customerSupplierIndex: -1,
         destinationIndex: -1
       });
 
-      // 2. Arrivals and departures for each destination
-      destinations.forEach((dest, index) => {
-        // Arrival at destination
+      // 2. Arrivals and departures for each customer/supplier
+      customerSuppliers.forEach((cs, index) => {
+        // Arrival at customer/supplier
         timeline.push({
           type: 'arrival',
-          destination: dest.destination,
-          timestamp: new Date(`${dest.arrivalDate}T${dest.arrivalTime}`).toISOString(),
+          customerSupplier: cs.customerSupplier,
+          destination: cs.customerSupplier,
+          timestamp: new Date(`${cs.arrivalDate}T${cs.arrivalTime}`).toISOString(),
+          customerSupplierIndex: index,
           destinationIndex: index
         });
 
-        // Departure from destination (only add if not the last destination)
-        if (index === destinations.length - 1) {
+        // Departure from customer/supplier (only add if not the last one)
+        if (index === customerSuppliers.length - 1) {
           timeline.push({
             type: 'departure',
-            destination: dest.destination,
-            timestamp: new Date(`${dest.departureDate}T${dest.departureTime}`).toISOString(),
+            customerSupplier: cs.customerSupplier,
+            destination: cs.customerSupplier,
+            timestamp: new Date(`${cs.departureDate}T${cs.departureTime}`).toISOString(),
+            customerSupplierIndex: index,
             destinationIndex: index
           });
         }
       });
 
-      // 3. Return to company
+      // 3. Return to Enertech
       timeline.push({
         type: 'arrival',
-        destination: 'Company',
+        customerSupplier: 'Enertech',
+        destination: 'Enertech',
         timestamp: new Date(`${returnDate}T${returnTime}`).toISOString(),
+        customerSupplierIndex: -1,
         destinationIndex: -1
       });
 
@@ -859,6 +882,7 @@ function DeliveryPlan() {
         dateFrom: formData.dateFrom || undefined,
         dateTo: formData.dateTo || undefined,
         purpose: formData.purpose.filter(v => v.trim() !== ''),
+        activity: formData.activity.filter(v => v.trim() !== ''),
         vehicleEquipment: formData.vehicleEquipment,
         destination: formData.destination.filter(v => v.trim() !== ''),
         driver: formData.driver.filter(v => v.trim() !== ''),
@@ -890,10 +914,10 @@ function DeliveryPlan() {
   };
 
   const renderDeliveryForm = (onSubmitHandler, formId) => (
-    <form onSubmit={onSubmitHandler} className="space-y-2" id={formId}>
+    <form onSubmit={onSubmitHandler} className="space-y-3" id={formId}>
       {/* Delivery Type - Radio */}
-      <div className="space-y-1">
-        <label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Delivery Type</label>
+      <fieldset className="rounded-lg border border-border bg-card px-3 pb-3 pt-2 shadow-sm space-y-1.5 min-w-0">
+        <legend className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground px-1 -ml-1">Delivery Type</legend>
         <div className="flex items-center gap-4">
           {['Field Trip', 'Itinerary'].map((type) => (
             <label key={type} className="flex items-center gap-1.5 cursor-pointer">
@@ -909,44 +933,72 @@ function DeliveryPlan() {
             </label>
           ))}
         </div>
-      </div>
+      </fieldset>
 
       {/* Date From / Date To */}
-      <div className="grid grid-cols-2 gap-2">
-        <div className="space-y-0.5">
-          <label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Date From</label>
-          <input
-            name="dateFrom"
-            type="date"
-            value={formData.dateFrom}
-            onChange={handleInputChange}
-            className={inputFormClass}
-          />
+      <fieldset className="rounded-lg border border-border bg-card px-3 pb-3 pt-2 shadow-sm min-w-0">
+        <legend className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground px-1 -ml-1">Schedule</legend>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Date From</label>
+            <input
+              name="dateFrom"
+              type="date"
+              value={formData.dateFrom}
+              onChange={handleInputChange}
+              className={inputFormClass}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Date To</label>
+            <input
+              name="dateTo"
+              type="date"
+              value={formData.deliveryType === 'Itinerary' ? '' : formData.dateTo}
+              onChange={handleInputChange}
+              disabled={formData.deliveryType === 'Itinerary'}
+              className={`${inputFormClass} ${formData.deliveryType === 'Itinerary' ? 'opacity-40 cursor-not-allowed' : ''}`}
+            />
+          </div>
         </div>
-        <div className="space-y-0.5">
-          <label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Date To</label>
-          <input
-            name="dateTo"
-            type="date"
-            value={formData.deliveryType === 'Itinerary' ? '' : formData.dateTo}
-            onChange={handleInputChange}
-            disabled={formData.deliveryType === 'Itinerary'}
-            className={`${inputFormClass} ${formData.deliveryType === 'Itinerary' ? 'opacity-40 cursor-not-allowed' : ''}`}
-          />
-        </div>
-      </div>
+      </fieldset>
 
-      {/* Purpose - Dropdown */}
-      <div className="space-y-2">
+      {/* Vehicle / Equipment */}
+      <fieldset className="rounded-lg border border-border bg-card px-3 pb-3 pt-2 shadow-sm space-y-1.5 min-w-0">
+        <legend className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground px-1 -ml-1">Vehicle / Equipment</legend>
+        <div className="relative">
+          <select
+            name="vehicleEquipment"
+            value={formData.vehicleEquipment}
+            onChange={handleInputChange}
+            className={selectClass}
+          >
+            <option value="" disabled>Select Vehicle / Equipment</option>
+            {vehicles.map(v => (
+              <option key={v._id} value={v.plateNumber} className="font-bold">{v.plateNumber} — {v.model}</option>
+            ))}
+          </select>
+          <div className="pointer-events-none absolute inset-y-0 right-2.5 flex items-center text-muted-foreground">
+            <ChevronDown className="h-3 w-3" />
+          </div>
+        </div>
+      </fieldset>
+
+      {/* Purpose & Activity */}
+      <fieldset className="rounded-lg border border-border bg-card px-3 pb-3 pt-2 shadow-sm space-y-3 min-w-0">
+        <legend className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground px-1 -ml-1 flex items-center gap-2">
+          Purpose & Activity
+        </legend>
         {formData.purpose.map((p, index) => (
-          <div key={`purpose-${index}`} className="flex items-center gap-2">
-            <div className="relative flex-1">
+          <div key={`purpose-activity-${index}`} className="flex items-center gap-2">
+            {/* Purpose */}
+            <div className="relative w-[30%] min-w-[130px]">
               <select
                 value={p}
                 onChange={(e) => handleArrayChange('purpose', index, e.target.value)}
                 className={selectClass}
               >
-                <option value="" disabled>SELECT PURPOSE</option>
+                <option value="" disabled>Select Purpose</option>
                 {['Delivery', 'Pick Up', 'Rescue', 'Pull Out', 'Service Manpower', 'Assign to Project', 'Purchase'].map((opt) => (
                   <option key={opt} value={opt} className="font-bold">{opt.toUpperCase()}</option>
                 ))}
@@ -955,212 +1007,237 @@ function DeliveryPlan() {
                 <ChevronDown className="h-3 w-3" />
               </div>
             </div>
-            {formData.purpose.length > 1 && (
-              <button type="button" onClick={() => removeArrayField('purpose', index)} className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-muted/50 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors">
-                <Minus className="h-4 w-4" />
-              </button>
-            )}
-            {index === formData.purpose.length - 1 && (
-              <button type="button" onClick={() => addArrayField('purpose')} className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
-                <Plus className="h-4 w-4" />
-              </button>
-            )}
-          </div>
-        ))}
-      </div>
 
-      {/* Vehicle / Equipment */}
-      <div className="relative">
-        <select
-          name="vehicleEquipment"
-          value={formData.vehicleEquipment}
-          onChange={handleInputChange}
-          className={selectClass}
-        >
-          <option value="" disabled>SELECT VEHICLE / EQUIPMENT</option>
-          {vehicles.map(v => (
-            <option key={v._id} value={v.plateNumber} className="font-bold">{v.plateNumber} — {v.model}</option>
-          ))}
-        </select>
-        <div className="pointer-events-none absolute inset-y-0 right-2.5 flex items-center text-muted-foreground">
-          <ChevronDown className="h-3 w-3" />
-        </div>
-      </div>
-
-      {/* Destination */}
-      <div className="space-y-2">
-        {formData.destination.map((dItem, index) => (
-          <div key={`dest-${index}`} className="flex items-center gap-2">
-            <div className="relative flex-1">
-              <select
-                value={dItem}
-                onChange={(e) => handleArrayChange('destination', index, e.target.value)}
-                className={selectClass}
-              >
-                <option value="" disabled>SELECT DESTINATION</option>
-                {destinations.map(d => (
-                  <option key={d._id} value={d.name} className="font-bold">{d.name}</option>
-                ))}
-              </select>
-              <div className="pointer-events-none absolute inset-y-0 right-2.5 flex items-center text-muted-foreground">
-                <ChevronDown className="h-3 w-3" />
-              </div>
+            {/* Activity */}
+            <div className="flex-1">
+              <input
+                value={formData.activity[index] || ''}
+                onChange={(e) => handleArrayChange('activity', index, e.target.value)}
+                className={inputFormClass}
+                placeholder="Activity"
+              />
             </div>
-            {formData.destination.length > 1 && (
-              <button type="button" onClick={() => removeArrayField('destination', index)} className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-muted/50 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors">
-                <Minus className="h-4 w-4" />
-              </button>
-            )}
-            {index === formData.destination.length - 1 && (
-              <button type="button" onClick={() => addArrayField('destination')} className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
-                <Plus className="h-4 w-4" />
-              </button>
-            )}
-          </div>
-        ))}
-      </div>
 
-      {/* Driver */}
-      <div className="space-y-2">
-        {formData.driver.map((dr, index) => (
-          <div key={`driver-${index}`} className="flex items-center gap-2">
-            <div className="relative flex-1">
-              <select
-                value={dr}
-                onChange={(e) => handleArrayChange('driver', index, e.target.value)}
-                className={selectClass}
-              >
-                <option value="" disabled>SELECT DRIVER</option>
-                {drivers.map(d => (
-                  <option key={d._id} value={`${d.firstname} ${d.lastname}`} className="font-bold">
-                    {d.lastname}, {d.firstname}
-                  </option>
-                ))}
-              </select>
-              <div className="pointer-events-none absolute inset-y-0 right-2.5 flex items-center text-muted-foreground">
-                <ChevronDown className="h-3 w-3" />
-              </div>
-            </div>
-            {formData.driver.length > 1 && (
-              <button type="button" onClick={() => removeArrayField('driver', index)} className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-muted/50 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors">
-                <Minus className="h-4 w-4" />
+            {/* Buttons */}
+            {index === 0 && (
+              <button type="button" onClick={addPurposeAndActivity} className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
+                <Plus className="h-4 w-4" />
               </button>
             )}
-            {index === formData.driver.length - 1 && (
-              <button type="button" onClick={() => addArrayField('driver')} className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
-                <Plus className="h-4 w-4" />
+            {index > 0 && (
+              <button type="button" onClick={() => { removeArrayField('purpose', index); removeArrayField('activity', index); }} className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-muted/50 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors">
+                <Minus className="h-4 w-4" />
               </button>
             )}
           </div>
         ))}
-      </div>
-
-      {/* Helper */}
-      <div className="space-y-2">
-        {formData.helper.map((hl, index) => (
-          <div key={`helper-${index}`} className="flex items-center gap-2">
-            <div className="relative flex-1">
-              <select
-                value={hl}
-                onChange={(e) => handleArrayChange('helper', index, e.target.value)}
-                className={selectClass}
-              >
-                <option value="" disabled>SELECT HELPER</option>
-                {helpers.map(h => (
-                  <option key={h._id} value={`${h.firstname} ${h.lastname}`} className="font-bold">
-                    {h.lastname}, {h.firstname}
-                  </option>
-                ))}
-              </select>
-              <div className="pointer-events-none absolute inset-y-0 right-2.5 flex items-center text-muted-foreground">
-                <ChevronDown className="h-3 w-3" />
-              </div>
-            </div>
-            {formData.helper.length > 1 && (
-              <button type="button" onClick={() => removeArrayField('helper', index)} className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-muted/50 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors">
-                <Minus className="h-4 w-4" />
-              </button>
-            )}
-            {index === formData.helper.length - 1 && (
-              <button type="button" onClick={() => addArrayField('helper')} className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
-                <Plus className="h-4 w-4" />
-              </button>
-            )}
-          </div>
-        ))}
-      </div>
-
-      {/* Job Order No. */}
-      <div className="space-y-2">
-        {formData.jobOrderNo.map((jo, index) => (
-          <div key={`jo-${index}`} className="flex items-center gap-2">
-            <input
-              value={jo}
-              onChange={(e) => handleArrayChange('jobOrderNo', index, e.target.value)}
-              placeholder="JOB ORDER NO."
-              className={`${inputFormClass} flex-1`}
-            />
-            {formData.jobOrderNo.length > 1 && (
-              <button type="button" onClick={() => removeArrayField('jobOrderNo', index)} className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-muted/50 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors">
-                <Minus className="h-4 w-4" />
-              </button>
-            )}
-            {index === formData.jobOrderNo.length - 1 && (
-              <button type="button" onClick={() => addArrayField('jobOrderNo')} className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
-                <Plus className="h-4 w-4" />
-              </button>
-            )}
-          </div>
-        ))}
-      </div>
+      </fieldset>
 
       {/* Customer / Supplier */}
-      <div className="space-y-2">
+      <fieldset className="rounded-lg border border-border bg-card px-3 pb-3 pt-2 shadow-sm space-y-2 min-w-0">
+        <legend className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground px-1 -ml-1 flex items-center gap-2">
+          Customer / Supplier
+        </legend>
         {formData.customerSupplier.map((cs, index) => (
-          <div key={`cs-${index}`} className="flex items-center gap-2">
-            <input
-              value={cs}
-              onChange={(e) => handleArrayChange('customerSupplier', index, e.target.value)}
-              placeholder="CUSTOMER / SUPPLIER"
-              className={`${inputFormClass} flex-1`}
-            />
-            {formData.customerSupplier.length > 1 && (
-              <button type="button" onClick={() => removeArrayField('customerSupplier', index)} className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-muted/50 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors">
-                <Minus className="h-4 w-4" />
-              </button>
-            )}
-            {index === formData.customerSupplier.length - 1 && (
-              <button type="button" onClick={() => addArrayField('customerSupplier')} className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
-                <Plus className="h-4 w-4" />
-              </button>
-            )}
+          <div key={`cs-${index}`}>
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1">
+                <select
+                  value={cs}
+                  onChange={(e) => handleArrayChange('customerSupplier', index, e.target.value)}
+                  className={selectClass}
+                >
+                  <option value="" disabled>Select Customer / Supplier</option>
+                  {destinations.map(d => (
+                    <option key={d._id} value={d.name} className="font-bold">{d.name}</option>
+                  ))}
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-2.5 flex items-center text-muted-foreground">
+                  <ChevronDown className="h-3 w-3" />
+                </div>
+              </div>
+              {index === 0 && (
+                <button type="button" onClick={() => addArrayField('customerSupplier')} className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
+                  <Plus className="h-4 w-4" />
+                </button>
+              )}
+              {index > 0 && (
+                <button type="button" onClick={() => removeArrayField('customerSupplier', index)} className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-muted/50 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors">
+                  <Minus className="h-4 w-4" />
+                </button>
+              )}
+            </div>
           </div>
         ))}
-      </div>
+      </fieldset>
+
+      {/* Driver */}
+      <fieldset className="rounded-lg border border-border bg-card px-3 pb-3 pt-2 shadow-sm space-y-2 min-w-0">
+        <legend className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground px-1 -ml-1 flex items-center gap-2">
+          Driver
+        </legend>
+        {formData.driver.map((dr, index) => (
+          <div key={`driver-${index}`}>
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1">
+                <select
+                  value={dr}
+                  onChange={(e) => handleArrayChange('driver', index, e.target.value)}
+                  className={selectClass}
+                >
+                  <option value="" disabled>Select Driver</option>
+                  {drivers.map(d => (
+                    <option key={d._id} value={`${d.firstname} ${d.lastname}`} className="font-bold">
+                      {d.lastname}, {d.firstname}
+                    </option>
+                  ))}
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-2.5 flex items-center text-muted-foreground">
+                  <ChevronDown className="h-3 w-3" />
+                </div>
+              </div>
+              {index === 0 && (
+                <button type="button" onClick={() => addArrayField('driver')} className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
+                  <Plus className="h-4 w-4" />
+                </button>
+              )}
+              {index > 0 && (
+                <button type="button" onClick={() => removeArrayField('driver', index)} className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-muted/50 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors">
+                  <Minus className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          </div>
+        ))}
+      </fieldset>
+
+      {/* Helper */}
+      <fieldset className="rounded-lg border border-border bg-card px-3 pb-3 pt-2 shadow-sm space-y-2 min-w-0">
+        <legend className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground px-1 -ml-1 flex items-center gap-2">
+          Helper
+        </legend>
+        {formData.helper.map((hl, index) => (
+          <div key={`helper-${index}`}>
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1">
+                <select
+                  value={hl}
+                  onChange={(e) => handleArrayChange('helper', index, e.target.value)}
+                  className={selectClass}
+                >
+                  <option value="" disabled>Select Helper</option>
+                  {helpers.map(h => (
+                    <option key={h._id} value={`${h.firstname} ${h.lastname}`} className="font-bold">
+                      {h.lastname}, {h.firstname}
+                    </option>
+                  ))}
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-2.5 flex items-center text-muted-foreground">
+                  <ChevronDown className="h-3 w-3" />
+                </div>
+              </div>
+              {index === 0 && (
+                <button type="button" onClick={() => addArrayField('helper')} className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
+                  <Plus className="h-4 w-4" />
+                </button>
+              )}
+              {index > 0 && (
+                <button type="button" onClick={() => removeArrayField('helper', index)} className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-muted/50 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors">
+                  <Minus className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          </div>
+        ))}
+      </fieldset>
+
+      {/* Job Order No. */}
+      <fieldset className="rounded-lg border border-border bg-card px-3 pb-3 pt-2 shadow-sm space-y-2 min-w-0">
+        <legend className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground px-1 -ml-1 flex items-center gap-2">
+          Job Order No.
+        </legend>
+        {formData.jobOrderNo.map((jo, index) => (
+          <div key={`jo-${index}`}>
+            <div className="flex items-center gap-2">
+              <input
+                value={jo}
+                onChange={(e) => handleArrayChange('jobOrderNo', index, e.target.value)}
+                className={`${inputFormClass} flex-1`}
+                placeholder="Job Order No."
+              />
+              {index === 0 && (
+                <button type="button" onClick={() => addArrayField('jobOrderNo')} className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
+                  <Plus className="h-4 w-4" />
+                </button>
+              )}
+              {index > 0 && (
+                <button type="button" onClick={() => removeArrayField('jobOrderNo', index)} className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-muted/50 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors">
+                  <Minus className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          </div>
+        ))}
+      </fieldset>
+
+      {/* Destination */}
+      <fieldset className="rounded-lg border border-border bg-card px-3 pb-3 pt-2 shadow-sm space-y-2 min-w-0">
+        <legend className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground px-1 -ml-1 flex items-center gap-2">
+          Destination
+        </legend>
+        {formData.destination.map((dItem, index) => (
+          <div key={`dest-${index}`}>
+            <div className="flex items-center gap-2">
+              <input
+                value={dItem}
+                onChange={(e) => handleArrayChange('destination', index, e.target.value)}
+                className={`${inputFormClass} flex-1`}
+                placeholder="Destination"
+              />
+              {index === 0 && (
+                <button type="button" onClick={() => addArrayField('destination')} className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
+                  <Plus className="h-4 w-4" />
+                </button>
+              )}
+              {index > 0 && (
+                <button type="button" onClick={() => removeArrayField('destination', index)} className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-muted/50 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors">
+                  <Minus className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          </div>
+        ))}
+      </fieldset>
 
       {/* Total Budget */}
-      <div className="relative">
-        <div className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[11px] font-bold text-muted-foreground/60 select-none">
-          ₱
+      <fieldset className="rounded-lg border border-border bg-card px-3 pb-3 pt-2 shadow-sm space-y-1.5 min-w-0">
+        <legend className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground px-1 -ml-1">Total Budget</legend>
+        <div className="relative">
+          <div className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[11px] font-bold text-muted-foreground/60 select-none">
+            ₱
+          </div>
+          <input
+            name="totalBudget"
+            type="number"
+            value={formData.totalBudget}
+            onChange={handleInputChange}
+            className={`${inputFormClass} pl-7`}
+            placeholder="Total Budget"
+          />
         </div>
-        <input
-          name="totalBudget"
-          type="number"
-          value={formData.totalBudget}
-          onChange={handleInputChange}
-          placeholder="TOTAL BUDGET"
-          className={`${inputFormClass} pl-7`}
-        />
-      </div>
+      </fieldset>
 
       {/* Requested By */}
-      <input
-        name="requestedBy"
-        value={formData.requestedBy}
-        onChange={handleInputChange}
-        placeholder="REQUESTED BY"
-        className={inputFormClass}
-      />
+      <fieldset className="rounded-lg border border-border bg-card px-3 pb-3 pt-2 shadow-sm space-y-1.5 min-w-0">
+        <legend className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground px-1 -ml-1">Requested By</legend>
+        <input
+          name="requestedBy"
+          value={formData.requestedBy}
+          onChange={handleInputChange}
+          className={inputFormClass}
+          placeholder="Requested By"
+        />
+      </fieldset>
 
     </form>
   );
@@ -1441,6 +1518,9 @@ function DeliveryPlan() {
                     {visibleColumns.has('purpose') && (
                       <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-foreground uppercase tracking-tight">{joinArray(item.purpose)}</td>
                     )}
+                    {visibleColumns.has('activity') && (
+                      <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-foreground uppercase tracking-tight">{joinArray(item.activity)}</td>
+                    )}
                     {visibleColumns.has('vehicleEquipment') && (
                       <td className="whitespace-nowrap px-3 py-2 text-[10px] font-semibold text-foreground uppercase tracking-tight">{item.vehicleEquipment || '—'}</td>
                     )}
@@ -1495,7 +1575,7 @@ function DeliveryPlan() {
       {/* Create Delivery Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background/60 backdrop-blur-[2px] p-4 animate-in fade-in duration-300">
-          <div className="w-full max-w-[480px] max-h-[90vh] flex flex-col rounded-xl border border-border bg-card shadow-2xl animate-in fade-in zoom-in-95 slide-in-from-bottom-4 duration-300">
+          <div className="w-full max-w-[700px] max-h-[90vh] flex flex-col rounded-xl border border-border bg-card shadow-2xl animate-in fade-in zoom-in-95 slide-in-from-bottom-4 duration-300">
             {/* Sticky Header */}
             <div className="sticky top-0 z-10 bg-card border-b border-border p-5 pb-3.5 rounded-t-xl">
               <div className="flex items-center justify-between">
@@ -1546,7 +1626,7 @@ function DeliveryPlan() {
       {/* Details Modal */}
       {detailsModal.isOpen && detailsModal.delivery && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background/60 backdrop-blur-[2px] p-4 animate-in fade-in duration-300">
-          <div className="w-full max-w-[600px] max-h-[90vh] flex flex-col rounded-xl border border-border bg-card shadow-2xl animate-in fade-in zoom-in-95 slide-in-from-bottom-4 duration-300">
+          <div className="w-full max-w-[700px] max-h-[90vh] flex flex-col rounded-xl border border-border bg-card shadow-2xl animate-in fade-in zoom-in-95 slide-in-from-bottom-4 duration-300">
             {/* Sticky Header */}
             <div className="sticky top-0 z-10 bg-card border-b border-border p-5 pb-3.5 rounded-t-xl">
               <div className="flex items-center justify-between">
@@ -1574,6 +1654,7 @@ function DeliveryPlan() {
                           dateFrom: detailsModal.delivery.dateFrom ? detailsModal.delivery.dateFrom.split('T')[0] : '',
                           dateTo: detailsModal.delivery.dateTo ? detailsModal.delivery.dateTo.split('T')[0] : '',
                           purpose: detailsModal.delivery.purpose?.length ? detailsModal.delivery.purpose : [''],
+                          activity: detailsModal.delivery.activity?.length ? detailsModal.delivery.activity : [''],
                           vehicleEquipment: detailsModal.delivery.vehicleEquipment || '',
                           destination: detailsModal.delivery.destination?.length ? detailsModal.delivery.destination : [''],
                           driver: detailsModal.delivery.driver?.length ? detailsModal.delivery.driver : [''],
@@ -1605,130 +1686,159 @@ function DeliveryPlan() {
               {isEditingDetails ? (
                 renderDeliveryForm(handleEditSubmit, 'edit-form')
               ) : (
-                <div className="space-y-4">
-                  {/* Status */}
-                  <div className="rounded-lg bg-muted/30 p-3 border border-border/50">
-                    <p className="text-[9px] text-muted-foreground uppercase tracking-widest mb-1.5">Status</p>
-                    <span
-                      className={cn(
-                        "inline-block px-2.5 py-1 rounded-full text-[9px] uppercase tracking-widest font-bold",
-                        getStatusDisplay(detailsModal.delivery) === 'Completed' ? "bg-green-500/10 text-green-600" :
-                          getStatusDisplay(detailsModal.delivery) === 'In Transit' ? "bg-blue-500/10 text-blue-600" :
-                            "bg-yellow-500/10 text-yellow-600"
-                      )}>
-                      {getStatusDisplay(detailsModal.delivery)}
-                    </span>
+                <div className="space-y-3">
+                  {/* Status Badge - Prominent */}
+                  <div className="flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-muted/50 to-muted/30 border border-border">
+                    <div>
+                      <p className="text-[9px] text-muted-foreground uppercase tracking-widest mb-1">Current Status</p>
+                      <span
+                        className={cn(
+                          "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] uppercase tracking-wider font-bold shadow-sm",
+                          getStatusDisplay(detailsModal.delivery) === 'Completed' ? "bg-green-500 text-white" :
+                            getStatusDisplay(detailsModal.delivery) === 'In Transit' ? "bg-blue-500 text-white" :
+                              "bg-yellow-500 text-white"
+                        )}>
+                        {getStatusDisplay(detailsModal.delivery)}
+                      </span>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[9px] text-muted-foreground uppercase tracking-widest mb-1">Reference No.</p>
+                      <p className="text-[13px] font-bold text-primary">{detailsModal.delivery.referenceNo}</p>
+                    </div>
                   </div>
 
-                  {/* Basic Info */}
+                  {/* Delivery Type & Duration */}
                   <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <p className="text-[9px] text-muted-foreground uppercase tracking-widest">Delivery Type</p>
-                      <p className="text-[11px] font-bold text-foreground uppercase">{detailsModal.delivery.deliveryType || '—'}</p>
+                    <div className="p-3 rounded-lg bg-card border border-border">
+                      <p className="text-[9px] text-muted-foreground uppercase tracking-widest mb-1.5">Delivery Type</p>
+                      <p className="text-[12px] font-bold text-foreground uppercase">{detailsModal.delivery.deliveryType || '—'}</p>
                     </div>
-                    <div className="space-y-1">
-                      <p className="text-[9px] text-muted-foreground uppercase tracking-widest">Duration</p>
-                      <p className="text-[11px] font-bold text-foreground">{computeDuration(detailsModal.delivery.dateFrom, detailsModal.delivery.dateTo)}</p>
+                    <div className="p-3 rounded-lg bg-card border border-border">
+                      <p className="text-[9px] text-muted-foreground uppercase tracking-widest mb-1.5">Duration</p>
+                      <p className="text-[12px] font-bold text-foreground">{computeDuration(detailsModal.delivery.dateFrom, detailsModal.delivery.dateTo)}</p>
                     </div>
                   </div>
 
-                  {/* Date Range */}
-                  <div className="space-y-1">
-                    <p className="text-[9px] text-muted-foreground uppercase tracking-widest">Date Range</p>
-                    <p className="text-[11px] font-bold text-foreground">
+                  {/* Date Range - Full Width */}
+                  <div className="p-3 rounded-lg bg-card border border-border">
+                    <p className="text-[9px] text-muted-foreground uppercase tracking-widest mb-1.5">Schedule</p>
+                    <p className="text-[12px] font-bold text-foreground">
                       {detailsModal.delivery.dateFrom && detailsModal.delivery.dateTo
                         ? `${formatDate(detailsModal.delivery.dateFrom)} - ${formatDate(detailsModal.delivery.dateTo)}`
                         : formatDate(detailsModal.delivery.dateFrom)}
                     </p>
                   </div>
 
-                  {/* Purpose */}
-                  <div className="space-y-1">
-                    <p className="text-[9px] text-muted-foreground uppercase tracking-widest">Purpose</p>
-                    <p className="text-[11px] font-bold text-foreground uppercase">{joinArray(detailsModal.delivery.purpose)}</p>
+                  {/* Purpose & Activity */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="p-3 rounded-lg bg-card border border-border">
+                      <p className="text-[9px] text-muted-foreground uppercase tracking-widest mb-1.5">Purpose</p>
+                      <p className="text-[11px] font-bold text-foreground uppercase leading-relaxed">{joinArray(detailsModal.delivery.purpose)}</p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-card border border-border">
+                      <p className="text-[9px] text-muted-foreground uppercase tracking-widest mb-1.5">Activity</p>
+                      <p className="text-[11px] font-bold text-foreground uppercase leading-relaxed">{joinArray(detailsModal.delivery.activity)}</p>
+                    </div>
                   </div>
 
-                  {/* Vehicle */}
-                  <div className="space-y-1">
-                    <p className="text-[9px] text-muted-foreground uppercase tracking-widest">Vehicle / Equipment</p>
-                    <p className="text-[11px] font-bold text-foreground uppercase">
+                  {/* Vehicle - Highlighted */}
+                  <div className="p-4 rounded-lg bg-primary/5 border border-primary/20">
+                    <p className="text-[9px] text-primary/70 uppercase tracking-widest mb-1.5 font-bold">Vehicle / Equipment</p>
+                    <p className="text-[13px] font-bold text-primary uppercase">
                       {detailsModal.delivery.vehicleEquipment
                         ? `${detailsModal.delivery.vehicleEquipment} — ${vehicles.find(v => v.plateNumber === detailsModal.delivery.vehicleEquipment)?.model || ''}`
                         : '—'}
                     </p>
                   </div>
 
-                  {/* Destination */}
-                  <div className="space-y-1">
-                    <p className="text-[9px] text-muted-foreground uppercase tracking-widest">Destination</p>
-                    <p className="text-[11px] font-bold text-foreground uppercase">{joinArray(detailsModal.delivery.destination)}</p>
+                  {/* Customer / Supplier */}
+                  <div className="p-3 rounded-lg bg-card border border-border">
+                    <p className="text-[9px] text-muted-foreground uppercase tracking-widest mb-1.5">Customer / Supplier</p>
+                    <p className="text-[11px] font-bold text-foreground uppercase leading-relaxed">{joinArray(detailsModal.delivery.customerSupplier)}</p>
                   </div>
 
-                  {/* Personnel */}
+                  {/* Personnel - Side by Side */}
                   <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <p className="text-[9px] text-muted-foreground uppercase tracking-widest">Driver</p>
-                      <p className="text-[11px] font-bold text-foreground uppercase">{joinArray(detailsModal.delivery.driver)}</p>
+                    <div className="p-3 rounded-lg bg-card border border-border">
+                      <p className="text-[9px] text-muted-foreground uppercase tracking-widest mb-1.5">Driver</p>
+                      <p className="text-[11px] font-bold text-foreground uppercase leading-relaxed">{joinArray(detailsModal.delivery.driver)}</p>
                     </div>
-                    <div className="space-y-1">
-                      <p className="text-[9px] text-muted-foreground uppercase tracking-widest">Helper</p>
-                      <p className="text-[11px] font-bold text-foreground uppercase">{joinArray(detailsModal.delivery.helper)}</p>
+                    <div className="p-3 rounded-lg bg-card border border-border">
+                      <p className="text-[9px] text-muted-foreground uppercase tracking-widest mb-1.5">Helper</p>
+                      <p className="text-[11px] font-bold text-foreground uppercase leading-relaxed">{joinArray(detailsModal.delivery.helper)}</p>
                     </div>
                   </div>
 
-                  {/* Job Order */}
-                  <div className="space-y-1">
-                    <p className="text-[9px] text-muted-foreground uppercase tracking-widest">Job Order No.</p>
-                    <p className="text-[11px] font-bold text-foreground">{joinArray(detailsModal.delivery.jobOrderNo)}</p>
+                  {/* Job Order & Destination - Side by Side */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="p-3 rounded-lg bg-card border border-border">
+                      <p className="text-[9px] text-muted-foreground uppercase tracking-widest mb-1.5">Job Order No.</p>
+                      <p className="text-[11px] font-bold text-foreground leading-relaxed">{joinArray(detailsModal.delivery.jobOrderNo)}</p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-card border border-border">
+                      <p className="text-[9px] text-muted-foreground uppercase tracking-widest mb-1.5">Destination</p>
+                      <p className="text-[11px] font-bold text-foreground uppercase leading-relaxed">{joinArray(detailsModal.delivery.destination)}</p>
+                    </div>
                   </div>
 
-                  {/* Customer/Supplier */}
-                  <div className="space-y-1">
-                    <p className="text-[9px] text-muted-foreground uppercase tracking-widest">Customer / Supplier</p>
-                    <p className="text-[11px] font-bold text-foreground uppercase">{joinArray(detailsModal.delivery.customerSupplier)}</p>
-                  </div>
-
-                  {/* Budget */}
-                  <div className="space-y-1">
-                    <p className="text-[9px] text-muted-foreground uppercase tracking-widest">Total Budget</p>
-                    <p className="text-[11px] font-bold text-primary">₱ {Number(detailsModal.delivery.totalBudget || 0).toLocaleString()}</p>
-                  </div>
-
-                  {/* Requested By */}
-                  <div className="space-y-1">
-                    <p className="text-[9px] text-muted-foreground uppercase tracking-widest">Requested By</p>
-                    <p className="text-[11px] font-bold text-foreground uppercase">{detailsModal.delivery.requestedBy || '—'}</p>
+                  {/* Budget & Requested By */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="p-3 rounded-lg bg-green-500/5 border border-green-500/20">
+                      <p className="text-[9px] text-green-600/70 uppercase tracking-widest mb-1.5 font-bold">Total Budget</p>
+                      <p className="text-[14px] font-bold text-green-600">₱ {Number(detailsModal.delivery.totalBudget || 0).toLocaleString()}</p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-card border border-border">
+                      <p className="text-[9px] text-muted-foreground uppercase tracking-widest mb-1.5">Requested By</p>
+                      <p className="text-[11px] font-bold text-foreground uppercase">{detailsModal.delivery.requestedBy || '—'}</p>
+                    </div>
                   </div>
 
                   {/* Timeline */}
                   {detailsModal.delivery.timeline && detailsModal.delivery.timeline.length > 0 && (
-                    <div className="space-y-2">
-                      <p className="text-[9px] text-muted-foreground uppercase tracking-widest">Timeline</p>
-                      <div className="space-y-2">
-                        {detailsModal.delivery.timeline.map((event, idx) => (
-                          <div key={idx} className="flex items-start gap-2 rounded-lg bg-muted/20 p-2.5 border border-border/30">
-                            <div className={cn(
-                              "flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold",
-                              event.type === 'departure' ? "bg-orange-500/10 text-orange-600" : "bg-green-500/10 text-green-600"
-                            )}>
-                              {idx + 1}
+                    <div className="p-4 rounded-lg bg-muted/30 border border-border">
+                      <p className="text-[9px] text-muted-foreground uppercase tracking-widest mb-3 font-bold">Delivery Timeline</p>
+                      <div className="space-y-2.5">
+                        {detailsModal.delivery.timeline.map((event, idx) => {
+                          // Get the location name - check both new and old field names
+                          let locationName = event.customerSupplier || event.destination || '—';
+                          
+                          // If it's not Enertech/Company and we have an index, try to get from delivery data
+                          const eventIndex = event.customerSupplierIndex ?? event.destinationIndex;
+                          if (eventIndex >= 0 && locationName !== 'Enertech' && locationName !== 'Company') {
+                            // Try to get from customerSupplier array first, then destination array
+                            const fromCustomerSupplier = detailsModal.delivery.customerSupplier?.[eventIndex];
+                            const fromDestination = detailsModal.delivery.destination?.[eventIndex];
+                            locationName = fromCustomerSupplier || fromDestination || locationName;
+                          }
+                          
+                          return (
+                            <div key={idx} className="flex items-start gap-3 rounded-lg bg-card p-3 border border-border/50 shadow-sm">
+                              <div className={cn(
+                                "flex h-7 w-7 shrink-0 items-center justify-center rounded-full shadow-sm",
+                                event.type === 'departure' ? "bg-orange-500 text-white" : "bg-green-500 text-white"
+                              )}>
+                                <i className={cn(
+                                  "text-[14px]",
+                                  event.type === 'departure' ? "bx bx-log-out" : "bx bx-map-pin"
+                                )}></i>
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-[11px] font-bold text-foreground uppercase leading-tight">
+                                  {event.type === 'departure' ? 'Departed from' : 'Arrived at'} {locationName}
+                                </p>
+                                <p className="text-[10px] text-muted-foreground mt-1">
+                                  {new Date(event.timestamp).toLocaleString('en-US', {
+                                    month: 'short',
+                                    day: 'numeric',
+                                    year: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                  })}
+                                </p>
+                              </div>
                             </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-[10px] font-bold text-foreground uppercase">
-                                {event.type === 'departure' ? 'Departed from' : 'Arrived at'} {event.destination}
-                              </p>
-                              <p className="text-[9px] text-muted-foreground">
-                                {new Date(event.timestamp).toLocaleString('en-US', {
-                                  month: '2-digit',
-                                  day: '2-digit',
-                                  year: 'numeric',
-                                  hour: '2-digit',
-                                  minute: '2-digit'
-                                })}
-                              </p>
-                            </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
                   )}
@@ -1797,10 +1907,10 @@ function DeliveryPlan() {
             {/* Scrollable Form Content */}
             <div className="flex-1 overflow-y-auto p-5 pt-3">
               <form onSubmit={handleStatusUpdate} className="space-y-4" id="status-form">
-                {/* Departure from Company */}
+                {/* Departure from Enertech */}
                 <div className="rounded-lg bg-orange-500/5 p-3 border border-orange-500/20">
                   <p className="text-[10px] font-bold uppercase tracking-widest text-orange-600 mb-2">
-                    1. Departure from Company
+                    1. Departure from Enertech
                   </p>
                   <div className="grid grid-cols-2 gap-2">
                     <div className="space-y-1">
@@ -1828,11 +1938,11 @@ function DeliveryPlan() {
                   </div>
                 </div>
 
-                {/* Destinations */}
-                {statusModal.destinations.map((dest, index) => (
+                {/* Customer/Suppliers */}
+                {statusModal.customerSuppliers.map((cs, index) => (
                   <div key={index} className="rounded-lg bg-green-500/5 p-3 border border-green-500/20 space-y-3">
                     <p className="text-[10px] font-bold uppercase tracking-widest text-green-600">
-                      {index + 2}. {dest.destination}
+                      {index + 2}. {cs.customerSupplier}
                     </p>
 
                     {/* Arrival */}
@@ -1844,11 +1954,11 @@ function DeliveryPlan() {
                           <input
                             type="date"
                             required
-                            value={dest.arrivalDate}
+                            value={cs.arrivalDate}
                             onChange={(e) => {
-                              const newDests = [...statusModal.destinations];
-                              newDests[index].arrivalDate = e.target.value;
-                              setStatusModal(prev => ({ ...prev, destinations: newDests }));
+                              const newCS = [...statusModal.customerSuppliers];
+                              newCS[index].arrivalDate = e.target.value;
+                              setStatusModal(prev => ({ ...prev, customerSuppliers: newCS }));
                             }}
                             disabled={statusModal.isLoading}
                             className="block h-8 w-full rounded border border-input bg-background px-2 text-[11px] font-medium shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50"
@@ -1859,11 +1969,11 @@ function DeliveryPlan() {
                           <input
                             type="time"
                             required
-                            value={dest.arrivalTime}
+                            value={cs.arrivalTime}
                             onChange={(e) => {
-                              const newDests = [...statusModal.destinations];
-                              newDests[index].arrivalTime = e.target.value;
-                              setStatusModal(prev => ({ ...prev, destinations: newDests }));
+                              const newCS = [...statusModal.customerSuppliers];
+                              newCS[index].arrivalTime = e.target.value;
+                              setStatusModal(prev => ({ ...prev, customerSuppliers: newCS }));
                             }}
                             disabled={statusModal.isLoading}
                             className="block h-8 w-full rounded border border-input bg-background px-2 text-[11px] font-medium shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50"
@@ -1872,8 +1982,8 @@ function DeliveryPlan() {
                       </div>
                     </div>
 
-                    {/* Departure (only for last destination) */}
-                    {index === statusModal.destinations.length - 1 && (
+                    {/* Departure (only for last customer/supplier) */}
+                    {index === statusModal.customerSuppliers.length - 1 && (
                       <div>
                         <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">Departure</p>
                         <div className="grid grid-cols-2 gap-2">
@@ -1882,11 +1992,11 @@ function DeliveryPlan() {
                             <input
                               type="date"
                               required
-                              value={dest.departureDate}
+                              value={cs.departureDate}
                               onChange={(e) => {
-                                const newDests = [...statusModal.destinations];
-                                newDests[index].departureDate = e.target.value;
-                                setStatusModal(prev => ({ ...prev, destinations: newDests }));
+                                const newCS = [...statusModal.customerSuppliers];
+                                newCS[index].departureDate = e.target.value;
+                                setStatusModal(prev => ({ ...prev, customerSuppliers: newCS }));
                               }}
                               disabled={statusModal.isLoading}
                               className="block h-8 w-full rounded border border-input bg-background px-2 text-[11px] font-medium shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50"
@@ -1897,11 +2007,11 @@ function DeliveryPlan() {
                             <input
                               type="time"
                               required
-                              value={dest.departureTime}
+                              value={cs.departureTime}
                               onChange={(e) => {
-                                const newDests = [...statusModal.destinations];
-                                newDests[index].departureTime = e.target.value;
-                                setStatusModal(prev => ({ ...prev, destinations: newDests }));
+                                const newCS = [...statusModal.customerSuppliers];
+                                newCS[index].departureTime = e.target.value;
+                                setStatusModal(prev => ({ ...prev, customerSuppliers: newCS }));
                               }}
                               disabled={statusModal.isLoading}
                               className="block h-8 w-full rounded border border-input bg-background px-2 text-[11px] font-medium shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50"
@@ -1913,10 +2023,10 @@ function DeliveryPlan() {
                   </div>
                 ))}
 
-                {/* Return to Company */}
+                {/* Return to Enertech */}
                 <div className="rounded-lg bg-blue-500/5 p-3 border border-blue-500/20">
                   <p className="text-[10px] font-bold uppercase tracking-widest text-blue-600 mb-2">
-                    {statusModal.destinations.length + 2}. Return to Company
+                    {statusModal.customerSuppliers.length + 2}. Return to Enertech
                   </p>
                   <div className="grid grid-cols-2 gap-2">
                     <div className="space-y-1">

@@ -7,22 +7,22 @@ const router = express.Router();
 // Helper to reliably compute delivery charge based on vehicle and destinations
 const calculateDeliveryCharge = async (plateNumber, destinations) => {
   if (!plateNumber || !destinations || destinations.length === 0) return 0;
-  
+
   try {
     const upperDestinations = destinations.map(d => String(d).toUpperCase());
-    
+
     // Find all matching delivery charges for this exact plate number + destinations
     const availableCharges = await DeliveryCharge.find({
       plateNumber: String(plateNumber).toUpperCase(),
       destination: { $in: upperDestinations }
     });
-    
+
     let totalCharge = 0;
     destinations.forEach(dest => {
       const matched = availableCharges.find(c => c.destination === String(dest).toUpperCase());
       if (matched) totalCharge += matched.charge;
     });
-    
+
     return totalCharge;
   } catch (err) {
     console.error('Error computing delivery charge:', err);
@@ -54,6 +54,35 @@ const generateReferenceNo = async (deliveryType) => {
 
   return `${pattern}${String(seq).padStart(3, '0')}`;
 };
+
+// @route   GET /api/deliveries/user-stats
+// @desc    Get delivery summary stats for user dashboard
+// @access  Public
+router.get('/user-stats', async (req, res) => {
+  try {
+    const [totalCount, pendingCount, inTransitCount, completedCount, recentDeliveries] = await Promise.all([
+      Delivery.countDocuments({}),
+      Delivery.countDocuments({ status: 'Pending' }),
+      Delivery.countDocuments({ status: 'In Transit' }),
+      Delivery.countDocuments({ status: 'Completed' }),
+      Delivery.find({})
+        .sort({ createdAt: -1 })
+        .limit(5)
+        .select('referenceNo destination vehicleEquipment status dateFrom dateTo purpose')
+    ]);
+
+    res.json({
+      total: totalCount,
+      pending: pendingCount,
+      inTransit: inTransitCount,
+      completed: completedCount,
+      recentDeliveries
+    });
+  } catch (error) {
+    console.error('Error fetching user stats:', error);
+    res.status(500).json({ message: 'Server error fetching stats' });
+  }
+});
 
 // @route   GET /api/deliveries
 // @desc    Get all deliveries
@@ -131,26 +160,62 @@ router.put('/:id', async (req, res) => {
     // Prevent overwriting the referenceNo
     const { referenceNo, ...updateData } = req.body;
 
-    // Dynamically recalculate delivery charge if vehicle or destination array is modified
-    if (updateData.vehicleEquipment !== undefined || updateData.destination !== undefined) {
-      const existingDelivery = await Delivery.findById(req.params.id);
-      if (existingDelivery) {
-        const vehicle = updateData.vehicleEquipment !== undefined ? updateData.vehicleEquipment : existingDelivery.vehicleEquipment;
-        const dests = updateData.destination !== undefined ? updateData.destination : existingDelivery.destination;
-        updateData.deliveryCharge = await calculateDeliveryCharge(vehicle, dests);
-      }
-    }
-
-    const updatedDelivery = await Delivery.findByIdAndUpdate(
-      req.params.id,
-      updateData,
-      { new: true, runValidators: true }
-    );
-
-    if (!updatedDelivery) {
+    const delivery = await Delivery.findById(req.params.id);
+    if (!delivery) {
       return res.status(404).json({ message: 'Delivery not found' });
     }
 
+    // Dynamically recalculate delivery charge if vehicle or destination array is modified
+    if (updateData.vehicleEquipment !== undefined || updateData.destination !== undefined) {
+      const vehicle = updateData.vehicleEquipment !== undefined ? updateData.vehicleEquipment : delivery.vehicleEquipment;
+      const dests = updateData.destination !== undefined ? updateData.destination : delivery.destination;
+      updateData.deliveryCharge = await calculateDeliveryCharge(vehicle, dests);
+    }
+
+    // Subdocument arrays that need Date parsing
+    const arrayFields = ['fuel', 'tollFee', 'pierExpenses', 'repairAndMaintenance', 'mealExpenses', 'loadExpenses', 'contingency', 'timeline'];
+    
+    // Explicitly process arrays: strip invalid 'id' and parse dates
+    arrayFields.forEach(field => {
+      if (updateData[field] !== undefined && Array.isArray(updateData[field])) {
+        updateData[field] = updateData[field].map(item => {
+          const cleaned = { ...item };
+          // Remove frontend 'id' duplicate as it conflicts with Mongoose's internal _id handling
+          if (cleaned.id) delete cleaned.id;
+          // Handle date field: only set if valid, otherwise remove it
+          if (cleaned.date !== undefined) {
+            if (cleaned.date && typeof cleaned.date === 'string' && cleaned.date.trim() !== '') {
+              cleaned.date = new Date(cleaned.date);
+            } else {
+              delete cleaned.date;
+            }
+          }
+          // Handle timestamp field for timeline
+          if (cleaned.timestamp !== undefined) {
+            if (cleaned.timestamp && typeof cleaned.timestamp === 'string' && cleaned.timestamp.trim() !== '') {
+              cleaned.timestamp = new Date(cleaned.timestamp);
+            } else {
+              delete cleaned.timestamp;
+            }
+          }
+          return cleaned;
+        });
+      }
+    });
+
+    // Apply all update fields to the document
+    for (const [key, value] of Object.entries(updateData)) {
+      delivery.set(key, value);
+    }
+
+    // Mark subdocument arrays as modified so Mongoose tracks changes
+    arrayFields.forEach(field => {
+      if (updateData[field] !== undefined) {
+        delivery.markModified(field);
+      }
+    });
+
+    const updatedDelivery = await delivery.save();
     res.json(updatedDelivery);
   } catch (error) {
     if (error.name === 'ValidationError') {

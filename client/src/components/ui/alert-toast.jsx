@@ -45,7 +45,7 @@ const alertToastVariants = cva(
       {
         variant: "error",
         styleVariant: "default",
-        className: "text-destructive-foreground border-red-200 dark:border-red-700",
+        className: "text-black border-red-200 dark:border-red-700",
       },
       {
         variant: "success",

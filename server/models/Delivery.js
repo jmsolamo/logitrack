@@ -19,6 +19,7 @@ const deliverySchema = new mongoose.Schema({
     type: Date
   },
   purpose: [{ type: String, trim: true }],
+  activity: [{ type: String, trim: true }],
   vehicleEquipment: {
     type: String,
     trim: true
@@ -62,33 +63,40 @@ const deliverySchema = new mongoose.Schema({
     liters: { type: Number, default: 0 },
     amount: { type: Number, default: 0 },
     gasStation: { type: String, trim: true },
-    invoiceNo: { type: String, trim: true }
+    invoiceNo: { type: String, trim: true },
+    date: { type: Date }
   }],
 
   // Expenses (arrays of amounts and details)
   tollFee: [{
     details: { type: String, trim: true },
-    amt: { type: Number, default: 0 }
+    amt: { type: Number, default: 0 },
+    date: { type: Date }
   }],
   pierExpenses: [{
     details: { type: String, trim: true },
-    amt: { type: Number, default: 0 }
+    amt: { type: Number, default: 0 },
+    date: { type: Date }
   }],
   repairAndMaintenance: [{
     details: { type: String, trim: true },
-    amt: { type: Number, default: 0 }
+    amt: { type: Number, default: 0 },
+    date: { type: Date }
   }],
   mealExpenses: [{
     details: { type: String, trim: true },
-    amt: { type: Number, default: 0 }
+    amt: { type: Number, default: 0 },
+    date: { type: Date }
   }],
   loadExpenses: [{
     details: { type: String, trim: true },
-    amt: { type: Number, default: 0 }
+    amt: { type: Number, default: 0 },
+    date: { type: Date }
   }],
   contingency: [{
     details: { type: String, trim: true },
-    amt: { type: Number, default: 0 }
+    amt: { type: Number, default: 0 },
+    date: { type: Date }
   }],
 
   // Summary

@@ -72,8 +72,13 @@ function LoginPage() {
       const idToken = await userCredential.user.getIdToken();
       localStorage.setItem('token', idToken);
 
+      // Check user role and navigate accordingly
+      const { data: profile } = await axios.get('/api/auth/profile', {
+        headers: { Authorization: `Bearer ${idToken}` }
+      });
+
       toast.success('Login successful');
-      navigate('/admin/dashboard');
+      navigate(profile.role === 'admin' ? '/admin/dashboard' : '/user/dashboard');
     } catch (error) {
       let errorMessage = 'Login failed';
       if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
@@ -124,7 +129,11 @@ function LoginPage() {
       }
 
       toast.success('Login successful');
-      navigate('/admin/dashboard');
+      // Check user role and navigate accordingly
+      const { data: profile } = await axios.get('/api/auth/profile', {
+        headers: { Authorization: `Bearer ${idToken}` }
+      });
+      navigate(profile.role === 'admin' ? '/admin/dashboard' : '/user/dashboard');
     } catch (error) {
       localStorage.removeItem('token');
       toast.error(error.message || 'Google sign-in failed');
@@ -176,7 +185,12 @@ function LoginPage() {
       setHasPasswordBeenBlurred(false);
       setHasConfirmPasswordBeenBlurred(false);
       toast.success('Password set successfully! Logging in...');
-      navigate('/admin/dashboard');
+
+      // Check user role and navigate accordingly
+      const { data: profile } = await axios.get('/api/auth/profile', {
+        headers: { Authorization: `Bearer ${freshToken}` }
+      });
+      navigate(profile.role === 'admin' ? '/admin/dashboard' : '/user/dashboard');
 
     } catch (error) {
       toast.error(error.message || 'Failed to set password');

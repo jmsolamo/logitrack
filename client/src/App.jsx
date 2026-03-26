@@ -5,6 +5,10 @@ import RegistrationPage from './Pages/registrationPage';
 import AdminRegistration from './Pages/admin/adminRegistration';
 import AdminDashboard from './Pages/admin/overview/adminDashboard';
 import AdminLayout from './components/admin/AdminLayout';
+import UserLayout from './components/user/UserLayout';
+import UsersDashboard from './Pages/users/users-dashboard';
+import UserCalendar from './Pages/users/user-calendar';
+import UserDeliveries from './Pages/users/user-deliveries';
 import DeliveryPlan from './Pages/admin/overview/deliver-plan';
 import Calendar from './Pages/admin/overview/calendar';
 import ActualExpenses from './Pages/admin/overview/admin-delivery-expenses/actual-expenses';
@@ -33,7 +37,7 @@ function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegistrationPage />} />
           <Route path="/admin/register" element={<AdminRegistration />} />
-          
+
           {/* Admin routes with sidebar layout */}
           <Route path="/admin" element={<AdminLayout />}>
             <Route path="dashboard" element={<AdminDashboard />} />
@@ -42,7 +46,7 @@ function App() {
             <Route path="request" element={<RequestPage />} />
             <Route path="purchases" element={<PurchasesPage />} />
             <Route path="reports" element={<ReportsPage />} />
-            
+
             <Route path="trips" element={<ActiveTripsPage />} />
             <Route path="destinations" element={<DestinationPage />} />
             <Route path="delivery-charge" element={<DeliveryChargePage />} />
@@ -56,6 +60,13 @@ function App() {
             <Route path="delivery-expenses/diesel" element={<DieselExpenses />} />
             <Route path="delivery-expenses/breakdown" element={<DriverExpenseBreakdown />} />
             <Route path="delivery-expenses/job-orders" element={<JobOrders />} />
+          </Route>
+
+          {/* User routes with sidebar layout */}
+          <Route path="/user" element={<UserLayout />}>
+            <Route path="dashboard" element={<UsersDashboard />} />
+            <Route path="calendar" element={<UserCalendar />} />
+            <Route path="deliveries" element={<UserDeliveries />} />
           </Route>
         </Routes>
       </AlertToastProvider>
