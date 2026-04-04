@@ -1,11 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AlertToastProvider } from './components/ui/alert-toast-provider';
 import LoginPage from './Pages/loginPage';
-<<<<<<< HEAD
-=======
-import RegistrationPage from './Pages/registrationPage';
-import AdminRegistration from './Pages/admin/adminRegistration';
->>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
 import AdminDashboard from './Pages/admin/overview/adminDashboard';
 import AdminLayout from './components/admin/AdminLayout';
 import UserLayout from './components/user/UserLayout';
@@ -38,11 +33,6 @@ function App() {
         <Routes>
           <Route path="/" element={<Navigate to="/login" />} />
           <Route path="/login" element={<LoginPage />} />
-<<<<<<< HEAD
-=======
-          <Route path="/register" element={<RegistrationPage />} />
-          <Route path="/admin/register" element={<AdminRegistration />} />
->>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
 
           {/* Admin routes with sidebar layout */}
           <Route path="/admin" element={<AdminLayout />}>

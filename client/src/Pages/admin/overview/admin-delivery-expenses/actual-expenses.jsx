@@ -148,11 +148,7 @@ export default function ActualExpenses() {
 
     // Process arrays to ensure dates are properly formatted for input fields
     const processArray = (arr) => {
-<<<<<<< HEAD
       if (!arr || !Array.isArray(arr) || arr.length === 0) return [];
-=======
-      if (!arr || !Array.isArray(arr)) return [];
->>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
       return arr.map(item => ({
         ...item,
         date: item.date ? formatDateForInput(item.date) : ''
@@ -160,7 +156,6 @@ export default function ActualExpenses() {
     };
 
     setFormData({
-<<<<<<< HEAD
       fuel: processArray(latestDelivery.fuel).length > 0 ? processArray(latestDelivery.fuel) : [{ amount: 0, liters: 0, gasStation: '', invoiceNo: '', date: '' }],
       tollFee: processArray(latestDelivery.tollFee).length > 0 ? processArray(latestDelivery.tollFee) : [{ details: '', amt: 0, date: '' }],
       pierExpenses: processArray(latestDelivery.pierExpenses).length > 0 ? processArray(latestDelivery.pierExpenses) : [{ details: '', amt: 0, date: '' }],
@@ -168,15 +163,6 @@ export default function ActualExpenses() {
       mealExpenses: processArray(latestDelivery.mealExpenses).length > 0 ? processArray(latestDelivery.mealExpenses) : [{ details: '', amt: 0, date: '' }],
       loadExpenses: processArray(latestDelivery.loadExpenses).length > 0 ? processArray(latestDelivery.loadExpenses) : [{ details: '', amt: 0, date: '' }],
       contingency: processArray(latestDelivery.contingency).length > 0 ? processArray(latestDelivery.contingency) : [{ details: '', amt: 0, date: '' }]
-=======
-      fuel: processArray(latestDelivery.fuel),
-      tollFee: processArray(latestDelivery.tollFee),
-      pierExpenses: processArray(latestDelivery.pierExpenses),
-      repairAndMaintenance: processArray(latestDelivery.repairAndMaintenance),
-      mealExpenses: processArray(latestDelivery.mealExpenses),
-      loadExpenses: processArray(latestDelivery.loadExpenses),
-      contingency: processArray(latestDelivery.contingency)
->>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
     });
     setIsEditingDetails(true);
     setDetailsModal({ isOpen: true, delivery: latestDelivery });
@@ -384,14 +370,10 @@ export default function ActualExpenses() {
   const formatDate = (dateStr) => {
     if (!dateStr) return '—';
     const d = new Date(dateStr);
-<<<<<<< HEAD
     const month = String(d.getMonth() + 1).padStart(2, '0');
     const day = String(d.getDate()).padStart(2, '0');
     const year = d.getFullYear();
     return `${month}/${day}/${year}`;
-=======
-    return d.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
->>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
   };
 
   const formatMonthLabel = (yyyymm) => {
@@ -816,11 +798,7 @@ export default function ActualExpenses() {
         {/* Details / Edit Modal */}
         {detailsModal.isOpen && detailsModal.delivery && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background/60 backdrop-blur-[2px] p-4 animate-in fade-in duration-300 print:hidden">
-<<<<<<< HEAD
             <div className="w-full max-w-[1200px] max-h-[90vh] flex flex-col rounded-xl border border-border bg-card shadow-2xl animate-in fade-in zoom-in-95 duration-300">
-=======
-            <div className="w-full max-w-[700px] max-h-[90vh] flex flex-col rounded-xl border border-border bg-card shadow-2xl animate-in fade-in zoom-in-95 duration-300">
->>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
 
               {/* Sticky Header */}
               <div className="sticky top-0 z-10 bg-card border-b border-border p-5 pb-3.5 rounded-t-xl shrink-0">
@@ -926,7 +904,6 @@ export default function ActualExpenses() {
               {/* Content Body */}
               <div className="flex-1 overflow-y-auto p-5 relative">
                 {isEditingDetails ? (
-<<<<<<< HEAD
                   <form id="expense-edit-form" onSubmit={handleEditSubmit} className="space-y-3">
                     {/* Fuel Editing */}
                     <fieldset className="rounded-lg border border-border bg-card px-3 pb-3 pt-2 shadow-sm space-y-2 min-w-0">
@@ -953,26 +930,6 @@ export default function ActualExpenses() {
                         </div>
                       ))}
                     </fieldset>
-=======
-                  <form id="expense-edit-form" onSubmit={handleEditSubmit} className="space-y-6">
-                    {/* Fuel Editing */}
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Fuel Expenses</label>
-                        <Button type="button" variant="outline" size="sm" onClick={() => addExpenseItem('fuel', { amount: 0, liters: 0, gasStation: '', invoiceNo: '', date: '' })} className="h-6 text-[9px] px-2 uppercase my-0 py-0"><Plus className="h-3 w-3 mr-1" />Add</Button>
-                      </div>
-                      {formData.fuel.map((f, idx) => (
-                        <div key={idx} className="flex flex-wrap items-center gap-2 border border-border/50 bg-muted/20 p-2 rounded-lg">
-                          <div className="w-[100px] space-y-1"><Input type="date" value={f.date || ''} onChange={(e) => handleExpenseChange('fuel', idx, 'date', e.target.value)} className="h-7 text-[10px] bg-background px-1" /></div>
-                          <div className="flex-1 min-w-[100px] space-y-1"><Input placeholder="Gas Station" value={f.gasStation || ''} onChange={(e) => handleExpenseChange('fuel', idx, 'gasStation', e.target.value)} className="h-7 text-[10px] bg-background" /></div>
-                          <div className="w-[70px] space-y-1"><Input type="number" placeholder="Liters" value={f.liters || ''} onChange={(e) => handleExpenseChange('fuel', idx, 'liters', e.target.value)} className="h-7 text-[10px] bg-background px-1" /></div>
-                          <div className="w-[80px] space-y-1"><Input type="number" placeholder="Amount (₱)" value={f.amount || ''} onChange={(e) => handleExpenseChange('fuel', idx, 'amount', e.target.value)} className="h-7 text-[10px] bg-background px-1" /></div>
-                          <div className="flex-1 min-w-[90px] space-y-1"><Input placeholder="Invoice No." value={f.invoiceNo || ''} onChange={(e) => handleExpenseChange('fuel', idx, 'invoiceNo', e.target.value)} className="h-7 text-[10px] bg-background" /></div>
-                          <Button type="button" variant="ghost" size="sm" onClick={() => removeExpenseItem('fuel', idx)} className="h-7 w-7 p-0 shrink-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"><Minus className="h-3 w-3" /></Button>
-                        </div>
-                      ))}
-                    </div>
->>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
 
                     {/* Component Details */}
                     {[
@@ -983,7 +940,6 @@ export default function ActualExpenses() {
                       { key: 'loadExpenses', label: 'Load Expenses' },
                       { key: 'contingency', label: 'Contingency' }
                     ].map(cat => (
-<<<<<<< HEAD
                       <fieldset key={cat.key} className="rounded-lg border border-border bg-card px-3 pb-3 pt-2 shadow-sm space-y-2 min-w-0">
                         <legend className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground px-1 -ml-1 flex items-center gap-2">
                           {cat.label}
@@ -1006,33 +962,10 @@ export default function ActualExpenses() {
                           </div>
                         ))}
                       </fieldset>
-=======
-                      <div key={cat.key} className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{cat.label}</label>
-                          <Button type="button" variant="outline" size="sm" onClick={() => addExpenseItem(cat.key, { details: '', amt: 0, date: '' })} className="h-6 text-[9px] px-2 uppercase my-0 py-0"><Plus className="h-3 w-3 mr-1" />Add</Button>
-                        </div>
-                        {formData[cat.key].map((item, idx) => (
-                          <div key={idx} className="flex flex-wrap items-center gap-2 border border-border/50 bg-muted/20 p-2 rounded-lg">
-                            <div className="w-[100px] space-y-1">
-                              <Input type="date" value={item.date || ''} onChange={(e) => handleExpenseChange(cat.key, idx, 'date', e.target.value)} className="h-7 text-[10px] bg-background px-1" />
-                            </div>
-                            <div className="flex-1 min-w-[180px] space-y-1">
-                              <Input placeholder="Description details..." value={item.details || ''} onChange={(e) => handleExpenseChange(cat.key, idx, 'details', e.target.value)} className="h-7 text-[10px] bg-background" />
-                            </div>
-                            <div className="w-[90px] space-y-1">
-                              <Input type="number" placeholder="Amount (₱)" value={item.amt || ''} onChange={(e) => handleExpenseChange(cat.key, idx, 'amt', e.target.value)} className="h-7 text-[10px] bg-background px-1" />
-                            </div>
-                            <Button type="button" variant="ghost" size="sm" onClick={() => removeExpenseItem(cat.key, idx)} className="h-7 w-7 p-0 shrink-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"><Minus className="h-3 w-3" /></Button>
-                          </div>
-                        ))}
-                      </div>
->>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
                     ))}
                   </form>
                 ) : (
                   <div className="space-y-3">
-<<<<<<< HEAD
                     {/* Fuel Read Mode */}
                     <fieldset className="rounded-lg border border-border bg-card px-3 pb-3 pt-2 shadow-sm space-y-2 min-w-0">
                       <legend className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground px-1 -ml-1 flex items-center gap-2">
@@ -1078,76 +1011,6 @@ export default function ActualExpenses() {
                           ))
                         )}
                       </fieldset>
-=======
-                    {/* Delivery Charge Card */}
-                    <div className="p-4 rounded-lg bg-blue-500/5 border border-blue-500/20">
-                      <p className="text-[9px] text-blue-600/70 uppercase tracking-widest mb-1.5 font-bold">Delivery Charge</p>
-                      <p className="text-[14px] font-bold text-blue-600">
-                        {(() => {
-                          const breakdown = getDeliveryChargeBreakdown(detailsModal.delivery);
-                          if (breakdown.length <= 1) {
-                            return `₱ ${getResolvedDeliveryCharge(detailsModal.delivery).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
-                          }
-                          return breakdown.map((b, i) => (
-                            <span key={i}>
-                              ₱ {b.charge.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                              {i < breakdown.length - 1 ? ' / ' : ''}
-                            </span>
-                          ));
-                        })()}
-                      </p>
-                    </div>
-
-                    {/* Total Expenses Card */}
-                    <div className="p-4 rounded-lg bg-orange-500/5 border border-orange-500/20">
-                      <p className="text-[9px] text-orange-600/70 uppercase tracking-widest mb-1.5 font-bold">Total Expenses</p>
-                      <p className="text-[14px] font-bold text-orange-600">
-                        ₱ {Number(detailsModal.delivery.totalExpenses || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                      </p>
-                    </div>
-
-                    {/* Expense Categories */}
-                    {[
-                      { label: 'Fuel Expenses', arr: detailsModal.delivery.fuel, isFuel: true, color: 'red' },
-                      { label: 'Toll Fee', arr: detailsModal.delivery.tollFee, color: 'yellow' },
-                      { label: 'Pier Expenses', arr: detailsModal.delivery.pierExpenses, color: 'purple' },
-                      { label: 'Repair & Maintenance', arr: detailsModal.delivery.repairAndMaintenance, color: 'pink' },
-                      { label: 'Meals Expenses', arr: detailsModal.delivery.mealExpenses, color: 'green' },
-                      { label: 'Load Expenses', arr: detailsModal.delivery.loadExpenses, color: 'cyan' },
-                      { label: 'Contingency', arr: detailsModal.delivery.contingency, color: 'amber' }
-                    ].map(cat => (
-                      <div key={cat.label} className="p-3 rounded-lg bg-card border border-border">
-                        <div className="flex items-center justify-between mb-2">
-                          <p className="text-[9px] text-muted-foreground uppercase tracking-widest font-bold">{cat.label}</p>
-                          <span className="text-[11px] font-bold text-foreground">₱ {Number(sumField(cat.arr, cat.isFuel ? 'amount' : 'amt')).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                        </div>
-                        {!cat.arr || cat.arr.length === 0 ? (
-                          <p className="text-[10px] text-muted-foreground italic tracking-tight py-1">No records.</p>
-                        ) : (
-                          <div className="space-y-1.5">
-                            {cat.arr.map((item, idx) => (
-                              <div key={idx} className="flex justify-between items-start text-[10px] bg-muted/20 p-2.5 rounded border border-border/30">
-                                <div className="flex flex-col gap-1 max-w-[70%] text-foreground">
-                                  {cat.isFuel ? (
-                                    <>
-                                      <span className="font-bold uppercase truncate">{item.gasStation || 'N/A Station'}</span>
-                                      <span className="text-muted-foreground tracking-tight text-[9px]">Invoice: {item.invoiceNo || '—'}  |  {item.liters} Liters</span>
-                                      {item.date && <span className="text-muted-foreground tracking-tight flex items-center gap-1.5 text-[9px]"><Calendar className="h-3 w-3" /> {formatDate(item.date)}</span>}
-                                    </>
-                                  ) : (
-                                    <>
-                                      <span className="tracking-tight font-medium break-words leading-tight uppercase">{item.details || 'NO DETAILS PROVIDED'}</span>
-                                      {item.date && <span className="text-muted-foreground tracking-tight flex items-center gap-1.5 mt-0.5 text-[9px]"><Calendar className="h-3 w-3" /> {formatDate(item.date)}</span>}
-                                    </>
-                                  )}
-                                </div>
-                                <span className="font-bold text-foreground self-end shrink-0">₱ {Number(cat.isFuel ? item.amount : item.amt).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
->>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
                     ))}
                   </div>
                 )}

@@ -12,14 +12,11 @@ const vehicleSchema = new mongoose.Schema({
     type: String,
     required: true,
     trim: true
-<<<<<<< HEAD
   },
   status: {
     type: String,
     enum: ['Available', 'Booked', 'Maintenance'],
     default: 'Available'
-=======
->>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
   }
 }, {
   timestamps: true

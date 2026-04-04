@@ -112,19 +112,11 @@ function UsersDashboard() {
       <div className="flex flex-col gap-1">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">
-<<<<<<< HEAD
             {(user?.username || 'U').charAt(0).toUpperCase()}
           </div>
           <div>
             <h1 className="text-lg font-bold tracking-tight text-foreground md:text-xl">
               Welcome back, {user?.username || 'User'}!
-=======
-            {(user?.firstName || 'U').charAt(0).toUpperCase()}
-          </div>
-          <div>
-            <h1 className="text-lg font-bold tracking-tight text-foreground md:text-xl">
-              Welcome back, {user?.firstName || 'User'}!
->>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
             </h1>
             <p className="text-xs text-muted-foreground">
               Here's an overview of the delivery activity.
