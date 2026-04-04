@@ -71,6 +71,7 @@ const generateRequestReferenceNo = async () => {
   return `${pattern}${String(seq).padStart(3, '0')}`;
 };
 
+<<<<<<< HEAD
 // @route   GET /api/delivery-requests/schedules
 // @desc    Get all active vehicle schedules to calculate frontend vehicle availability
 router.get('/schedules', async (req, res) => {
@@ -86,6 +87,8 @@ router.get('/schedules', async (req, res) => {
   }
 });
 
+=======
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
 // @route   GET /api/delivery-requests/pending-count
 // @desc    Get count of pending delivery requests (for admin badge)
 router.get('/pending-count', async (req, res) => {
@@ -188,6 +191,7 @@ router.put('/:id/approve', async (req, res) => {
       return res.status(400).json({ message: 'Only pending requests can be approved' });
     }
 
+<<<<<<< HEAD
     // Check if vehicle is being changed
     const newVehicle = req.body.vehicleEquipment;
     const originalVehicle = request.vehicleEquipment;
@@ -325,6 +329,18 @@ router.put('/:id/approve', async (req, res) => {
     }
 
     // Create the delivery from the request data with the final vehicle
+=======
+    // Generate a reference number for the new delivery
+    const referenceNo = await generateReferenceNo(request.deliveryType);
+
+    // Calculate delivery charge
+    let finalDeliveryCharge = 0;
+    if (request.vehicleEquipment && request.destination) {
+      finalDeliveryCharge = await calculateDeliveryCharge(request.vehicleEquipment, request.destination);
+    }
+
+    // Create the delivery from the request data
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
     const newDelivery = new Delivery({
       referenceNo,
       deliveryType: request.deliveryType,
@@ -332,10 +348,20 @@ router.put('/:id/approve', async (req, res) => {
       dateTo: request.dateTo,
       purpose: request.purpose,
       activity: request.activity,
+<<<<<<< HEAD
       vehicleEquipment: finalVehicle,
       destination: request.destination,
       jobOrderNo: request.jobOrderNo,
       customerSupplier: request.customerSupplier,
+=======
+      vehicleEquipment: request.vehicleEquipment,
+      destination: request.destination,
+      driver: request.driver,
+      helper: request.helper,
+      jobOrderNo: request.jobOrderNo,
+      customerSupplier: request.customerSupplier,
+      totalBudget: request.totalBudget,
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
       requestedBy: request.requestedBy,
       notes: request.notes,
       deliveryCharge: finalDeliveryCharge,
@@ -344,6 +370,7 @@ router.put('/:id/approve', async (req, res) => {
 
     const savedDelivery = await newDelivery.save();
 
+<<<<<<< HEAD
     // Update the request with vehicle change info
     request.referenceNo = referenceNo;
     request.requestStatus = vehicleChanged ? 'Approved with Changes' : 'Approved';
@@ -368,6 +395,16 @@ router.put('/:id/approve', async (req, res) => {
         ? `Request approved with vehicle change from ${originalVehicle} to ${finalVehicle}` 
         : 'Request approved successfully'
     });
+=======
+    // Update the request status and sync the formal reference number
+    request.referenceNo = referenceNo; // Update to formal tracking number
+    request.requestStatus = 'Approved';
+    request.reviewedBy = req.body.reviewedBy || '';
+    request.reviewedAt = new Date();
+    await request.save();
+
+    res.json({ request, delivery: savedDelivery });
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
   } catch (error) {
     console.error('Error approving delivery request:', error);
     res.status(500).json({ message: 'Server error approving request' });

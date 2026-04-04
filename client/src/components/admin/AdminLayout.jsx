@@ -131,11 +131,21 @@ function AdminLayout() {
               title="Profile"
             >
               <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-[10px] font-semibold text-primary-foreground">
+<<<<<<< HEAD
                 {(user?.username || 'Admin').charAt(0).toUpperCase()}
               </div>
               <div className="hidden sm:flex flex-col items-start text-left">
                 <span className="text-[12px] font-medium leading-none text-foreground">
                   {user?.username || 'Admin User'}
+=======
+                {(user?.firstName || user?.name || user?.email || 'A').charAt(0).toUpperCase()}
+              </div>
+              <div className="hidden sm:flex flex-col items-start text-left">
+                <span className="text-[12px] font-medium leading-none text-foreground">
+                  {user?.firstName && user?.lastName
+                    ? `${user.firstName} ${user.lastName}`
+                    : user?.name || user?.email?.split('@')[0] || 'Admin User'}
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
                 </span>
                 <span className="text-[10px] text-muted-foreground leading-none mt-1 capitalize">
                   {user?.role === 'admin' ? 'Administrator' : user?.role || 'Admin'}

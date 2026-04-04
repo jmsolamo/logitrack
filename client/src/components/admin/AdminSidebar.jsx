@@ -1,5 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+<<<<<<< HEAD
+=======
+import { auth } from '../../config/firebase';
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
 import axios from 'axios';
 import {
   LayoutDashboard,
@@ -67,6 +71,10 @@ const navGroups = [
     label: 'Team',
     items: [
       { name: 'Members', icon: Users, path: '/admin/members' },
+<<<<<<< HEAD
+=======
+      { name: 'Approvals', icon: ShieldCheck, path: '/admin/approvals' },
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
     ],
   },
 ];
@@ -102,9 +110,19 @@ function AdminSidebar({ collapsed, onToggle, user, mobileOpen, onMobileClose }) 
     return () => document.removeEventListener('click', handleClickOutside);
   }, [activeMenu]);
 
+<<<<<<< HEAD
   const userName = user?.username || 'Admin User';
   const userSubtitle = user?.department || user?.role || 'Administration';
   const userInitial = userName.charAt(0).toUpperCase();
+=======
+  const userName = user?.firstName && user?.lastName
+    ? `${user.firstName} ${user.lastName}`
+    : user?.name || user?.email?.split('@')[0] || 'Admin User';
+  const userEmail = user?.email || 'admin@logitrack.com';
+  const userInitial = user?.firstName
+    ? user.firstName.charAt(0).toUpperCase()
+    : userName.charAt(0).toUpperCase();
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
 
   const toggleExpand = (itemName) => {
     setExpandedItems((prev) => ({
@@ -122,9 +140,20 @@ function AdminSidebar({ collapsed, onToggle, user, mobileOpen, onMobileClose }) 
     return false;
   };
 
+<<<<<<< HEAD
   const handleLogout = () => {
     localStorage.removeItem('token');
     navigate('/login');
+=======
+  const handleLogout = async () => {
+    try {
+      await auth.signOut();
+      localStorage.removeItem('token');
+      navigate('/login');
+    } catch (error) {
+      console.error('Logout failed', error);
+    }
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
   };
 
   const handleNavClick = (path) => {
@@ -146,7 +175,11 @@ function AdminSidebar({ collapsed, onToggle, user, mobileOpen, onMobileClose }) 
               onClick={onMobileClose}
             />
             {/* Sidebar panel */}
+<<<<<<< HEAD
             <aside className="absolute top-0 left-0 flex h-full w-[270px] flex-col border-r-2 bg-sidebar border-border shadow-xl">
+=======
+            <aside className="absolute top-0 left-0 flex h-full w-[270px] flex-col border-r bg-sidebar border-sidebar-border shadow-xl">
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
               <MobileSidebarContent
                 onMobileClose={onMobileClose}
                 navGroups={navGroups}
@@ -157,7 +190,11 @@ function AdminSidebar({ collapsed, onToggle, user, mobileOpen, onMobileClose }) 
                 handleNavClick={handleNavClick}
                 userInitial={userInitial}
                 userName={userName}
+<<<<<<< HEAD
                 userSubtitle={userSubtitle}
+=======
+                userEmail={userEmail}
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
                 userMenuOpen={userMenuOpen}
                 setUserMenuOpen={setUserMenuOpen}
                 handleLogout={handleLogout}
@@ -170,7 +207,11 @@ function AdminSidebar({ collapsed, onToggle, user, mobileOpen, onMobileClose }) 
         )}
 
         {/* Desktop collapsed sidebar */}
+<<<<<<< HEAD
         <aside className="fixed top-0 left-0 z-40 hidden md:flex h-screen w-[56px] flex-col border-r-2 bg-sidebar border-border">
+=======
+        <aside className="fixed top-0 left-0 z-40 hidden md:flex h-screen w-[56px] flex-col border-r bg-sidebar border-sidebar-border">
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
           {/* Collapsed toggle */}
           <div className="flex h-11 items-center justify-center border-b border-sidebar-border">
             <button
@@ -277,7 +318,11 @@ function AdminSidebar({ collapsed, onToggle, user, mobileOpen, onMobileClose }) 
             onClick={onMobileClose}
           />
           {/* Sidebar panel */}
+<<<<<<< HEAD
           <aside className="absolute top-0 left-0 flex h-full w-[270px] flex-col border-r-2 bg-sidebar border-border shadow-xl">
+=======
+          <aside className="absolute top-0 left-0 flex h-full w-[270px] flex-col border-r bg-sidebar border-sidebar-border shadow-xl">
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
             <MobileSidebarContent
               onMobileClose={onMobileClose}
               navGroups={navGroups}
@@ -288,7 +333,11 @@ function AdminSidebar({ collapsed, onToggle, user, mobileOpen, onMobileClose }) 
               handleNavClick={handleNavClick}
               userInitial={userInitial}
               userName={userName}
+<<<<<<< HEAD
               userSubtitle={userSubtitle}
+=======
+              userEmail={userEmail}
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
               userMenuOpen={userMenuOpen}
               setUserMenuOpen={setUserMenuOpen}
               handleLogout={handleLogout}
@@ -300,7 +349,11 @@ function AdminSidebar({ collapsed, onToggle, user, mobileOpen, onMobileClose }) 
       )}
 
       {/* Desktop expanded sidebar */}
+<<<<<<< HEAD
       <aside className="fixed top-0 left-0 z-40 hidden md:flex h-screen w-[235px] flex-col border-r-2 bg-sidebar border-border">
+=======
+      <aside className="fixed top-0 left-0 z-40 hidden md:flex h-screen w-[235px] flex-col border-r bg-sidebar border-sidebar-border">
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
         {/* Header / Branding / Toggle */}
         <div className="flex h-11 items-center border-b border-sidebar-border px-3">
           <div className="flex items-center gap-2 flex-1 overflow-hidden">
@@ -410,7 +463,11 @@ function AdminSidebar({ collapsed, onToggle, user, mobileOpen, onMobileClose }) 
                 {userName}
               </span>
               <span className="text-[10px] text-sidebar-muted-foreground leading-tight truncate">
+<<<<<<< HEAD
                 {userSubtitle}
+=======
+                {userEmail}
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
               </span>
             </div>
             <ChevronsUpDown className="h-3 w-3 text-sidebar-muted-foreground shrink-0" />
@@ -459,7 +516,11 @@ function MobileSidebarContent({
   handleNavClick,
   userInitial,
   userName,
+<<<<<<< HEAD
   userSubtitle,
+=======
+  userEmail,
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
   userMenuOpen,
   setUserMenuOpen,
   handleLogout,
@@ -577,7 +638,11 @@ function MobileSidebarContent({
               {userName}
             </span>
             <span className="text-[10px] text-sidebar-muted-foreground leading-tight truncate">
+<<<<<<< HEAD
               {userSubtitle}
+=======
+              {userEmail}
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
             </span>
           </div>
           <ChevronsUpDown className="h-3 w-3 text-sidebar-muted-foreground shrink-0" />

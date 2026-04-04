@@ -27,7 +27,18 @@ export default function DriverExpenseBreakdown() {
   const { user } = useOutletContext() || {};
   const getInitials = (u) => {
     if (!u) return '';
+<<<<<<< HEAD
     if (u.username) return u.username.charAt(0).toUpperCase();
+=======
+    if (u.firstName || u.lastName) {
+      const parts = [];
+      if (u.firstName) parts.push(...u.firstName.split(' '));
+      if (u.lastName) parts.push(...u.lastName.split(' '));
+      return parts.filter(Boolean).map(n => n.charAt(0)).join('').toUpperCase();
+    }
+    if (u.name) return u.name.split(' ').filter(Boolean).map(n => n.charAt(0)).join('').toUpperCase();
+    if (u.email) return u.email.split('@')[0].charAt(0).toUpperCase();
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
     return '';
   };
   const preparedByInitials = getInitials(user);
@@ -571,6 +582,7 @@ export default function DriverExpenseBreakdown() {
           </thead>
           <tbody>
             {printItems.map(row => {
+<<<<<<< HEAD
               // Build line items: each has a label (particular), date, and which column it belongs to
               const lineItems = [];
               (row.fuel || []).forEach(f => { if (f.gasStation || f.amount) lineItems.push({ particular: f.gasStation || '', date: f.date, col: 'diesel', amt: f.amount || 0 }); });
@@ -580,6 +592,17 @@ export default function DriverExpenseBreakdown() {
               (row.loadExpenses || []).forEach(l => { if (l.details || l.amt) lineItems.push({ particular: l.details || '', date: l.date, col: 'load', amt: l.amt || 0 }); });
               (row.mealExpenses || []).forEach(m => { if (m.details || m.amt) lineItems.push({ particular: m.details || '', date: m.date, col: 'meals', amt: m.amt || 0 }); });
               (row.contingency || []).forEach(c => { if (c.details || c.amt) lineItems.push({ particular: c.details || '', date: c.date, col: 'contingency', amt: c.amt || 0 }); });
+=======
+              // Build line items: each has a label (particular) and which column it belongs to
+              const lineItems = [];
+              (row.fuel || []).forEach(f => { if (f.gasStation || f.amount) lineItems.push({ particular: f.gasStation || '', col: 'diesel', amt: f.amount || 0 }); });
+              (row.tollFee || []).forEach(t => { if (t.details || t.amt) lineItems.push({ particular: t.details || '', col: 'toll', amt: t.amt || 0 }); });
+              (row.pierExpenses || []).forEach(p => { if (p.details || p.amt) lineItems.push({ particular: p.details || '', col: 'pier', amt: p.amt || 0 }); });
+              (row.repairAndMaintenance || []).forEach(r => { if (r.details || r.amt) lineItems.push({ particular: r.details || '', col: 'repair', amt: r.amt || 0 }); });
+              (row.loadExpenses || []).forEach(l => { if (l.details || l.amt) lineItems.push({ particular: l.details || '', col: 'load', amt: l.amt || 0 }); });
+              (row.mealExpenses || []).forEach(m => { if (m.details || m.amt) lineItems.push({ particular: m.details || '', col: 'meals', amt: m.amt || 0 }); });
+              (row.contingency || []).forEach(c => { if (c.details || c.amt) lineItems.push({ particular: c.details || '', col: 'contingency', amt: c.amt || 0 }); });
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
 
               const rowCount = lineItems.length || 1;
               const cellStyle = { textAlign: 'right', verticalAlign: 'top', padding: '0.08cm 0.15cm' };
@@ -599,9 +622,17 @@ export default function DriverExpenseBreakdown() {
 
               return lineItems.map((li, idx) => (
                 <tr key={`p-${row._id}-${idx}`}>
+<<<<<<< HEAD
                   <td style={{ textAlign: 'center', whiteSpace: 'nowrap', verticalAlign: 'top' }}>{li.date ? formatDate(li.date) : formatDate(row.dateFrom)}</td>
                   {idx === 0 && (
                     <td rowSpan={rowCount} style={{ textTransform: 'uppercase', whiteSpace: 'nowrap', verticalAlign: 'top', borderBottom: '1px solid #000' }}>{row.vehicleEquipment || '\u2014'}</td>
+=======
+                  {idx === 0 && (
+                    <>
+                      <td rowSpan={rowCount} style={{ textAlign: 'center', whiteSpace: 'nowrap', verticalAlign: 'top', borderBottom: '1px solid #000' }}>{formatDate(row.dateFrom)}</td>
+                      <td rowSpan={rowCount} style={{ textTransform: 'uppercase', whiteSpace: 'nowrap', verticalAlign: 'top', borderBottom: '1px solid #000' }}>{row.vehicleEquipment || '\u2014'}</td>
+                    </>
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
                   )}
                   <td style={{ textTransform: 'uppercase', verticalAlign: 'top' }}>{li.particular}</td>
                   <td style={cellStyle}>{li.col === 'diesel' ? fmt(li.amt) : ''}</td>
@@ -618,7 +649,11 @@ export default function DriverExpenseBreakdown() {
               ));
             })}
             {printItems.length === 0 && (
+<<<<<<< HEAD
               <tr><td colSpan={11} style={{ textAlign: 'center', padding: '0.5cm', fontStyle: 'italic' }}>No records</td></tr>
+=======
+              <tr><td colSpan={12} style={{ textAlign: 'center', padding: '0.5cm', fontStyle: 'italic' }}>No records</td></tr>
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
             )}
             <tr style={{ fontWeight: 'bold' }}>
               <td colSpan={2}></td>
@@ -649,7 +684,11 @@ export default function DriverExpenseBreakdown() {
         {/* SIGNATURES */}
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '9pt', fontWeight: 'bold', padding: '0 0.3cm' }}>
           <div style={{ flex: 1, marginRight: '0.5cm' }}>
+<<<<<<< HEAD
             <div>PREPARED BY: JRAZ</div>
+=======
+            <div>PREPARED BY: {preparedByInitials}</div>
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
           </div>
           <div style={{ flex: 1, marginRight: '0.5cm', textAlign: 'center' }}>
             <div>RECOMMENDED BY: ASF/EAD</div>

@@ -99,6 +99,7 @@ function DeliveryPlan() {
     isLoading: false
   });
 
+<<<<<<< HEAD
   // Expenses Modal State
   const [expensesModal, setExpensesModal] = useState({
     isOpen: false,
@@ -116,6 +117,8 @@ function DeliveryPlan() {
     contingency: []
   });
 
+=======
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
   const initialFormData = {
     deliveryType: '',
     dateFrom: '',
@@ -764,6 +767,7 @@ function DeliveryPlan() {
       await axios.put(`/api/deliveries/${delivery._id}`, payload);
 
       toast.success('Delivery timeline completed successfully');
+<<<<<<< HEAD
       closeStatusModal();
 
       // Open expenses modal with existing data or empty arrays
@@ -801,6 +805,12 @@ function DeliveryPlan() {
         delivery: delivery,
         isLoading: false
       });
+=======
+
+      const response = await axios.get('/api/deliveries');
+      setDeliveries(response.data);
+      closeStatusModal();
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
     } catch (error) {
       console.error('Error updating status:', error);
       toast.error(error.response?.data?.message || 'Failed to update status');
@@ -809,6 +819,7 @@ function DeliveryPlan() {
   };
   // ---------------------------
 
+<<<<<<< HEAD
   const handleExpenseChange = (category, index, field, value) => {
     setExpensesFormData(prev => {
       const arr = [...prev[category]];
@@ -893,6 +904,8 @@ function DeliveryPlan() {
     });
   };
 
+=======
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
   // Helper: join array values with slash
   const joinArray = (arr) => {
     if (!arr || !Array.isArray(arr)) return '—';
@@ -925,8 +938,12 @@ function DeliveryPlan() {
 
   // Helper: compute duration between two dates
   const computeDuration = (from, to) => {
+<<<<<<< HEAD
     if (!from) return '—';
     if (!to) return '1 day';
+=======
+    if (!from || !to) return '—';
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
     const msPerDay = 1000 * 60 * 60 * 24;
     const diffMs = new Date(to) - new Date(from);
     const days = Math.ceil(diffMs / msPerDay);
@@ -1657,6 +1674,7 @@ function DeliveryPlan() {
                       <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-foreground uppercase tracking-tight">{joinArray(item.activity)}</td>
                     )}
                     {visibleColumns.has('vehicleEquipment') && (
+<<<<<<< HEAD
                       <td className="whitespace-nowrap px-3 py-2 text-[10px] font-semibold text-foreground uppercase tracking-tight">
                         {(() => {
                           const plate = item.vehicleEquipment;
@@ -1665,6 +1683,9 @@ function DeliveryPlan() {
                           return v ? `${v.plateNumber} — ${v.model}` : plate;
                         })()}
                       </td>
+=======
+                      <td className="whitespace-nowrap px-3 py-2 text-[10px] font-semibold text-foreground uppercase tracking-tight">{item.vehicleEquipment || '—'}</td>
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
                     )}
                     {visibleColumns.has('destination') && (
                       <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-foreground uppercase tracking-tight">{joinArray(item.destination)}</td>
@@ -2269,6 +2290,7 @@ function DeliveryPlan() {
           </div>
         </div>
       )}
+<<<<<<< HEAD
 
       {/* Expenses Modal */}
       {expensesModal.isOpen && expensesModal.delivery && (
@@ -2378,6 +2400,8 @@ function DeliveryPlan() {
           </div>
         </div>
       )}
+=======
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
     </div>
   );
 }

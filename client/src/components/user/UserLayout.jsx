@@ -2,7 +2,11 @@ import { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation, Link } from 'react-router-dom';
 import axios from 'axios';
 import { Sun, Moon, LayoutDashboard, CalendarDays, Truck, LogOut } from 'lucide-react';
+<<<<<<< HEAD
 
+=======
+import { auth } from '../../config/firebase';
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
 import favicon from '../../assets/images/favicon.png';
 
 function UserLayout() {
@@ -62,9 +66,20 @@ function UserLayout() {
     checkUserRole();
   }, [navigate]);
 
+<<<<<<< HEAD
   const handleLogout = () => {
     localStorage.removeItem('token');
     navigate('/login');
+=======
+  const handleLogout = async () => {
+    try {
+      await auth.signOut();
+      localStorage.removeItem('token');
+      navigate('/login');
+    } catch (error) {
+      console.error('Logout failed', error);
+    }
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
   };
 
   if (loading) {
@@ -138,6 +153,7 @@ function UserLayout() {
 
           <div className="flex items-center gap-2.5 border-l border-border pl-3 sm:pl-4">
             <div className="flex h-7 w-7 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-full bg-primary text-[10px] sm:text-[12px] font-semibold text-primary-foreground shadow-sm">
+<<<<<<< HEAD
               {(user?.username || 'U').charAt(0).toUpperCase()}
             </div>
             <div className="hidden md:flex flex-col items-start pr-2">
@@ -146,6 +162,18 @@ function UserLayout() {
               </span>
               <span className="text-[9px] text-muted-foreground leading-none mt-1 uppercase tracking-widest">
                 {user?.department || 'User Account'}
+=======
+              {(user?.firstName || user?.name || user?.email || 'U').charAt(0).toUpperCase()}
+            </div>
+            <div className="hidden md:flex flex-col items-start pr-2">
+              <span className="text-[12px] font-bold leading-none text-foreground uppercase tracking-tight">
+                {user?.firstName && user?.lastName
+                  ? `${user.firstName} ${user.lastName}`
+                  : user?.name || user?.email?.split('@')[0] || 'User'}
+              </span>
+              <span className="text-[9px] text-muted-foreground leading-none mt-1 uppercase tracking-widest">
+                User Account
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
               </span>
             </div>
             
@@ -162,7 +190,11 @@ function UserLayout() {
 
       {/* Main Content Area */}
       <main className="flex-1 overflow-y-auto p-4 md:p-6 min-h-0 relative">
+<<<<<<< HEAD
         <div className="h-full w-full">
+=======
+        <div className="mx-auto max-w-[1400px] h-full">
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
           <Outlet context={{ user }} />
         </div>
       </main>

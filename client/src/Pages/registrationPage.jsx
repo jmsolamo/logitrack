@@ -8,7 +8,13 @@ import logo from '../assets/images/logo.png';
 function RegistrationPage() {
   const toast = useAppToast();
   const [formData, setFormData] = useState({
+<<<<<<< HEAD
     username: '',
+=======
+    firstName: '',
+    lastName: '',
+    initials: '',
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
     email: '',
     password: '',
     confirmPassword: ''
@@ -23,9 +29,15 @@ function RegistrationPage() {
 
   const handleChange = (e) => {
     let value = e.target.value;
+<<<<<<< HEAD
     // Prevent special characters in username
     if (e.target.name === 'username') {
       value = value.replace(/[^A-Za-z0-9_-]/g, '');
+=======
+    // Prevent numbers and special characters in firstName and lastName
+    if (e.target.name === 'firstName' || e.target.name === 'lastName') {
+      value = value.replace(/[^A-Za-z\s-]/g, '');
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
     }
     setFormData({ ...formData, [e.target.name]: value });
   };
@@ -75,7 +87,13 @@ function RegistrationPage() {
 
       // Save user to MongoDB
       await axios.post('/api/auth/register', {
+<<<<<<< HEAD
         username: formData.username,
+=======
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        initials: formData.initials,
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
         email: formData.email,
         role: 'user'
       }, {
@@ -88,7 +106,11 @@ function RegistrationPage() {
       await auth.signOut();
 
       toast.success('Registration successful! Please check your email to verify your account.');
+<<<<<<< HEAD
       setFormData({ username: '', email: '', password: '', confirmPassword: '' });
+=======
+      setFormData({ firstName: '', lastName: '', initials: '', email: '', password: '', confirmPassword: '' });
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
       setHasPasswordBeenBlurred(false);
       setHasConfirmPasswordBeenBlurred(false);
     } catch (error) {
@@ -130,7 +152,12 @@ function RegistrationPage() {
       const firstName = nameParts.join(' ');
 
       await axios.post('/api/auth/register', {
+<<<<<<< HEAD
         username: user.email.split('@')[0],
+=======
+        firstName: firstName || 'User',
+        lastName: lastName || '',
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
         email: user.email,
         role: 'user'
       }, {
@@ -162,6 +189,7 @@ function RegistrationPage() {
           <img src={logo} alt="Logo" className="h-10 sm:h-12 2xl:h-14 w-auto" />
         </div>
         <form onSubmit={handleSubmit} className="flex flex-col gap-2 sm:gap-3">
+<<<<<<< HEAD
           <input
             type="text"
             name="username"
@@ -172,6 +200,36 @@ function RegistrationPage() {
             required
           />
 
+=======
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+            <input
+              type="text"
+              name="firstName"
+              placeholder="First Name"
+              value={formData.firstName}
+              onChange={handleChange}
+              className="w-full px-3 py-2 text-sm bg-background border border-border rounded-md focus:outline-none focus:border-primary transition placeholder-muted-foreground text-foreground"
+              required
+            />
+            <input
+              type="text"
+              name="lastName"
+              placeholder="Last Name"
+              value={formData.lastName}
+              onChange={handleChange}
+              className="w-full px-3 py-2 text-sm bg-background border border-border rounded-md focus:outline-none focus:border-primary transition placeholder-muted-foreground text-foreground"
+              required
+            />
+          </div>
+          <input
+            type="text"
+            name="initials"
+            placeholder="Nickname"
+            value={formData.initials}
+            onChange={handleChange}
+            className="px-3 py-2 text-sm bg-background border border-border rounded-md focus:outline-none focus:border-primary transition placeholder-muted-foreground text-foreground"
+          />
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
           <input
             type="email"
             name="email"

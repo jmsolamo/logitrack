@@ -39,8 +39,12 @@ function UserDeliveries() {
 
   // Helper: compute duration between two dates
   const computeDuration = (from, to) => {
+<<<<<<< HEAD
     if (!from) return '—';
     if (!to) return '1 day';
+=======
+    if (!from || !to) return '—';
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
     const msPerDay = 1000 * 60 * 60 * 24;
     const diffMs = new Date(to) - new Date(from);
     const days = Math.ceil(diffMs / msPerDay);
@@ -54,7 +58,10 @@ function UserDeliveries() {
   const [vehicles, setVehicles] = useState([]);
   const [destinations, setDestinations] = useState([]);
   const [personnels, setPersonnels] = useState([]);
+<<<<<<< HEAD
   const [activeSchedules, setActiveSchedules] = useState([]);
+=======
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitLoading, setIsSubmitLoading] = useState(false);
 
@@ -73,8 +80,11 @@ function UserDeliveries() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [vehicleFilter, setVehicleFilter] = useState('all');
   const [monthFilter, setMonthFilter] = useState('all');
+<<<<<<< HEAD
   const [purposeFilter, setPurposeFilter] = useState('all');
   const [deliveryTypeFilter, setDeliveryTypeFilter] = useState('all');
+=======
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
 
   const initialFormData = {
     deliveryType: '',
@@ -84,9 +94,17 @@ function UserDeliveries() {
     activity: [''],
     vehicleEquipment: '',
     destination: [''],
+<<<<<<< HEAD
     jobOrderNo: [''],
     customerSupplier: [''],
     requestedBy: '',
+=======
+    driver: [''],
+    helper: [''],
+    jobOrderNo: [''],
+    customerSupplier: [''],
+    totalBudget: '',
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
   };
 
   const [formData, setFormData] = useState(initialFormData);
@@ -99,19 +117,30 @@ function UserDeliveries() {
 
   const fetchData = async () => {
     try {
+<<<<<<< HEAD
       const userId = user?._id || '';
       const [requestsRes, vehiclesRes, destinationsRes, personnelsRes, schedulesRes] = await Promise.all([
+=======
+      const userId = user?.firebaseUid || user?._id || '';
+      const [requestsRes, vehiclesRes, destinationsRes, personnelsRes] = await Promise.all([
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
         axios.get(`/api/delivery-requests/my-requests?userId=${userId}`),
         axios.get('/api/vehicles'),
         axios.get('/api/destinations'),
         axios.get('/api/personnels'),
+<<<<<<< HEAD
         axios.get('/api/delivery-requests/schedules'),
+=======
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
       ]);
       setRequests(requestsRes.data);
       setVehicles(vehiclesRes.data);
       setDestinations(destinationsRes.data);
       setPersonnels(personnelsRes.data);
+<<<<<<< HEAD
       setActiveSchedules(schedulesRes.data);
+=======
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
     } catch (error) {
       console.error('Error fetching data:', error);
       toast.error('Failed to load data');
@@ -122,10 +151,20 @@ function UserDeliveries() {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
+<<<<<<< HEAD
     setFormData((prev) => ({
       ...prev,
       [name]: value,
     }));
+=======
+    setFormData((prev) => {
+      const updated = { ...prev, [name]: value };
+      if (name === 'deliveryType' && value === 'Itinerary') {
+        updated.dateTo = '';
+      }
+      return updated;
+    });
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
   };
 
   const handleArrayChange = (name, index, value) => {
@@ -173,9 +212,17 @@ function UserDeliveries() {
       activity: ensureArray(req.activity),
       vehicleEquipment: req.vehicleEquipment || '',
       destination: ensureArray(req.destination),
+<<<<<<< HEAD
       jobOrderNo: ensureArray(req.jobOrderNo),
       customerSupplier: ensureArray(req.customerSupplier),
       requestedBy: req.requestedBy || '',
+=======
+      driver: ensureArray(req.driver),
+      helper: ensureArray(req.helper),
+      jobOrderNo: ensureArray(req.jobOrderNo),
+      customerSupplier: ensureArray(req.customerSupplier),
+      totalBudget: req.totalBudget || '',
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
     });
     setIsFormModalOpen(true);
   };
@@ -203,6 +250,7 @@ function UserDeliveries() {
     setFormData(initialFormData);
   };
 
+<<<<<<< HEAD
   // Helper: check if vehicle is booked during selected dates
   const isVehicleBooked = (plateNumber) => {
     if (!plateNumber || !formData.dateFrom) return false;
@@ -219,12 +267,15 @@ function UserDeliveries() {
     });
   };
 
+=======
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.deliveryType) {
       toast.error('Delivery Type is required');
       return;
     }
+<<<<<<< HEAD
     if (!formData.dateFrom) {
       toast.error('Date From is required');
       return;
@@ -261,6 +312,8 @@ function UserDeliveries() {
       toast.error('Requested By is required');
       return;
     }
+=======
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
     setIsSubmitLoading(true);
 
     try {
@@ -272,10 +325,20 @@ function UserDeliveries() {
         activity: formData.activity.filter((v) => v.trim() !== ''),
         vehicleEquipment: formData.vehicleEquipment,
         destination: formData.destination.filter((v) => v.trim() !== ''),
+<<<<<<< HEAD
         jobOrderNo: formData.jobOrderNo.filter((v) => v.trim() !== ''),
         customerSupplier: formData.customerSupplier.filter((v) => v.trim() !== ''),
         requestedBy: formData.requestedBy.trim(),
         requestedByUserId: user?._id || '',
+=======
+        driver: formData.driver.filter((v) => v.trim() !== ''),
+        helper: formData.helper.filter((v) => v.trim() !== ''),
+        jobOrderNo: formData.jobOrderNo.filter((v) => v.trim() !== ''),
+        customerSupplier: formData.customerSupplier.filter((v) => v.trim() !== ''),
+        totalBudget: formData.totalBudget ? Number(formData.totalBudget) : 0,
+        requestedBy: `${user?.firstName || ''} ${user?.lastName || ''}`.trim(),
+        requestedByUserId: user?.firebaseUid || user?._id || '',
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
       };
 
       if (isEditMode && editingRequestId) {
@@ -317,7 +380,12 @@ function UserDeliveries() {
     return `${mm}/${dd}/${yyyy} | ${hh}:${min} ${ampm}`;
   };
 
+<<<<<<< HEAD
 
+=======
+  const drivers = personnels.filter((p) => p.position === 'Driver');
+  const helpers = personnels.filter((p) => p.position === 'Helper');
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
 
   const inputFormClass =
     'block h-8 w-full rounded border border-input bg-background px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider shadow-sm transition-all placeholder:text-muted-foreground/50 focus:border-primary focus:ring-1 focus:ring-primary focus-visible:outline-none [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:ml-auto';
@@ -338,6 +406,7 @@ function UserDeliveries() {
       dot: 'bg-emerald-500',
       border: 'border-emerald-200 dark:border-emerald-800',
     },
+<<<<<<< HEAD
     'Approved with Changes': {
       icon: Clock,
       bg: 'bg-blue-100 dark:bg-blue-900/30',
@@ -345,6 +414,8 @@ function UserDeliveries() {
       dot: 'bg-blue-500',
       border: 'border-blue-200 dark:border-blue-800',
     },
+=======
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
     Declined: {
       icon: Clock,
       bg: 'bg-red-100 dark:bg-red-900/30',
@@ -371,8 +442,11 @@ function UserDeliveries() {
 
       const statusMatch = statusFilter === 'all' || d.requestStatus === statusFilter;
       const vehicleMatch = vehicleFilter === 'all' || d.vehicleEquipment === vehicleFilter;
+<<<<<<< HEAD
       const deliveryTypeMatch = deliveryTypeFilter === 'all' || (d.deliveryType || '') === deliveryTypeFilter;
       const purposeMatch = purposeFilter === 'all' || (d.purpose && d.purpose.includes(purposeFilter));
+=======
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
 
       let monthMatch = true;
       if (monthFilter !== 'all') {
@@ -387,9 +461,15 @@ function UserDeliveries() {
         }
       }
 
+<<<<<<< HEAD
       return searchMatch && dateFromMatch && dateToMatch && statusMatch && vehicleMatch && monthMatch && deliveryTypeMatch && purposeMatch;
     });
   }, [requests, searchQuery, dateFromFilter, dateToFilter, statusFilter, vehicleFilter, monthFilter, purposeFilter, deliveryTypeFilter]);
+=======
+      return searchMatch && dateFromMatch && dateToMatch && statusMatch && vehicleMatch && monthMatch;
+    });
+  }, [requests, searchQuery, dateFromFilter, dateToFilter, statusFilter, vehicleFilter, monthFilter]);
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
 
   const uniqueVehicles = useMemo(() => {
     const list = new Set();
@@ -425,8 +505,11 @@ function UserDeliveries() {
     setStatusFilter('all');
     setVehicleFilter('all');
     setMonthFilter('all');
+<<<<<<< HEAD
     setPurposeFilter('all');
     setDeliveryTypeFilter('all');
+=======
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
   };
 
   if (isLoading) {
@@ -486,7 +569,11 @@ function UserDeliveries() {
                     <DropdownMenuLabel className="text-[10px] uppercase tracking-widest">Filter by Status</DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     <DropdownMenuCheckboxItem className="text-[10px] uppercase font-bold" checked={statusFilter === 'all'} onCheckedChange={() => setStatusFilter('all')}>ALL STATUS</DropdownMenuCheckboxItem>
+<<<<<<< HEAD
                     {['Pending', 'Approved', 'Approved with Changes', 'Declined'].map(s => (
+=======
+                    {['Pending', 'Approved', 'Declined'].map(s => (
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
                       <DropdownMenuCheckboxItem key={s} className="text-[10px] uppercase" checked={statusFilter === s} onCheckedChange={() => setStatusFilter(s)}>{s}</DropdownMenuCheckboxItem>
                     ))}
                   </DropdownMenuContent>
@@ -494,6 +581,7 @@ function UserDeliveries() {
 
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
+<<<<<<< HEAD
                     <Button variant="outline" size="sm" className={`flex items-center gap-2 h-8 bg-background shrink-0 ${deliveryTypeFilter !== 'all' ? 'border-primary text-primary' : ''}`}>
                       <FileText className='h-3.5 w-3.5' />
                       <span className="text-[10px] font-bold tracking-wider uppercase max-w-[120px] truncate">{deliveryTypeFilter === 'all' ? 'Type' : deliveryTypeFilter}</span>
@@ -528,6 +616,8 @@ function UserDeliveries() {
 
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
+=======
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
                     <Button variant="outline" size="sm" className={`flex items-center gap-2 h-8 bg-background shrink-0 ${monthFilter !== 'all' ? 'border-primary text-primary' : ''}`}>
                       <CalendarDays className='h-3.5 w-3.5' />
                       <span className="text-[10px] font-bold tracking-wider uppercase max-w-[90px] truncate">{monthFilter === 'all' ? 'Months' : formatMonthLabel(monthFilter)}</span>
@@ -602,7 +692,11 @@ function UserDeliveries() {
                   </DropdownMenuContent>
                 </DropdownMenu>
 
+<<<<<<< HEAD
                 {(searchQuery || dateFromFilter || dateToFilter || statusFilter !== 'all' || vehicleFilter !== 'all' || monthFilter !== 'all' || purposeFilter !== 'all' || deliveryTypeFilter !== 'all') && (
+=======
+                {(searchQuery || dateFromFilter || dateToFilter || statusFilter !== 'all' || vehicleFilter !== 'all' || monthFilter !== 'all') && (
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
                   <Button variant="ghost" size="sm" onClick={handleResetFilters} className="h-8 gap-1.5 text-[10px] text-muted-foreground shrink-0 uppercase tracking-wider font-bold">
                     <RotateCcw className="h-3.5 w-3.5" />
                     Reset
@@ -632,9 +726,17 @@ function UserDeliveries() {
                       <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Activity</th>
                       <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Vehicle</th>
                       <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Destination</th>
+<<<<<<< HEAD
                       <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-center align-middle">Job Order No</th>
                       <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Customer / Supplier</th>
                       <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Requested By</th>
+=======
+                      <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Driver</th>
+                      <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Helper</th>
+                      <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-center align-middle">Job Order No</th>
+                      <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Customer / Supplier</th>
+                      <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-right pr-6 align-middle">Total Budget</th>
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
                       <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-right pr-6 align-middle sticky right-0 bg-orange-500 z-10 border-l border-orange-600/20">Actions</th>
                     </tr>
                   </thead>
@@ -669,24 +771,44 @@ function UserDeliveries() {
                             {(req.activity || []).filter(Boolean).join(', ') || '—'}
                           </td>
                           <td className="whitespace-nowrap px-3 py-2 text-[10px] font-semibold text-foreground uppercase tracking-tight align-middle">
+<<<<<<< HEAD
                             {(() => {
                               const plate = req.vehicleEquipment;
                               if (!plate) return '—';
                               const v = vehicles.find((v) => v.plateNumber === plate);
                               return v ? <span>{`${v.plateNumber} — ${v.model}`}</span> : <span>{plate}</span>;
                             })()}
+=======
+                            {req.vehicleEquipment ? (
+                              <span>{req.vehicleEquipment}</span>
+                            ) : '—'}
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
                           </td>
                           <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-foreground uppercase tracking-tight align-middle">
                             {(req.destination || []).filter(Boolean).join(', ') || '—'}
                           </td>
+<<<<<<< HEAD
+=======
+                          <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-foreground uppercase tracking-tight align-middle">
+                            {(req.driver || []).filter(Boolean).join(', ') || '—'}
+                          </td>
+                          <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-foreground uppercase tracking-tight align-middle">
+                            {(req.helper || []).filter(Boolean).join(', ') || '—'}
+                          </td>
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
                           <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-foreground tracking-tight text-center align-middle">
                             {(req.jobOrderNo || []).filter(Boolean).join(', ') || '—'}
                           </td>
                           <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-foreground uppercase tracking-tight align-middle">
                             {(req.customerSupplier || []).filter(Boolean).join(' / ') || '—'}
                           </td>
+<<<<<<< HEAD
                           <td className="whitespace-nowrap px-3 py-2 text-[10px] font-semibold text-foreground uppercase tracking-tight align-middle">
                             {req.requestedBy || '—'}
+=======
+                          <td className="whitespace-nowrap px-3 py-2 text-[10px] font-bold text-primary tracking-wider text-right pr-6 align-middle">
+                            {req.totalBudget ? Number(req.totalBudget).toLocaleString() : '0'}
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
                           </td>
                           <td className="whitespace-nowrap px-3 py-2 text-right align-middle sticky right-0 bg-card border-l border-border/30 pr-3" onClick={(e) => e.stopPropagation()}>
                             <div className="flex items-center justify-end gap-1">
@@ -722,9 +844,12 @@ function UserDeliveries() {
                               {req.requestStatus === 'Approved' && (
                                 <span className="text-[10px] text-muted-foreground italic px-2">Finalized</span>
                               )}
+<<<<<<< HEAD
                               {req.requestStatus === 'Approved with Changes' && (
                                 <span className="text-[10px] text-muted-foreground italic px-2">Finalized</span>
                               )}
+=======
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
                             </div>
                           </td>
                         </tr>
@@ -802,7 +927,10 @@ function UserDeliveries() {
                       <input
                         name="dateFrom"
                         type="date"
+<<<<<<< HEAD
                         min={new Date().toISOString().split('T')[0]}
+=======
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
                         value={formData.dateFrom}
                         onChange={handleInputChange}
                         className={inputFormClass}
@@ -813,10 +941,17 @@ function UserDeliveries() {
                       <input
                         name="dateTo"
                         type="date"
+<<<<<<< HEAD
                         min={new Date().toISOString().split('T')[0]}
                         value={formData.dateTo}
                         onChange={handleInputChange}
                         className={inputFormClass}
+=======
+                        value={formData.deliveryType === 'Itinerary' ? '' : formData.dateTo}
+                        onChange={handleInputChange}
+                        disabled={formData.deliveryType === 'Itinerary'}
+                        className={`${inputFormClass} ${formData.deliveryType === 'Itinerary' ? 'opacity-40 cursor-not-allowed' : ''}`}
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
                       />
                     </div>
                   </div>
@@ -833,6 +968,7 @@ function UserDeliveries() {
                       className={selectClass}
                     >
                       <option value="" disabled>Select Vehicle / Equipment</option>
+<<<<<<< HEAD
                       {vehicles.map((v) => {
                         let textColor = 'inherit';
                         let emoji = '🟢';
@@ -860,6 +996,13 @@ function UserDeliveries() {
                           </option>
                         );
                       })}
+=======
+                      {vehicles.map((v) => (
+                        <option key={v._id} value={v.plateNumber} className="font-bold">
+                          {v.plateNumber} — {v.model}
+                        </option>
+                      ))}
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
                     </select>
                     <div className="pointer-events-none absolute inset-y-0 right-2.5 flex items-center text-muted-foreground">
                       <ChevronDown className="h-3 w-3" />
@@ -949,6 +1092,89 @@ function UserDeliveries() {
                   ))}
                 </fieldset>
 
+<<<<<<< HEAD
+=======
+                {/* Driver */}
+                <fieldset className="rounded-lg border border-border bg-card px-3 pb-3 pt-2 shadow-sm space-y-2 min-w-0">
+                  <legend className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground px-1 -ml-1 flex items-center gap-2">
+                    Driver
+                  </legend>
+                  {formData.driver.map((dr, index) => (
+                    <div key={`driver-${index}`}>
+                      <div className="flex items-center gap-2">
+                        <div className="relative flex-1">
+                          <select
+                            value={dr}
+                            onChange={(e) => handleArrayChange('driver', index, e.target.value)}
+                            className={selectClass}
+                          >
+                            <option value="" disabled>Select Driver</option>
+                            {drivers.map((d) => (
+                              <option key={d._id} value={`${d.firstname} ${d.lastname}`} className="font-bold">
+                                {d.lastname}, {d.firstname}
+                              </option>
+                            ))}
+                          </select>
+                          <div className="pointer-events-none absolute inset-y-0 right-2.5 flex items-center text-muted-foreground">
+                            <ChevronDown className="h-3 w-3" />
+                          </div>
+                        </div>
+                        {index === 0 && (
+                          <button type="button" onClick={() => addArrayField('driver')} className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
+                            <Plus className="h-4 w-4" />
+                          </button>
+                        )}
+                        {index > 0 && (
+                          <button type="button" onClick={() => removeArrayField('driver', index)} className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-muted/50 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors">
+                            <Minus className="h-4 w-4" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </fieldset>
+
+                {/* Helper */}
+                <fieldset className="rounded-lg border border-border bg-card px-3 pb-3 pt-2 shadow-sm space-y-2 min-w-0">
+                  <legend className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground px-1 -ml-1 flex items-center gap-2">
+                    Helper
+                  </legend>
+                  {formData.helper.map((hl, index) => (
+                    <div key={`helper-${index}`}>
+                      <div className="flex items-center gap-2">
+                        <div className="relative flex-1">
+                          <select
+                            value={hl}
+                            onChange={(e) => handleArrayChange('helper', index, e.target.value)}
+                            className={selectClass}
+                          >
+                            <option value="" disabled>Select Helper</option>
+                            {helpers.map((h) => (
+                              <option key={h._id} value={`${h.firstname} ${h.lastname}`} className="font-bold">
+                                {h.lastname}, {h.firstname}
+                              </option>
+                            ))}
+                          </select>
+                          <div className="pointer-events-none absolute inset-y-0 right-2.5 flex items-center text-muted-foreground">
+                            <ChevronDown className="h-3 w-3" />
+                          </div>
+                        </div>
+                        {index === 0 && (
+                          <button type="button" onClick={() => addArrayField('helper')} className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
+                            <Plus className="h-4 w-4" />
+                          </button>
+                        )}
+                        {index > 0 && (
+                          <button type="button" onClick={() => removeArrayField('helper', index)} className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-muted/50 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors">
+                            <Minus className="h-4 w-4" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </fieldset>
+
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
                 {/* Job Order No. */}
                 <fieldset className="rounded-lg border border-border bg-card px-3 pb-3 pt-2 shadow-sm space-y-2 min-w-0">
                   <legend className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground px-1 -ml-1 flex items-center gap-2">
@@ -1007,6 +1233,7 @@ function UserDeliveries() {
                   ))}
                 </fieldset>
 
+<<<<<<< HEAD
                 {/* Requested By */}
                 <fieldset className="rounded-lg border border-border bg-card px-3 pb-3 pt-2 shadow-sm space-y-1.5 min-w-0">
                   <legend className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground px-1 -ml-1">Requested By</legend>
@@ -1017,6 +1244,24 @@ function UserDeliveries() {
                     className={inputFormClass}
                     placeholder="REQUESTED BY:"
                   />
+=======
+                {/* Total Budget */}
+                <fieldset className="rounded-lg border border-border bg-card px-3 pb-3 pt-2 shadow-sm space-y-1.5 min-w-0">
+                  <legend className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground px-1 -ml-1">Total Budget</legend>
+                  <div className="relative">
+                    <div className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[11px] font-bold text-muted-foreground/60 select-none">
+                      ₱
+                    </div>
+                    <input
+                      name="totalBudget"
+                      type="number"
+                      value={formData.totalBudget}
+                      onChange={handleInputChange}
+                      className={`${inputFormClass} pl-7`}
+                      placeholder="Total Budget"
+                    />
+                  </div>
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
                 </fieldset>
               </form>
             </div>
@@ -1082,6 +1327,7 @@ function UserDeliveries() {
                 </div>
               )}
 
+<<<<<<< HEAD
               {/* Vehicle change notification */}
               {(detailsModal.request.requestStatus === 'Approved' || detailsModal.request.requestStatus === 'Approved with Changes') && detailsModal.request.vehicleChanged && (
                 <div className="flex items-start gap-2 rounded-md bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900/50 px-3 py-2">
@@ -1107,6 +1353,8 @@ function UserDeliveries() {
                 </div>
               )}
 
+=======
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
               {/* Detail fields Grid based on the card layout */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 pt-2">
                 {/* Left Column */}
@@ -1118,7 +1366,12 @@ function UserDeliveries() {
                     { label: 'Duration', value: computeDuration(detailsModal.request.dateFrom, detailsModal.request.dateTo) },
                     { label: 'Destination', value: (detailsModal.request.destination || []).filter(Boolean).join(' / ') },
                     { label: 'Customer / Supplier', value: (detailsModal.request.customerSupplier || []).filter(Boolean).join(' / ') },
+<<<<<<< HEAD
 
+=======
+                    { label: 'Driver', value: (detailsModal.request.driver || []).filter(Boolean).join(' / ') },
+                    { label: 'Helper', value: (detailsModal.request.helper || []).filter(Boolean).join(' / ') },
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
                     { label: 'Requested By', value: detailsModal.request.requestedBy },
                   ].map((field) => field.value && field.value !== '—' && (
                     <div key={field.label} className="flex flex-col">
@@ -1131,6 +1384,7 @@ function UserDeliveries() {
                 {/* Right Column */}
                 <div className="space-y-4">
                   {[
+<<<<<<< HEAD
                     { label: 'Vehicle', value: (() => {
                       const plate = detailsModal.request.vehicleEquipment;
                       if (!plate) return '—';
@@ -1141,6 +1395,13 @@ function UserDeliveries() {
                     { label: 'Activity', value: (detailsModal.request.activity || []).filter(Boolean).join(' / ') },
                     { label: 'Job Order No.', value: (detailsModal.request.jobOrderNo || []).filter(Boolean).join(' / ') },
 
+=======
+                    { label: 'Vehicle', value: detailsModal.request.vehicleEquipment },
+                    { label: 'Purpose', value: (detailsModal.request.purpose || []).filter(Boolean).join(' / ') },
+                    { label: 'Activity', value: (detailsModal.request.activity || []).filter(Boolean).join(' / ') },
+                    { label: 'Job Order No.', value: (detailsModal.request.jobOrderNo || []).filter(Boolean).join(' / ') },
+                    { label: 'Total Budget', value: detailsModal.request.totalBudget ? `₱${Number(detailsModal.request.totalBudget).toLocaleString()}` : null },
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
                     { label: 'Notes', value: detailsModal.request.notes },
                   ].map((field) => field.value && field.value !== '—' && (
                     <div key={field.label} className="flex flex-col">
@@ -1158,7 +1419,11 @@ function UserDeliveries() {
                       Reviewed By
                     </span>
                     <span className="font-semibold text-foreground uppercase">
+<<<<<<< HEAD
                       {detailsModal.request.reviewedBy === 'Admin' ? 'Logistics Department' : detailsModal.request.reviewedBy}
+=======
+                      {detailsModal.request.reviewedBy}
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
                     </span>
                   </div>
                   <div className="flex items-start gap-2 text-[11px] mt-1">

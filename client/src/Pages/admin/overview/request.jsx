@@ -1,5 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
+<<<<<<< HEAD
 import { useOutletContext } from 'react-router-dom';
+=======
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
 import {
   Loader2,
   ClipboardList,
@@ -14,9 +17,12 @@ import {
   CalendarDays,
   MapPin,
   ChevronDown,
+<<<<<<< HEAD
   Plus,
   Minus,
   Users,
+=======
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
 } from 'lucide-react';
 import axios from 'axios';
 import { useAppToast } from '../../../components/ui/alert-toast-provider';
@@ -33,10 +39,14 @@ import {
 import { cn } from '../../../lib/utils';
 
 function RequestPage() {
+<<<<<<< HEAD
   const { user } = useOutletContext();
   const [requests, setRequests] = useState([]);
   const [vehicles, setVehicles] = useState([]);
   const [personnels, setPersonnels] = useState([]);
+=======
+  const [requests, setRequests] = useState([]);
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('Pending');
@@ -51,6 +61,7 @@ function RequestPage() {
     isLoading: false,
   });
 
+<<<<<<< HEAD
   // Combine delivery modal
   const [combineModal, setCombineModal] = useState({
     isOpen: false,
@@ -79,6 +90,8 @@ function RequestPage() {
     isLoading: false,
   });
 
+=======
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
   // Decline modal
   const [declineModal, setDeclineModal] = useState({
     isOpen: false,
@@ -95,6 +108,7 @@ function RequestPage() {
 
   const fetchRequests = async () => {
     try {
+<<<<<<< HEAD
       const [{ data: reqData }, { data: vehData }, { data: persData }] = await Promise.all([
         axios.get('/api/delivery-requests'),
         axios.get('/api/vehicles'),
@@ -103,6 +117,10 @@ function RequestPage() {
       setRequests(reqData);
       setVehicles(vehData);
       setPersonnels(persData);
+=======
+      const { data } = await axios.get('/api/delivery-requests');
+      setRequests(data);
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
     } catch (error) {
       console.error('Error fetching requests:', error);
       toast.error('Failed to load requests');
@@ -113,15 +131,24 @@ function RequestPage() {
 
   const formatDate = (dateStr) => {
     if (!dateStr) return '—';
+<<<<<<< HEAD
     const date = new Date(dateStr);
     const mm = String(date.getMonth() + 1).padStart(2, '0');
     const dd = String(date.getDate()).padStart(2, '0');
     const yyyy = date.getFullYear();
     return `${mm}/${dd}/${yyyy}`;
+=======
+    return new Date(dateStr).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
   };
 
   const formatDateTime = (dateStr) => {
     if (!dateStr) return '—';
+<<<<<<< HEAD
     const date = new Date(dateStr);
     const mm = String(date.getMonth() + 1).padStart(2, '0');
     const dd = String(date.getDate()).padStart(2, '0');
@@ -135,6 +162,19 @@ function RequestPage() {
   const computeDuration = (from, to) => {
     if (!from) return '—';
     if (!to) return '1 day';
+=======
+    return new Date(dateStr).toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
+  const computeDuration = (from, to) => {
+    if (!from || !to) return '—';
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
     const msPerDay = 1000 * 60 * 60 * 24;
     const diffMs = new Date(to) - new Date(from);
     const days = Math.ceil(diffMs / msPerDay);
@@ -158,6 +198,7 @@ function RequestPage() {
       dot: 'bg-emerald-500',
       border: 'border-emerald-200 dark:border-emerald-800',
     },
+<<<<<<< HEAD
     'Approved with Changes': {
       icon: CheckCircle2,
       bg: 'bg-blue-100 dark:bg-blue-900/30',
@@ -165,6 +206,8 @@ function RequestPage() {
       dot: 'bg-blue-500',
       border: 'border-blue-200 dark:border-blue-800',
     },
+=======
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
     Declined: {
       icon: XCircle,
       bg: 'bg-red-100 dark:bg-red-900/30',
@@ -200,6 +243,7 @@ function RequestPage() {
     setConfirmDialog((prev) => ({ ...prev, isLoading: true }));
 
     try {
+<<<<<<< HEAD
       const { data } = await axios.put(`/api/delivery-requests/${request._id}/approve`, {
         reviewedBy: user?.department || 'Logistics Department',
       });
@@ -220,12 +264,22 @@ function RequestPage() {
       });
       
       await fetchRequests();
+=======
+      await axios.put(`/api/delivery-requests/${request._id}/approve`, {
+        reviewedBy: 'Admin',
+      });
+      toast.success('Request approved — delivery created successfully');
+      await fetchRequests();
+      setConfirmDialog({ isOpen: false, request: null, isLoading: false });
+      setDetailsModal({ isOpen: false, request: null });
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to approve request');
       setConfirmDialog((prev) => ({ ...prev, isLoading: false }));
     }
   };
 
+<<<<<<< HEAD
   // Handle approve with change
   const handleApproveWithChange = async () => {
     const { request, selectedVehicle } = approveWithChangeModal;
@@ -290,6 +344,8 @@ function RequestPage() {
     }
   };
 
+=======
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
   // Handle decline
   const handleDecline = async () => {
     const { request, reason } = declineModal;
@@ -302,7 +358,11 @@ function RequestPage() {
     try {
       await axios.put(`/api/delivery-requests/${request._id}/decline`, {
         declineReason: reason,
+<<<<<<< HEAD
         reviewedBy: user?.department || 'Logistics Department',
+=======
+        reviewedBy: 'Admin',
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
       });
       toast.success('Request declined');
       await fetchRequests();
@@ -314,6 +374,7 @@ function RequestPage() {
     }
   };
 
+<<<<<<< HEAD
   // Handle personnel assignment
   const handleAssignPersonnel = async () => {
     const { deliveryId, driver, helper, totalBudget } = personnelModal;
@@ -455,6 +516,8 @@ function RequestPage() {
     }
   };
 
+=======
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
   if (isLoading) {
     return (
       <div className="flex h-full items-center justify-center">
@@ -519,7 +582,10 @@ function RequestPage() {
                 { key: 'all', label: 'All' },
                 { key: 'Pending', label: 'Pending' },
                 { key: 'Approved', label: 'Approved' },
+<<<<<<< HEAD
                 { key: 'Approved with Changes', label: 'Approved with Changes' },
+=======
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
                 { key: 'Declined', label: 'Declined' },
               ].map((tab) => (
                 <DropdownMenuCheckboxItem
@@ -556,8 +622,16 @@ function RequestPage() {
                   <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Activity</th>
                   <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Vehicle</th>
                   <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Destination</th>
+<<<<<<< HEAD
                   <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-center align-middle">Job Order No</th>
                   <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Customer / Supplier</th>
+=======
+                  <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Driver</th>
+                  <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Helper</th>
+                  <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-center align-middle">Job Order No</th>
+                  <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Customer / Supplier</th>
+                  <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-right pr-6 align-middle">Total Budget</th>
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
                   <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Requested By</th>
                 </tr>
               </thead>
@@ -591,6 +665,7 @@ function RequestPage() {
                       <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-foreground uppercase tracking-tight align-middle">
                         {(req.activity || []).filter(Boolean).join(', ') || '—'}
                       </td>
+<<<<<<< HEAD
                       <td className="whitespace-nowrap px-3 py-2 text-[10px] font-semibold text-foreground uppercase tracking-tight align-middle">
                         {(() => {
                           const plate = req.vehicleEquipment;
@@ -602,12 +677,30 @@ function RequestPage() {
                       <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-foreground uppercase tracking-tight align-middle">
                         {(req.destination || []).filter(Boolean).join(', ') || '—'}
                       </td>
+=======
+                      <td className="whitespace-nowrap px-3 py-2 text-[10px] font-semibold text-foreground uppercase tracking-tight align-middle">{req.vehicleEquipment || '—'}</td>
+                      <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-foreground uppercase tracking-tight align-middle">
+                        {(req.destination || []).filter(Boolean).join(', ') || '—'}
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-foreground uppercase tracking-tight align-middle">
+                        {(req.driver || []).filter(Boolean).join(', ') || '—'}
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-foreground uppercase tracking-tight align-middle">
+                        {(req.helper || []).filter(Boolean).join(', ') || '—'}
+                      </td>
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
                       <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-foreground tracking-tight text-center align-middle">
                         {(req.jobOrderNo || []).filter(Boolean).join(', ') || '—'}
                       </td>
                       <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-foreground uppercase tracking-tight align-middle">
                         {(req.customerSupplier || []).filter(Boolean).join(' / ') || '—'}
                       </td>
+<<<<<<< HEAD
+=======
+                      <td className="whitespace-nowrap px-3 py-2 text-[10px] font-bold text-primary tracking-wider text-right pr-6 align-middle">
+                        {req.totalBudget ? Number(req.totalBudget).toLocaleString() : '0'}
+                      </td>
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
                       <td className="whitespace-nowrap px-3 py-2 text-[10px] font-bold uppercase text-foreground align-middle">{req.requestedBy || '—'}</td>
                     </tr>
                   );
@@ -629,7 +722,11 @@ function RequestPage() {
       {/* ─── Details Modal ─── */}
       {detailsModal.isOpen && detailsModal.request && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-200">
+<<<<<<< HEAD
           <div className="relative w-full max-w-2xl max-h-[85vh] flex flex-col rounded-lg border border-border bg-card shadow-xl overflow-hidden">
+=======
+          <div className="relative w-full max-w-lg max-h-[85vh] flex flex-col rounded-lg border border-border bg-card shadow-xl overflow-hidden">
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
             {/* Sticky Header */}
             <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-card px-4 py-3 shrink-0">
               <div>
@@ -678,17 +775,28 @@ function RequestPage() {
                 { label: 'Date From', value: formatDate(detailsModal.request.dateFrom) },
                 { label: 'Date To', value: formatDate(detailsModal.request.dateTo) },
                 { label: 'Duration', value: computeDuration(detailsModal.request.dateFrom, detailsModal.request.dateTo) },
+<<<<<<< HEAD
                 { label: 'Vehicle', value: (() => {
                   const plate = detailsModal.request.vehicleEquipment;
                   if (!plate) return '—';
                   const v = vehicles.find((v) => v.plateNumber === plate);
                   return v ? `${v.plateNumber} — ${v.model}` : plate;
                 })() },
+=======
+                { label: 'Vehicle', value: detailsModal.request.vehicleEquipment },
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
                 { label: 'Purpose', value: (detailsModal.request.purpose || []).filter(Boolean).join(' / ') },
                 { label: 'Activity', value: (detailsModal.request.activity || []).filter(Boolean).join(' / ') },
                 { label: 'Destination', value: (detailsModal.request.destination || []).filter(Boolean).join(' / ') },
                 { label: 'Customer / Supplier', value: (detailsModal.request.customerSupplier || []).filter(Boolean).join(' / ') },
+<<<<<<< HEAD
                 { label: 'Job Order No.', value: (detailsModal.request.jobOrderNo || []).filter(Boolean).join(' / ') },
+=======
+                { label: 'Driver', value: (detailsModal.request.driver || []).filter(Boolean).join(' / ') },
+                { label: 'Helper', value: (detailsModal.request.helper || []).filter(Boolean).join(' / ') },
+                { label: 'Job Order No.', value: (detailsModal.request.jobOrderNo || []).filter(Boolean).join(' / ') },
+                { label: 'Total Budget', value: detailsModal.request.totalBudget ? `₱${Number(detailsModal.request.totalBudget).toLocaleString()}` : '—' },
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
                 { label: 'Requested By', value: detailsModal.request.requestedBy },
               ].map((field) => (
                 <div key={field.label} className="flex items-start gap-2 text-[11px]">
@@ -720,6 +828,7 @@ function RequestPage() {
               <div className="sticky bottom-0 z-10 border-t border-border bg-card p-4 flex items-center gap-2 shrink-0">
                 <button
                   onClick={() => setConfirmDialog({ isOpen: true, request: detailsModal.request, isLoading: false })}
+<<<<<<< HEAD
                   className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-md bg-emerald-600 px-3 py-2.5 text-[11px] font-bold uppercase tracking-wider text-white hover:bg-emerald-700 transition-colors shadow-sm"
                 >
                   <CheckCircle2 className="h-3.5 w-3.5" />
@@ -739,6 +848,19 @@ function RequestPage() {
                 >
                   <XCircle className="h-3.5 w-3.5" />
                   Decline
+=======
+                  className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-md bg-emerald-600 px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider text-white hover:bg-emerald-700 transition-colors shadow-sm"
+                >
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  Approve Request
+                </button>
+                <button
+                  onClick={() => setDeclineModal({ isOpen: true, request: detailsModal.request, reason: '', isLoading: false })}
+                  className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-md bg-red-600 px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider text-white hover:bg-red-700 transition-colors shadow-sm"
+                >
+                  <XCircle className="h-3.5 w-3.5" />
+                  Decline Request
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
                 </button>
               </div>
             )}
@@ -861,6 +983,7 @@ function RequestPage() {
           </div>
         </div>
       )}
+<<<<<<< HEAD
 
       {/* ─── Approve with Change Modal ─── */}
       {approveWithChangeModal.isOpen && approveWithChangeModal.request && (
@@ -1222,6 +1345,8 @@ function RequestPage() {
           </div>
         </div>
       )}
+=======
+>>>>>>> 9bfcd831454350f8e2a9a1d736943a8f37e1294e
     </div>
   );
 }
