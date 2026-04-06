@@ -100,7 +100,10 @@ const deliverySchema = new mongoose.Schema({
   }],
 
   // Summary
-  deliveryCharge: [{ type: Number, default: 0 }],
+  deliveryCharge: {
+    type: Number,
+    default: 0
+  },
   notes: {
     type: String,
     trim: true
