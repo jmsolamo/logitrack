@@ -149,7 +149,10 @@ export default function JobOrders() {
       const jobs = d.jobOrderNo || [];
       const dests = d.customerSupplier || [];
       const purposes = d.purpose || [];
-      const maxLen = Math.max(jobs.length, dests.length, 1);
+      const maxLen = Math.max(jobs.length, 1);
+
+      // If there's only one destination, use it for all job orders
+      const singleDestination = dests.length === 1 ? dests[0] : null;
 
       for (let i = 0; i < maxLen; i++) {
         rows.push({
@@ -157,15 +160,15 @@ export default function JobOrders() {
           deliveryId: d._id,
           index: i,
           jobOrderNo: jobs[i] || '—',
-          destination: dests[i] || '—',
-          purpose: purposes[i] || '—',
+          destination: singleDestination || dests[i] || '—',
+          purpose: purposes[i] || purposes[0] || '—',
           dateFrom: d.dateFrom,
           dateTo: d.dateTo,
           driver: d.driver,
           helper: d.helper,
           vehicleEquipment: d.vehicleEquipment,
           totalExpenses: d.totalExpenses,
-          deliveryCharge: getDeliveryChargeForDest(d, dests[i]),
+          deliveryCharge: getDeliveryChargeForDest(d, singleDestination || dests[i]),
         });
       }
     });

@@ -67,6 +67,15 @@ const deliveryRequestSchema = new mongoose.Schema({
   vehicleChangeReason: {
     type: String,
     trim: true
+  },
+  // Delivery tracking
+  deliveryReferenceNo: {
+    type: String,
+    trim: true
+  },
+  combinedWithDelivery: {
+    type: Boolean,
+    default: false
   }
 }, {
   timestamps: true

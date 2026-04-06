@@ -64,6 +64,7 @@ const deliverySchema = new mongoose.Schema({
     amount: { type: Number, default: 0 },
     gasStation: { type: String, trim: true },
     invoiceNo: { type: String, trim: true },
+    paymentType: { type: String, trim: true },
     date: { type: Date }
   }],
 

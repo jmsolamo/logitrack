@@ -75,10 +75,46 @@ const generateRequestReferenceNo = async () => {
 // @desc    Get all active vehicle schedules to calculate frontend vehicle availability
 router.get('/schedules', async (req, res) => {
   try {
-    const schedules = await DeliveryRequest.find(
-      { requestStatus: { $in: ['Pending', 'Approved'] } },
+    // Get pending requests
+    const pendingRequests = await DeliveryRequest.find(
+      { requestStatus: 'Pending' },
       'vehicleEquipment dateFrom dateTo requestStatus'
     );
+
+    // Get approved requests and check their delivery status
+    const approvedRequests = await DeliveryRequest.find(
+      { requestStatus: { $in: ['Approved', 'Approved with Changes'] } },
+      'vehicleEquipment dateFrom dateTo requestStatus deliveryReferenceNo'
+    );
+
+    // Filter out approved requests whose deliveries are completed
+    const activeApprovedRequests = [];
+    for (const req of approvedRequests) {
+      if (req.deliveryReferenceNo) {
+        const delivery = await Delivery.findOne({ referenceNo: req.deliveryReferenceNo });
+        // Only include if delivery is not completed
+        if (delivery && delivery.status !== 'Completed') {
+          activeApprovedRequests.push({
+            _id: req._id,
+            vehicleEquipment: req.vehicleEquipment,
+            dateFrom: req.dateFrom,
+            dateTo: req.dateTo,
+            requestStatus: req.requestStatus
+          });
+        }
+      } else {
+        // If no delivery reference, include it (shouldn't happen but safe fallback)
+        activeApprovedRequests.push({
+          _id: req._id,
+          vehicleEquipment: req.vehicleEquipment,
+          dateFrom: req.dateFrom,
+          dateTo: req.dateTo,
+          requestStatus: req.requestStatus
+        });
+      }
+    }
+
+    const schedules = [...pendingRequests, ...activeApprovedRequests];
     res.json(schedules);
   } catch (error) {
     console.error('Error fetching schedules:', error);
@@ -278,29 +314,41 @@ router.put('/:id/approve', async (req, res) => {
           return res.status(404).json({ message: 'Existing delivery not found' });
         }
 
-        // Merge the data
-        existingDelivery.purpose = [...new Set([...existingDelivery.purpose, ...request.purpose])].filter(Boolean);
-        existingDelivery.activity = [...new Set([...existingDelivery.activity, ...request.activity])].filter(Boolean);
-        existingDelivery.destination = [...new Set([...existingDelivery.destination, ...request.destination])].filter(Boolean);
-        existingDelivery.jobOrderNo = [...new Set([...existingDelivery.jobOrderNo, ...request.jobOrderNo])].filter(Boolean);
-        existingDelivery.customerSupplier = [...new Set([...existingDelivery.customerSupplier, ...request.customerSupplier])].filter(Boolean);
-        
-        // Recalculate delivery charge with merged destinations
-        if (finalVehicle && existingDelivery.destination) {
-          existingDelivery.deliveryCharge = await calculateDeliveryCharge(finalVehicle, existingDelivery.destination);
+        // Calculate charge for NEW destinations only (before merging)
+        const newDestinations = (request.destination || []).filter(d => 
+          !(existingDelivery.destination || []).includes(d)
+        );
+        let additionalCharge = 0;
+        if (finalVehicle && newDestinations.length > 0) {
+          additionalCharge = await calculateDeliveryCharge(finalVehicle, newDestinations);
         }
+        
+        // Merge the data - ensure arrays exist
+        existingDelivery.purpose = [...new Set([...(existingDelivery.purpose || []), ...(request.purpose || [])])].filter(Boolean);
+        existingDelivery.activity = [...new Set([...(existingDelivery.activity || []), ...(request.activity || [])])].filter(Boolean);
+        existingDelivery.destination = [...new Set([...(existingDelivery.destination || []), ...(request.destination || [])])].filter(Boolean);
+        existingDelivery.jobOrderNo = [...new Set([...(existingDelivery.jobOrderNo || []), ...(request.jobOrderNo || [])])].filter(Boolean);
+        existingDelivery.customerSupplier = [...new Set([...(existingDelivery.customerSupplier || []), ...(request.customerSupplier || [])])].filter(Boolean);
+        
+        // Add the additional charge to deliveryCharge and totalBudget
+        existingDelivery.deliveryCharge = (existingDelivery.deliveryCharge || 0) + additionalCharge;
+        existingDelivery.totalBudget = (existingDelivery.totalBudget || 0) + additionalCharge;
 
         await existingDelivery.save();
 
-        // Update the request
-        request.referenceNo = existingDelivery.referenceNo;
-        request.requestStatus = 'Approved with Changes';
+        // Update the request - track which delivery it was combined with
+        request.deliveryReferenceNo = existingDelivery.referenceNo;
+        request.combinedWithDelivery = true;
+        request.requestStatus = vehicleChanged ? 'Approved with Changes' : 'Approved';
         request.reviewedBy = req.body.reviewedBy || '';
         request.reviewedAt = new Date();
-        request.originalVehicle = originalVehicle;
-        request.vehicleEquipment = finalVehicle;
-        request.vehicleChanged = true;
-        request.vehicleChangeReason = 'Vehicle changed by admin during approval';
+        
+        if (vehicleChanged) {
+          request.originalVehicle = originalVehicle;
+          request.vehicleEquipment = finalVehicle;
+          request.vehicleChanged = true;
+          request.vehicleChangeReason = 'Vehicle changed by admin during approval';
+        }
         
         await request.save();
 
@@ -330,12 +378,12 @@ router.put('/:id/approve', async (req, res) => {
       deliveryType: request.deliveryType,
       dateFrom: request.dateFrom,
       dateTo: request.dateTo,
-      purpose: request.purpose,
-      activity: request.activity,
+      purpose: request.purpose || [],
+      activity: request.activity || [],
       vehicleEquipment: finalVehicle,
-      destination: request.destination,
-      jobOrderNo: request.jobOrderNo,
-      customerSupplier: request.customerSupplier,
+      destination: request.destination || [],
+      jobOrderNo: request.jobOrderNo || [],
+      customerSupplier: request.customerSupplier || [],
       requestedBy: request.requestedBy,
       notes: request.notes,
       deliveryCharge: finalDeliveryCharge,
@@ -344,8 +392,9 @@ router.put('/:id/approve', async (req, res) => {
 
     const savedDelivery = await newDelivery.save();
 
-    // Update the request with vehicle change info
-    request.referenceNo = referenceNo;
+    // Update the request with delivery reference and vehicle change info
+    request.deliveryReferenceNo = referenceNo;
+    request.combinedWithDelivery = false;
     request.requestStatus = vehicleChanged ? 'Approved with Changes' : 'Approved';
     request.reviewedBy = req.body.reviewedBy || '';
     request.reviewedAt = new Date();
@@ -370,7 +419,11 @@ router.put('/:id/approve', async (req, res) => {
     });
   } catch (error) {
     console.error('Error approving delivery request:', error);
-    res.status(500).json({ message: 'Server error approving request' });
+    if (error.name === 'ValidationError') {
+      const messages = Object.values(error.errors).map(val => val.message);
+      return res.status(500).json({ message: `Validation error: ${messages.join(', ')}` });
+    }
+    res.status(500).json({ message: error.message || 'Server error approving request' });
   }
 });
 

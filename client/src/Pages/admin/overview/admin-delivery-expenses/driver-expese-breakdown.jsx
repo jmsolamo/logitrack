@@ -59,12 +59,12 @@ export default function DriverExpenseBreakdown() {
       setVehicles(vehiclesRes.data);
       let completed = deliveriesRes.data.filter(d => d.status === 'Completed');
 
-      // Exclude ENERSERVE records and deduct their amounts from totalExpenses
+      // Exclude fuel expenses with payment type "PURCHASE ORDER" and deduct their amounts from totalExpenses
       completed = completed.map(d => {
         if (!d.fuel || d.fuel.length === 0) return d;
-        const filteredFuel = d.fuel.filter(f => !f.gasStation?.toUpperCase().includes('ENERSERVE'));
+        const filteredFuel = d.fuel.filter(f => f.paymentType?.toUpperCase() !== 'PURCHASE ORDER');
         const removedAmount = d.fuel.reduce((sum, f) => {
-          if (f.gasStation?.toUpperCase().includes('ENERSERVE')) return sum + (f.amount || 0);
+          if (f.paymentType?.toUpperCase() === 'PURCHASE ORDER') return sum + (f.amount || 0);
           return sum;
         }, 0);
 

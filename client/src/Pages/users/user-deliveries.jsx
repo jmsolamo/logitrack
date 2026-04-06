@@ -647,7 +647,9 @@ function UserDeliveries() {
                           onClick={() => setDetailsModal({ isOpen: true, request: req })}
                           className={`border-b border-border/50 transition-colors hover:bg-muted/30 cursor-pointer ${index % 2 === 0 ? 'bg-card/30' : ''}`}
                         >
-                          <td className="whitespace-nowrap px-3 py-2 text-[10px] font-bold text-primary tracking-tight align-middle">{req.referenceNo || '—'}</td>
+                          <td className="whitespace-nowrap px-3 py-2 text-[10px] font-bold text-primary tracking-tight align-middle">
+                            {req.deliveryReferenceNo || req.referenceNo || '—'}
+                          </td>
                           <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-muted-foreground align-middle">{formatDate(req.createdAt)}</td>
                           <td className="whitespace-nowrap px-3 py-2 align-middle text-center">
                             <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest ${sc.bg} ${sc.text}`}>
@@ -1107,12 +1109,26 @@ function UserDeliveries() {
                 </div>
               )}
 
+              {/* Combined delivery notification */}
+              {(detailsModal.request.requestStatus === 'Approved' || detailsModal.request.requestStatus === 'Approved with Changes') && detailsModal.request.combinedWithDelivery && (
+                <div className="flex items-start gap-2 rounded-md bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/50 px-3 py-2">
+                  <AlertTriangle className="h-3.5 w-3.5 text-emerald-500 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Added to Existing Delivery</p>
+                    <p className="text-[11px] text-emerald-700 dark:text-emerald-300 mt-0.5">
+                      Your request has been added to delivery <span className="font-bold">{detailsModal.request.deliveryReferenceNo}</span>.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {/* Detail fields Grid based on the card layout */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 pt-2">
                 {/* Left Column */}
                 <div className="space-y-4">
                   {[
-                    { label: 'Reference No', value: detailsModal.request.referenceNo },
+                    { label: 'Request Ref No', value: detailsModal.request.referenceNo },
+                    ...(detailsModal.request.deliveryReferenceNo ? [{ label: 'Delivery Ref No', value: detailsModal.request.deliveryReferenceNo }] : []),
                     { label: 'Date From', value: formatDate(detailsModal.request.dateFrom) },
                     { label: 'Date To', value: formatDate(detailsModal.request.dateTo) },
                     { label: 'Duration', value: computeDuration(detailsModal.request.dateFrom, detailsModal.request.dateTo) },
@@ -1166,7 +1182,7 @@ function UserDeliveries() {
                       Reviewed At
                     </span>
                     <span className="font-semibold text-foreground uppercase">
-                      {formatDate(detailsModal.request.reviewedAt)}
+                      {formatDateTime(detailsModal.request.reviewedAt)}
                     </span>
                   </div>
                 </div>

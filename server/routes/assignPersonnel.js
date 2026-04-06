@@ -18,7 +18,10 @@ router.put('/:id/assign-personnel', async (req, res) => {
     // Update driver, helper, and budget
     if (driver) delivery.driver = driver;
     if (helper) delivery.helper = helper;
-    if (totalBudget !== undefined) delivery.totalBudget = totalBudget;
+    if (totalBudget !== undefined) {
+      // Add to existing budget instead of replacing
+      delivery.totalBudget = (delivery.totalBudget || 0) + Number(totalBudget);
+    }
 
     await delivery.save();
 

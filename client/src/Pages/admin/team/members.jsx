@@ -119,66 +119,74 @@ function MembersPage() {
   };
 
   return (
-    <div className="space-y-4 md:space-y-6">
+    <div className="flex flex-col h-full space-y-4">
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-xl md:text-2xl font-bold text-foreground">User Management</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Manage system users, roles, and access.
-          </p>
+      <div className="flex items-center justify-between bg-card p-4 rounded-lg border border-border">
+        <div className="flex items-center gap-3">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <i className="bx bx-group text-xl"></i>
+          </div>
+          <div>
+            <h1 className="text-[14px] font-bold text-foreground uppercase tracking-tight">User Management</h1>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-widest mt-0.5">
+              Manage system users, roles, and access.
+            </p>
+          </div>
         </div>
         <button
           onClick={openAddModal}
-          className="inline-flex items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 transition-opacity"
+          className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground hover:opacity-90 transition-opacity"
+          title="Add User"
         >
           <Plus className="h-4 w-4" />
-          Add User
         </button>
       </div>
 
       {/* Users Table Card */}
-      <div className="rounded-lg border border-border bg-card shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left">
-            <thead className="bg-muted text-muted-foreground font-medium border-b border-border">
-              <tr>
-                <th className="px-4 py-3">ID</th>
-                <th className="px-4 py-3">Username</th>
-                <th className="px-4 py-3">Password</th>
-                <th className="px-4 py-3">Department</th>
-                <th className="px-4 py-3">Role</th>
-                <th className="px-4 py-3 text-right">Actions</th>
+      <div className="flex-1 overflow-auto bg-card min-w-0 min-h-0 relative rounded-lg border border-border">
+        <table className="w-full min-w-max border-collapse relative">
+          <thead className="sticky top-0 z-10 bg-orange-500 backdrop-blur shadow-sm">
+              <tr className="border-b border-orange-600/20">
+                <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">ID</th>
+                <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Username</th>
+                <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Password</th>
+                <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Department</th>
+                <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Role</th>
+                <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-center align-middle bg-orange-500 sticky right-0">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border">
+            <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan="6" className="px-4 py-8 text-center text-muted-foreground">
-                    <div className="flex items-center justify-center gap-2">
-                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-                      Loading users...
+                  <td colSpan="6" className="px-3 py-16 text-center">
+                    <div className="flex flex-col items-center justify-center gap-2">
+                      <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                      <span className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider">Loading users...</span>
                     </div>
                   </td>
                 </tr>
               ) : users.length === 0 ? (
                 <tr>
-                  <td colSpan="6" className="px-4 py-8 text-center text-muted-foreground">
-                    No users found.
+                  <td colSpan="6" className="px-3 py-16 text-center">
+                    <div className="flex flex-col items-center justify-center gap-1.5 text-center opacity-70">
+                      <i className="bx bx-group text-3xl text-muted-foreground/50 mb-1"></i>
+                      <p className="font-bold text-[12px] text-foreground uppercase tracking-tight">No users found</p>
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-widest">Add a new user to get started.</p>
+                    </div>
                   </td>
                 </tr>
               ) : (
-                users.map(user => (
-                  <tr key={user._id} className="hover:bg-muted/50 transition-colors">
-                    <td className="px-4 py-3 font-mono text-[10px] text-muted-foreground">
+                users.map((user, index) => (
+                  <tr key={user._id} className={`border-b border-border/50 transition-colors hover:bg-muted/30 ${index % 2 === 0 ? 'bg-card/30' : ''}`}>
+                    <td className="whitespace-nowrap px-3 py-2 text-[10px] font-bold text-primary tracking-tight">
                       {user._id}
                     </td>
-                    <td className="px-4 py-3 font-medium text-foreground">
+                    <td className="whitespace-nowrap px-3 py-2 text-[10px] font-semibold text-foreground uppercase tracking-tight">
                       {user.username || 'N/A'}
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-foreground tracking-tight">
                       <div className="flex items-center gap-2">
-                        <span className="font-mono text-xs">
+                        <span className="font-mono text-[10px] tracking-wider">
                           {visiblePasswords[user._id]
                             ? (user.plainPassword || '••••••••')
                             : '••••••••'}
@@ -194,33 +202,33 @@ function MembersPage() {
                         </button>
                       </div>
                     </td>
-                    <td className="px-4 py-3">
-                      {user.department || <span className="text-muted-foreground italic">None</span>}
+                    <td className="whitespace-nowrap px-3 py-2 text-[10px] font-semibold text-foreground uppercase tracking-tight">
+                      {user.department || <span className="text-muted-foreground/50 text-[9px] tracking-widest italic uppercase">None</span>}
                     </td>
-                    <td className="px-4 py-3">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider ${
+                    <td className="whitespace-nowrap px-3 py-2 text-[10px] font-bold tracking-tight align-middle">
+                      <span className={`inline-flex px-2 py-1 rounded-full text-[8px] uppercase tracking-widest font-bold ${
                         user.role === 'admin' 
-                          ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' 
-                          : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                          ? 'bg-blue-500/10 text-blue-600' 
+                          : 'bg-green-500/10 text-green-600'
                       }`}>
                         {user.role}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-right">
-                      <div className="flex items-center justify-end gap-2">
+                    <td className="whitespace-nowrap px-3 py-1.5 text-center sticky right-0 bg-card border-l border-border/30">
+                      <div className="flex items-center justify-center gap-1">
                         <button
                           onClick={() => openEditModal(user)}
-                          className="p-1.5 text-muted-foreground hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
+                          className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
                           title="Edit User"
                         >
-                          <Edit2 className="h-4 w-4" />
+                          <Edit2 className="h-3 w-3" />
                         </button>
                         <button
                           onClick={() => handleDelete(user._id)}
-                          className="p-1.5 text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
+                          className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
                           title="Delete User"
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Trash2 className="h-3 w-3" />
                         </button>
                       </div>
                     </td>
@@ -229,42 +237,50 @@ function MembersPage() {
               )}
             </tbody>
           </table>
-        </div>
       </div>
 
       {/* Add/Edit User Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-200">
-          <div className="bg-background rounded-lg shadow-xl w-full max-w-md border border-border animate-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between border-b border-border p-4">
-              <h2 className="text-lg font-semibold text-foreground">
-                {isEditMode ? 'Edit User' : 'Create New User'}
-              </h2>
-              <button 
-                onClick={() => setIsModalOpen(false)}
-                className="text-muted-foreground hover:text-foreground hover:bg-muted p-1 rounded-md transition-colors"
-              >
-                <X className="h-5 w-5" />
-              </button>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background/60 backdrop-blur-[2px] p-4 animate-in fade-in duration-300">
+          <div className="w-full max-w-[450px] max-h-[90vh] flex flex-col rounded-xl border border-border bg-card shadow-2xl animate-in fade-in zoom-in-95 slide-in-from-bottom-4 duration-300">
+            {/* Sticky Header */}
+            <div className="sticky top-0 z-10 bg-card border-b border-border p-5 pb-3.5 rounded-t-xl">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="flex h-6 w-6 items-center justify-center rounded bg-primary/10 text-primary">
+                    {isEditMode ? <Edit2 className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
+                  </div>
+                  <h2 className="text-[12px] font-bold text-foreground uppercase tracking-tight">
+                    {isEditMode ? 'EDIT USER' : 'NEW USER'}
+                  </h2>
+                </div>
+                <button 
+                  onClick={() => setIsModalOpen(false)}
+                  className="rounded-full flex h-6 w-6 items-center justify-center text-muted-foreground hover:bg-muted transition-colors"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
             </div>
             
-            <form onSubmit={handleSubmit} className="p-4 space-y-4">
+            <div className="flex-1 overflow-y-auto p-5 pt-3">
+              <form id="user-form" onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-foreground">Username *</label>
+                <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Username *</label>
                 <input
                   type="text"
                   name="username"
                   required
                   value={formData.username}
                   onChange={handleChange}
-                  className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                  className="block h-9 w-full rounded border border-input bg-background px-3 text-[12px] font-medium shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary placeholder:text-muted-foreground/50"
                   placeholder="johndoe"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-foreground">
-                  Password {isEditMode ? '(Leave blank to keep current)' : '*'}
+                <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                  Password {isEditMode ? '(Optional)' : '*'}
                 </label>
                 <div className="relative">
                   <input
@@ -273,7 +289,7 @@ function MembersPage() {
                     required={!isEditMode}
                     value={formData.password}
                     onChange={handleChange}
-                    className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary pr-10"
+                    className="block h-9 w-full rounded border border-input bg-background px-3 pr-10 text-[12px] font-medium shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary placeholder:text-muted-foreground/50"
                     placeholder="••••••••"
                   />
                   <button
@@ -289,12 +305,12 @@ function MembersPage() {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-foreground">Department</label>
+                <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Department</label>
                 <select
                   name="department"
                   value={formData.department}
                   onChange={handleChange}
-                  className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-primary text-foreground"
+                  className="block h-9 w-full rounded border border-input bg-background px-3 text-[12px] font-medium shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
                 >
                   <option value="">Select Department</option>
                   <option value="Logistic">Logistic</option>
@@ -304,34 +320,32 @@ function MembersPage() {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-foreground">Role *</label>
+                <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Role *</label>
                 <select
                   name="role"
                   value={formData.role}
                   onChange={handleChange}
-                  className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-primary text-foreground"
+                  className="block h-9 w-full rounded border border-input bg-background px-3 text-[12px] font-medium shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
                 >
                   <option value="user">User</option>
                   <option value="admin">Admin</option>
                 </select>
               </div>
+              </form>
+            </div>
 
-              <div className="pt-2 flex items-center justify-end gap-2 border-t border-border mt-6">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="rounded-md border border-input bg-transparent px-4 py-2 text-sm font-medium hover:bg-muted text-foreground transition-colors"
-                >
-                  Cancel
-                </button>
+            {/* Sticky Footer */}
+            <div className="sticky bottom-0 z-10 bg-card border-t border-border p-5 pt-3 rounded-b-xl">
+              <div className="flex justify-end">
                 <button
                   type="submit"
-                  className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 transition-opacity"
+                  form="user-form"
+                  className="inline-flex h-8 items-center justify-center rounded bg-primary px-4 text-[10px] font-bold uppercase tracking-wider text-primary-foreground hover:opacity-90 transition-opacity"
                 >
-                  {isEditMode ? 'Save Changes' : 'Create User'}
+                  {isEditMode ? 'SAVE CHANGES' : 'CREATE USER'}
                 </button>
               </div>
-            </form>
+            </div>
           </div>
         </div>
       )}

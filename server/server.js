@@ -77,6 +77,15 @@ app.use('/api/purchases', purchasesRoutes);
 app.use('/api/delivery-requests', deliveryRequestsRoutes);
 app.use('/api/users', usersRoutes);
 
+// Global error handler
+app.use((err, req, res, next) => {
+  console.error('Global error handler:', err);
+  res.status(err.status || 500).json({
+    message: err.message || 'Internal server error',
+    error: process.env.NODE_ENV === 'development' ? err.stack : undefined
+  });
+});
+
 if (process.env.NODE_ENV !== 'production') {
   const PORT = process.env.PORT || 5000;
   app.listen(PORT, () => {

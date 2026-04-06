@@ -778,8 +778,8 @@ function DeliveryPlan() {
         }
       };
 
-      const processArray = (arr) => {
-        if (!arr || !Array.isArray(arr)) return [];
+      const processArray = (arr, defaultItem) => {
+        if (!arr || !Array.isArray(arr) || arr.length === 0) return [defaultItem];
         return arr.map(item => ({
           ...item,
           date: item.date ? formatDateForInput(item.date) : ''
@@ -787,13 +787,13 @@ function DeliveryPlan() {
       };
 
       setExpensesFormData({
-        fuel: processArray(delivery.fuel),
-        tollFee: processArray(delivery.tollFee),
-        pierExpenses: processArray(delivery.pierExpenses),
-        repairAndMaintenance: processArray(delivery.repairAndMaintenance),
-        mealExpenses: processArray(delivery.mealExpenses),
-        loadExpenses: processArray(delivery.loadExpenses),
-        contingency: processArray(delivery.contingency)
+        fuel: processArray(delivery.fuel, { amount: 0, liters: 0, gasStation: '', invoiceNo: '', paymentType: '', date: '' }),
+        tollFee: processArray(delivery.tollFee, { details: '', amt: 0, date: '' }),
+        pierExpenses: processArray(delivery.pierExpenses, { details: '', amt: 0, date: '' }),
+        repairAndMaintenance: processArray(delivery.repairAndMaintenance, { details: '', amt: 0, date: '' }),
+        mealExpenses: processArray(delivery.mealExpenses, { details: '', amt: 0, date: '' }),
+        loadExpenses: processArray(delivery.loadExpenses, { details: '', amt: 0, date: '' }),
+        contingency: processArray(delivery.contingency, { details: '', amt: 0, date: '' })
       });
 
       setExpensesModal({
@@ -2297,24 +2297,37 @@ function DeliveryPlan() {
 
             {/* Scrollable Form Content */}
             <div className="flex-1 overflow-y-auto p-5 pt-3">
-              <form id="expenses-form" onSubmit={handleExpensesSubmit} className="space-y-6">
+              <form id="expenses-form" onSubmit={handleExpensesSubmit} className="space-y-3">
                 {/* Fuel Expenses */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Fuel Expenses</label>
-                    <Button type="button" variant="outline" size="sm" onClick={() => addExpenseItem('fuel', { amount: 0, liters: 0, gasStation: '', invoiceNo: '', date: '' })} className="h-6 text-[9px] px-2 uppercase my-0 py-0"><Plus className="h-3 w-3 mr-1" />Add</Button>
-                  </div>
+                <fieldset className="rounded-lg border border-border bg-card px-3 pb-3 pt-2 shadow-sm space-y-2 min-w-0">
+                  <legend className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground px-1 -ml-1 flex items-center gap-2">
+                    Fuel Expenses
+                  </legend>
                   {expensesFormData.fuel.map((f, idx) => (
-                    <div key={idx} className="flex flex-wrap items-center gap-2 border border-border/50 bg-muted/20 p-2 rounded-lg">
-                      <div className="w-[100px] space-y-1"><Input type="date" value={f.date || ''} onChange={(e) => handleExpenseChange('fuel', idx, 'date', e.target.value)} className="h-7 text-[10px] bg-background px-1" /></div>
-                      <div className="flex-1 min-w-[100px] space-y-1"><Input placeholder="Gas Station" value={f.gasStation || ''} onChange={(e) => handleExpenseChange('fuel', idx, 'gasStation', e.target.value)} className="h-7 text-[10px] bg-background" /></div>
-                      <div className="w-[70px] space-y-1"><Input type="number" placeholder="Liters" value={f.liters || ''} onChange={(e) => handleExpenseChange('fuel', idx, 'liters', e.target.value)} className="h-7 text-[10px] bg-background px-1" /></div>
-                      <div className="w-[80px] space-y-1"><Input type="number" placeholder="Amount (₱)" value={f.amount || ''} onChange={(e) => handleExpenseChange('fuel', idx, 'amount', e.target.value)} className="h-7 text-[10px] bg-background px-1" /></div>
-                      <div className="flex-1 min-w-[90px] space-y-1"><Input placeholder="Invoice No." value={f.invoiceNo || ''} onChange={(e) => handleExpenseChange('fuel', idx, 'invoiceNo', e.target.value)} className="h-7 text-[10px] bg-background" /></div>
-                      <Button type="button" variant="ghost" size="sm" onClick={() => removeExpenseItem('fuel', idx)} className="h-7 w-7 p-0 shrink-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"><Minus className="h-3 w-3" /></Button>
+                    <div key={idx} className="flex flex-wrap items-center gap-2">
+                      <Input type="date" value={f.date || ''} onChange={(e) => handleExpenseChange('fuel', idx, 'date', e.target.value)} className="w-[140px] h-8 text-[11px] font-bold uppercase tracking-wider bg-background px-2.5" />
+                      <select value={f.paymentType || ''} onChange={(e) => handleExpenseChange('fuel', idx, 'paymentType', e.target.value)} className="w-[150px] h-8 text-[11px] font-bold uppercase tracking-wider bg-background px-2.5 rounded border border-input shadow-sm">
+                        <option value="">PAYMENT</option>
+                        <option value="PURCHASE ORDER">PURCHASE ORDER</option>
+                        <option value="CASH">CASH</option>
+                      </select>
+                      <Input placeholder="Gas Station" value={f.gasStation || ''} onChange={(e) => handleExpenseChange('fuel', idx, 'gasStation', e.target.value)} className="flex-1 h-8 text-[11px] font-bold uppercase tracking-wider bg-background" />
+                      <Input type="number" placeholder="Liters" value={f.liters || ''} onChange={(e) => handleExpenseChange('fuel', idx, 'liters', e.target.value)} className="w-[80px] h-8 text-[11px] font-bold uppercase tracking-wider bg-background px-2.5" />
+                      <Input type="number" placeholder="Amount" value={f.amount || ''} onChange={(e) => handleExpenseChange('fuel', idx, 'amount', e.target.value)} className="w-[100px] h-8 text-[11px] font-bold uppercase tracking-wider bg-background px-2.5" />
+                      <Input placeholder="Invoice No." value={f.invoiceNo || ''} onChange={(e) => handleExpenseChange('fuel', idx, 'invoiceNo', e.target.value)} className="w-[130px] h-8 text-[11px] font-bold uppercase tracking-wider bg-background" />
+                      {idx === 0 && (
+                        <button type="button" onClick={() => addExpenseItem('fuel', { amount: 0, liters: 0, gasStation: '', invoiceNo: '', paymentType: '', date: '' })} className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
+                          <Plus className="h-4 w-4" />
+                        </button>
+                      )}
+                      {idx > 0 && (
+                        <button type="button" onClick={() => removeExpenseItem('fuel', idx)} className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-muted/50 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors">
+                          <Minus className="h-4 w-4" />
+                        </button>
+                      )}
                     </div>
                   ))}
-                </div>
+                </fieldset>
 
                 {/* Other Expense Categories */}
                 {[
@@ -2325,26 +2338,28 @@ function DeliveryPlan() {
                   { key: 'loadExpenses', label: 'Load Expenses' },
                   { key: 'contingency', label: 'Contingency' }
                 ].map(cat => (
-                  <div key={cat.key} className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{cat.label}</label>
-                      <Button type="button" variant="outline" size="sm" onClick={() => addExpenseItem(cat.key, { details: '', amt: 0, date: '' })} className="h-6 text-[9px] px-2 uppercase my-0 py-0"><Plus className="h-3 w-3 mr-1" />Add</Button>
-                    </div>
+                  <fieldset key={cat.key} className="rounded-lg border border-border bg-card px-3 pb-3 pt-2 shadow-sm space-y-2 min-w-0">
+                    <legend className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground px-1 -ml-1 flex items-center gap-2">
+                      {cat.label}
+                    </legend>
                     {expensesFormData[cat.key].map((item, idx) => (
-                      <div key={idx} className="flex flex-wrap items-center gap-2 border border-border/50 bg-muted/20 p-2 rounded-lg">
-                        <div className="w-[100px] space-y-1">
-                          <Input type="date" value={item.date || ''} onChange={(e) => handleExpenseChange(cat.key, idx, 'date', e.target.value)} className="h-7 text-[10px] bg-background px-1" />
-                        </div>
-                        <div className="flex-1 min-w-[180px] space-y-1">
-                          <Input placeholder="Description details..." value={item.details || ''} onChange={(e) => handleExpenseChange(cat.key, idx, 'details', e.target.value)} className="h-7 text-[10px] bg-background" />
-                        </div>
-                        <div className="w-[90px] space-y-1">
-                          <Input type="number" placeholder="Amount (₱)" value={item.amt || ''} onChange={(e) => handleExpenseChange(cat.key, idx, 'amt', e.target.value)} className="h-7 text-[10px] bg-background px-1" />
-                        </div>
-                        <Button type="button" variant="ghost" size="sm" onClick={() => removeExpenseItem(cat.key, idx)} className="h-7 w-7 p-0 shrink-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"><Minus className="h-3 w-3" /></Button>
+                      <div key={idx} className="flex flex-wrap items-center gap-2">
+                        <Input type="date" value={item.date || ''} onChange={(e) => handleExpenseChange(cat.key, idx, 'date', e.target.value)} className="w-[140px] h-8 text-[11px] font-bold uppercase tracking-wider bg-background px-2.5" />
+                        <Input placeholder="Description details..." value={item.details || ''} onChange={(e) => handleExpenseChange(cat.key, idx, 'details', e.target.value)} className="flex-1 min-w-[200px] h-8 text-[11px] font-bold uppercase tracking-wider bg-background" />
+                        <Input type="number" placeholder="Amount" value={item.amt || ''} onChange={(e) => handleExpenseChange(cat.key, idx, 'amt', e.target.value)} className="w-[120px] h-8 text-[11px] font-bold uppercase tracking-wider bg-background px-2.5" />
+                        {idx === 0 && (
+                          <button type="button" onClick={() => addExpenseItem(cat.key, { details: '', amt: 0, date: '' })} className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
+                            <Plus className="h-4 w-4" />
+                          </button>
+                        )}
+                        {idx > 0 && (
+                          <button type="button" onClick={() => removeExpenseItem(cat.key, idx)} className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-muted/50 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors">
+                            <Minus className="h-4 w-4" />
+                          </button>
+                        )}
                       </div>
                     ))}
-                  </div>
+                  </fieldset>
                 ))}
               </form>
             </div>

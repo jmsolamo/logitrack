@@ -156,7 +156,7 @@ export default function ActualExpenses() {
     };
 
     setFormData({
-      fuel: processArray(latestDelivery.fuel).length > 0 ? processArray(latestDelivery.fuel) : [{ amount: 0, liters: 0, gasStation: '', invoiceNo: '', date: '' }],
+      fuel: processArray(latestDelivery.fuel).length > 0 ? processArray(latestDelivery.fuel) : [{ amount: 0, liters: 0, gasStation: '', invoiceNo: '', paymentType: '', date: '' }],
       tollFee: processArray(latestDelivery.tollFee).length > 0 ? processArray(latestDelivery.tollFee) : [{ details: '', amt: 0, date: '' }],
       pierExpenses: processArray(latestDelivery.pierExpenses).length > 0 ? processArray(latestDelivery.pierExpenses) : [{ details: '', amt: 0, date: '' }],
       repairAndMaintenance: processArray(latestDelivery.repairAndMaintenance).length > 0 ? processArray(latestDelivery.repairAndMaintenance) : [{ details: '', amt: 0, date: '' }],
@@ -913,12 +913,17 @@ export default function ActualExpenses() {
                       {formData.fuel.map((f, idx) => (
                         <div key={idx} className="flex items-center gap-2">
                           <Input type="date" value={f.date || ''} onChange={(e) => handleExpenseChange('fuel', idx, 'date', e.target.value)} className="w-[140px] h-8 text-[11px] font-bold uppercase tracking-wider bg-background px-2.5" />
-                          <Input placeholder="Gas Station" value={f.gasStation || ''} onChange={(e) => handleExpenseChange('fuel', idx, 'gasStation', e.target.value)} className="flex-1 min-w-[100px] h-8 text-[11px] font-bold uppercase tracking-wider bg-background" />
-                          <Input type="number" placeholder="Liters" value={f.liters || ''} onChange={(e) => handleExpenseChange('fuel', idx, 'liters', e.target.value)} className="w-[70px] h-8 text-[11px] font-bold uppercase tracking-wider bg-background px-2.5" />
-                          <Input type="number" placeholder="Amount" value={f.amount || ''} onChange={(e) => handleExpenseChange('fuel', idx, 'amount', e.target.value)} className="w-[90px] h-8 text-[11px] font-bold uppercase tracking-wider bg-background px-2.5" />
-                          <Input placeholder="Invoice No." value={f.invoiceNo || ''} onChange={(e) => handleExpenseChange('fuel', idx, 'invoiceNo', e.target.value)} className="flex-1 min-w-[90px] h-8 text-[11px] font-bold uppercase tracking-wider bg-background" />
+                          <select value={f.paymentType || ''} onChange={(e) => handleExpenseChange('fuel', idx, 'paymentType', e.target.value)} className="w-[150px] h-8 text-[11px] font-bold uppercase tracking-wider bg-background px-2.5 rounded border border-input shadow-sm">
+                            <option value="">PAYMENT</option>
+                            <option value="PURCHASE ORDER">PURCHASE ORDER</option>
+                            <option value="CASH">CASH</option>
+                          </select>
+                          <Input placeholder="Gas Station" value={f.gasStation || ''} onChange={(e) => handleExpenseChange('fuel', idx, 'gasStation', e.target.value)} className="flex-1 h-8 text-[11px] font-bold uppercase tracking-wider bg-background" />
+                          <Input type="number" placeholder="Liters" value={f.liters || ''} onChange={(e) => handleExpenseChange('fuel', idx, 'liters', e.target.value)} className="w-[80px] h-8 text-[11px] font-bold uppercase tracking-wider bg-background px-2.5" />
+                          <Input type="number" placeholder="Amount" value={f.amount || ''} onChange={(e) => handleExpenseChange('fuel', idx, 'amount', e.target.value)} className="w-[100px] h-8 text-[11px] font-bold uppercase tracking-wider bg-background px-2.5" />
+                          <Input placeholder="Invoice No." value={f.invoiceNo || ''} onChange={(e) => handleExpenseChange('fuel', idx, 'invoiceNo', e.target.value)} className="w-[130px] h-8 text-[11px] font-bold uppercase tracking-wider bg-background" />
                           {idx === 0 && (
-                            <button type="button" onClick={() => addExpenseItem('fuel', { amount: 0, liters: 0, gasStation: '', invoiceNo: '', date: '' })} className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
+                            <button type="button" onClick={() => addExpenseItem('fuel', { amount: 0, liters: 0, gasStation: '', invoiceNo: '', paymentType: '', date: '' })} className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
                               <Plus className="h-4 w-4" />
                             </button>
                           )}
@@ -945,10 +950,10 @@ export default function ActualExpenses() {
                           {cat.label}
                         </legend>
                         {formData[cat.key].map((item, idx) => (
-                          <div key={idx} className="flex items-center gap-2">
+                          <div key={idx} className="flex flex-wrap items-center gap-2">
                             <Input type="date" value={item.date || ''} onChange={(e) => handleExpenseChange(cat.key, idx, 'date', e.target.value)} className="w-[140px] h-8 text-[11px] font-bold uppercase tracking-wider bg-background px-2.5" />
-                            <Input placeholder="Description details..." value={item.details || ''} onChange={(e) => handleExpenseChange(cat.key, idx, 'details', e.target.value)} className="flex-1 min-w-[180px] h-8 text-[11px] font-bold uppercase tracking-wider bg-background" />
-                            <Input type="number" placeholder="Amount" value={item.amt || ''} onChange={(e) => handleExpenseChange(cat.key, idx, 'amt', e.target.value)} className="w-[100px] h-8 text-[11px] font-bold uppercase tracking-wider bg-background px-2.5" />
+                            <Input placeholder="Description details..." value={item.details || ''} onChange={(e) => handleExpenseChange(cat.key, idx, 'details', e.target.value)} className="flex-1 min-w-[200px] h-8 text-[11px] font-bold uppercase tracking-wider bg-background" />
+                            <Input type="number" placeholder="Amount" value={item.amt || ''} onChange={(e) => handleExpenseChange(cat.key, idx, 'amt', e.target.value)} className="w-[120px] h-8 text-[11px] font-bold uppercase tracking-wider bg-background px-2.5" />
                             {idx === 0 && (
                               <button type="button" onClick={() => addExpenseItem(cat.key, { details: '', amt: 0, date: '' })} className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
                                 <Plus className="h-4 w-4" />
@@ -977,10 +982,11 @@ export default function ActualExpenses() {
                         detailsModal.delivery.fuel.map((f, idx) => (
                           <div key={idx} className="flex items-center gap-2">
                             <div className="w-[140px] h-8 text-[11px] font-bold uppercase tracking-wider bg-muted/20 px-2.5 rounded border border-border/30 flex items-center">{f.date ? formatDate(f.date) : '—'}</div>
-                            <div className="flex-1 min-w-[100px] h-8 text-[11px] font-bold uppercase tracking-wider bg-muted/20 px-2.5 rounded border border-border/30 flex items-center truncate">{f.gasStation || '—'}</div>
-                            <div className="w-[70px] h-8 text-[11px] font-bold uppercase tracking-wider bg-muted/20 px-2.5 rounded border border-border/30 flex items-center justify-end">{f.liters || 0}</div>
-                            <div className="w-[90px] h-8 text-[11px] font-bold uppercase tracking-wider bg-muted/20 px-2.5 rounded border border-border/30 flex items-center justify-end">{f.amount || 0}</div>
-                            <div className="flex-1 min-w-[90px] h-8 text-[11px] font-bold uppercase tracking-wider bg-muted/20 px-2.5 rounded border border-border/30 flex items-center truncate">{f.invoiceNo || '—'}</div>
+                            <div className="w-[150px] h-8 text-[11px] font-bold uppercase tracking-wider bg-muted/20 px-2.5 rounded border border-border/30 flex items-center">{f.paymentType || '—'}</div>
+                            <div className="flex-1 h-8 text-[11px] font-bold uppercase tracking-wider bg-muted/20 px-2.5 rounded border border-border/30 flex items-center truncate">{f.gasStation || '—'}</div>
+                            <div className="w-[80px] h-8 text-[11px] font-bold uppercase tracking-wider bg-muted/20 px-2.5 rounded border border-border/30 flex items-center justify-end">{f.liters || 0}</div>
+                            <div className="w-[100px] h-8 text-[11px] font-bold uppercase tracking-wider bg-muted/20 px-2.5 rounded border border-border/30 flex items-center justify-end">{f.amount || 0}</div>
+                            <div className="w-[130px] h-8 text-[11px] font-bold uppercase tracking-wider bg-muted/20 px-2.5 rounded border border-border/30 flex items-center truncate">{f.invoiceNo || '—'}</div>
                           </div>
                         ))
                       )}
@@ -1003,10 +1009,10 @@ export default function ActualExpenses() {
                           <p className="text-[10px] text-muted-foreground italic tracking-tight py-1">No records.</p>
                         ) : (
                           cat.arr.map((item, idx) => (
-                            <div key={idx} className="flex items-center gap-2">
+                            <div key={idx} className="flex flex-wrap items-center gap-2">
                               <div className="w-[140px] h-8 text-[11px] font-bold uppercase tracking-wider bg-muted/20 px-2.5 rounded border border-border/30 flex items-center">{item.date ? formatDate(item.date) : '—'}</div>
-                              <div className="flex-1 min-w-[180px] h-8 text-[11px] font-bold uppercase tracking-wider bg-muted/20 px-2.5 rounded border border-border/30 flex items-center truncate">{item.details || '—'}</div>
-                              <div className="w-[100px] h-8 text-[11px] font-bold uppercase tracking-wider bg-muted/20 px-2.5 rounded border border-border/30 flex items-center justify-end">{item.amt || 0}</div>
+                              <div className="flex-1 min-w-[200px] h-8 text-[11px] font-bold uppercase tracking-wider bg-muted/20 px-2.5 rounded border border-border/30 flex items-center truncate">{item.details || '—'}</div>
+                              <div className="w-[120px] h-8 text-[11px] font-bold uppercase tracking-wider bg-muted/20 px-2.5 rounded border border-border/30 flex items-center justify-end">{item.amt || 0}</div>
                             </div>
                           ))
                         )}

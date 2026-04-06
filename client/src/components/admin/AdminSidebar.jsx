@@ -39,7 +39,7 @@ const navGroups = [
         children: [
           { name: 'Actual Expenses', path: '/admin/delivery-expenses/actual' },
           { name: 'Diesel', path: '/admin/delivery-expenses/diesel' },
-          { name: 'Expenses Breakdown', path: '/admin/delivery-expenses/breakdown' },
+          { name: 'Driver Expenses', path: '/admin/delivery-expenses/breakdown' },
           { name: 'Job Orders', path: '/admin/delivery-expenses/job-orders' },
         ],
       },
@@ -52,11 +52,6 @@ const navGroups = [
   {
     label: 'Management',
     items: [
-      {
-        name: 'Active Trips',
-        icon: Truck,
-        path: '/admin/trips',
-      },
       { name: 'Destinations', icon: MapPin, path: '/admin/destinations' },
       { name: 'Delivery Charge', icon: Banknote, path: '/admin/delivery-charge' },
       { name: 'Vehicles', icon: Car, path: '/admin/vehicles' },

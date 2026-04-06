@@ -79,6 +79,14 @@ function RequestPage() {
     isLoading: false,
   });
 
+  // Budget only modal (for combined deliveries)
+  const [budgetModal, setBudgetModal] = useState({
+    isOpen: false,
+    deliveryId: null,
+    totalBudget: '',
+    isLoading: false,
+  });
+
   // Decline modal
   const [declineModal, setDeclineModal] = useState({
     isOpen: false,
@@ -314,6 +322,26 @@ function RequestPage() {
     }
   };
 
+  // Handle budget assignment (for combined deliveries)
+  const handleAssignBudget = async () => {
+    const { deliveryId, totalBudget } = budgetModal;
+    
+    setBudgetModal((prev) => ({ ...prev, isLoading: true }));
+
+    try {
+      await axios.put(`/api/deliveries/${deliveryId}/assign-personnel`, {
+        totalBudget: totalBudget ? Number(totalBudget) : 0,
+      });
+      
+      toast.success('Budget added successfully');
+      await fetchRequests();
+      setBudgetModal({ isOpen: false, deliveryId: null, totalBudget: '', isLoading: false });
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to add budget');
+      setBudgetModal((prev) => ({ ...prev, isLoading: false }));
+    }
+  };
+
   // Handle personnel assignment
   const handleAssignPersonnel = async () => {
     const { deliveryId, driver, helper, totalBudget } = personnelModal;
@@ -398,13 +426,10 @@ function RequestPage() {
       setCombineModal({ isOpen: false, request: null, existingDeliveries: [], selectedDeliveryId: '', isLoading: false });
       setDetailsModal({ isOpen: false, request: null });
 
-      // Open personnel assignment modal
-      setPersonnelModal({
+      // Open budget modal for combined delivery
+      setBudgetModal({
         isOpen: true,
         deliveryId: data.deliveryId,
-        request: request,
-        driver: request.driver && request.driver.length > 0 ? request.driver : [''],
-        helper: request.helper && request.helper.length > 0 ? request.helper : [''],
         totalBudget: '',
         isLoading: false,
       });
@@ -570,7 +595,9 @@ function RequestPage() {
                       onClick={() => setDetailsModal({ isOpen: true, request: req })}
                       className={`border-b border-border/50 transition-colors hover:bg-muted/30 cursor-pointer ${index % 2 === 0 ? 'bg-card/30' : ''}`}
                     >
-                      <td className="whitespace-nowrap px-3 py-2 text-[10px] font-bold text-primary tracking-tight align-middle">{req.referenceNo || '—'}</td>
+                      <td className="whitespace-nowrap px-3 py-2 text-[10px] font-bold text-primary tracking-tight align-middle">
+                        {req.deliveryReferenceNo || req.referenceNo || '—'}
+                      </td>
                       <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-muted-foreground align-middle">{formatDate(req.createdAt)}</td>
                       <td className="whitespace-nowrap px-3 py-2 align-middle text-center">
                         <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest ${sc.bg} ${sc.text}`}>
@@ -671,9 +698,44 @@ function RequestPage() {
                 </div>
               )}
 
+              {/* Vehicle change notification */}
+              {(detailsModal.request.requestStatus === 'Approved' || detailsModal.request.requestStatus === 'Approved with Changes') && detailsModal.request.vehicleChanged && (
+                <div className="flex items-start gap-2 rounded-md bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900/50 px-3 py-2">
+                  <AlertTriangle className="h-3.5 w-3.5 text-blue-500 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">Vehicle Changed</p>
+                    <p className="text-[11px] text-blue-700 dark:text-blue-300 mt-0.5">
+                      Vehicle changed from <span className="font-bold">{(() => {
+                        const origPlate = detailsModal.request.originalVehicle;
+                        const origVehicle = vehicles.find(v => v.plateNumber === origPlate);
+                        return origVehicle ? `${origVehicle.plateNumber} (${origVehicle.model})` : origPlate;
+                      })()}</span> to <span className="font-bold">{(() => {
+                        const newPlate = detailsModal.request.vehicleEquipment;
+                        const newVehicle = vehicles.find(v => v.plateNumber === newPlate);
+                        return newVehicle ? `${newVehicle.plateNumber} (${newVehicle.model})` : newPlate;
+                      })()}</span>
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Combined delivery notification */}
+              {(detailsModal.request.requestStatus === 'Approved' || detailsModal.request.requestStatus === 'Approved with Changes') && detailsModal.request.combinedWithDelivery && (
+                <div className="flex items-start gap-2 rounded-md bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/50 px-3 py-2">
+                  <AlertTriangle className="h-3.5 w-3.5 text-emerald-500 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Added to Existing Delivery</p>
+                    <p className="text-[11px] text-emerald-700 dark:text-emerald-300 mt-0.5">
+                      This request has been added to delivery <span className="font-bold">{detailsModal.request.deliveryReferenceNo}</span>.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {/* Detail fields */}
               {[
-                { label: 'Reference No', value: detailsModal.request.referenceNo },
+                { label: 'Request Ref No', value: detailsModal.request.referenceNo },
+                ...(detailsModal.request.deliveryReferenceNo ? [{ label: 'Delivery Ref No', value: detailsModal.request.deliveryReferenceNo }] : []),
                 { label: 'Delivery Type', value: detailsModal.request.deliveryType },
                 { label: 'Date From', value: formatDate(detailsModal.request.dateFrom) },
                 { label: 'Date To', value: formatDate(detailsModal.request.dateTo) },
@@ -1217,6 +1279,66 @@ function RequestPage() {
                   <CheckCircle2 className="h-3.5 w-3.5" />
                 )}
                 {combineModal.isLoading ? 'Combining...' : 'Combine Deliveries'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── Budget Only Modal ─── */}
+      {budgetModal.isOpen && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-200">
+          <div className="w-full max-w-sm rounded-lg border border-border bg-card shadow-xl p-5">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/30">
+                <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold uppercase tracking-tight text-foreground">Add Budget</h3>
+                <p className="text-[11px] text-muted-foreground">
+                  Add budget for this combined delivery.
+                </p>
+              </div>
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-[9px] font-bold uppercase tracking-widest text-muted-foreground mb-2">
+                Total Budget
+              </label>
+              <div className="relative">
+                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[11px] font-bold text-muted-foreground/60 select-none">
+                  ₱
+                </div>
+                <input
+                  type="number"
+                  value={budgetModal.totalBudget}
+                  onChange={(e) => setBudgetModal(prev => ({ ...prev, totalBudget: e.target.value }))}
+                  className="block w-full rounded border border-input bg-background pl-7 pr-3 py-2 text-[11px] font-semibold shadow-sm transition-all focus:border-primary focus:ring-1 focus:ring-primary focus-visible:outline-none"
+                  placeholder="Enter total budget"
+                  autoFocus
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-4 border-t border-border">
+              <button
+                onClick={() => setBudgetModal({ isOpen: false, deliveryId: null, totalBudget: '', isLoading: false })}
+                disabled={budgetModal.isLoading}
+                className="px-3 py-1.5 rounded text-[11px] font-semibold text-muted-foreground hover:bg-accent transition-colors disabled:opacity-50"
+              >
+                Skip for Now
+              </button>
+              <button
+                onClick={handleAssignBudget}
+                disabled={budgetModal.isLoading}
+                className="inline-flex items-center gap-1.5 rounded-md bg-emerald-600 px-4 py-1.5 text-[11px] font-bold uppercase tracking-wider text-white hover:bg-emerald-700 transition-colors disabled:opacity-50"
+              >
+                {budgetModal.isLoading ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                )}
+                {budgetModal.isLoading ? 'Adding...' : 'Add Budget'}
               </button>
             </div>
           </div>
