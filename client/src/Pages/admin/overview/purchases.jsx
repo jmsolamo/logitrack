@@ -8,8 +8,9 @@ import {
   Loader2,
   RotateCcw,
   ShoppingBag,
-  Calendar,
-  Printer
+  Printer,
+  Minus,
+  ChevronDown
 } from 'lucide-react';
 import { Button } from '../../../components/ui/button';
 import axios from 'axios';
@@ -30,18 +31,22 @@ function PurchasesPage() {
   const [purchaseToDelete, setPurchaseToDelete] = useState(null);
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [printType, setPrintType] = useState('purchases');
+  const [viewModal, setViewModal] = useState({ isOpen: false, purchase: null });
 
-  const [formData, setFormData] = useState({
-    date: '',
+  const initialFormData = {
     category: '',
-    items: '',
-    qty: '',
-    amount: '',
-    supplier: '',
-    invoiceNo: '',
+    items: [''],
+    qty: [''],
+    amount: [''],
+    supplier: [''],
+    invoiceNo: [''],
+    date: [''],
     purchasedBy: '',
+    budget: '',
     usedForNote: ''
-  });
+  };
+
+  const [formData, setFormData] = useState(initialFormData);
 
   const toast = useAppToast();
 
@@ -86,30 +91,76 @@ function PurchasesPage() {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+  const handleArrayChange = (name, index, value) => {
+    setFormData(prev => {
+      const arr = [...prev[name]];
+      arr[index] = value;
+      return { ...prev, [name]: arr };
+    });
+  };
+
+  const addArrayField = (name) => {
+    setFormData(prev => ({ ...prev, [name]: [...prev[name], ''] }));
+  };
+
+  const removeArrayField = (name, index) => {
+    setFormData(prev => ({ ...prev, [name]: prev[name].filter((_, i) => i !== index) }));
+  };
+
+  const addItemRow = () => {
+    setFormData(prev => ({
+      ...prev,
+      items: [...prev.items, ''],
+      qty: [...prev.qty, ''],
+      amount: [...prev.amount, ''],
+      supplier: [...prev.supplier, ''],
+      invoiceNo: [...prev.invoiceNo, ''],
+      date: [...prev.date, '']
+    }));
+  };
+
+  const removeItemRow = (index) => {
+    setFormData(prev => ({
+      ...prev,
+      items: prev.items.filter((_, i) => i !== index),
+      qty: prev.qty.filter((_, i) => i !== index),
+      amount: prev.amount.filter((_, i) => i !== index),
+      supplier: prev.supplier.filter((_, i) => i !== index),
+      invoiceNo: prev.invoiceNo.filter((_, i) => i !== index),
+      date: prev.date.filter((_, i) => i !== index)
+    }));
+  };
+
   const openModal = (purchase = null) => {
     if (purchase) {
+      const splitField = (val) => val ? String(val).split(',').map(s => s.trim()) : [''];
       setFormData({
-        date: new Date(purchase.date).toISOString().split('T')[0],
         category: purchase.category || '',
-        items: purchase.items,
-        qty: purchase.qty,
-        amount: purchase.amount,
-        supplier: purchase.supplier || '',
-        invoiceNo: purchase.invoiceNo || '',
+        items: splitField(purchase.items),
+        qty: splitField(purchase.qty),
+        amount: splitField(purchase.amount),
+        supplier: splitField(purchase.supplier),
+        invoiceNo: splitField(purchase.invoiceNo),
+        date: splitField(purchase.date).map(d => {
+          if (!d) return '';
+          try { return new Date(d).toISOString().split('T')[0]; } catch { return d; }
+        }),
         purchasedBy: purchase.purchasedBy || '',
+        budget: purchase.budget || '',
         usedForNote: purchase.usedForNote || ''
       });
       setEditingId(purchase._id);
     } else {
       setFormData({
-        date: new Date().toISOString().split('T')[0],
         category: '',
-        items: '',
-        qty: '',
-        amount: '',
-        supplier: '',
-        invoiceNo: '',
+        items: [''],
+        qty: [''],
+        amount: [''],
+        supplier: [''],
+        invoiceNo: [''],
+        date: [new Date().toISOString().split('T')[0]],
         purchasedBy: '',
+        budget: '',
         usedForNote: ''
       });
       setEditingId(null);
@@ -120,14 +171,15 @@ function PurchasesPage() {
   const closeModal = () => {
     setIsModalOpen(false);
     setFormData({
-      date: '',
       category: '',
-      items: '',
-      qty: '',
-      amount: '',
-      supplier: '',
-      invoiceNo: '',
+      items: [''],
+      qty: [''],
+      amount: [''],
+      supplier: [''],
+      invoiceNo: [''],
+      date: [''],
       purchasedBy: '',
+      budget: '',
       usedForNote: ''
     });
     setEditingId(null);
@@ -138,11 +190,24 @@ function PurchasesPage() {
     setIsSubmitLoading(true);
 
     try {
+      const payload = {
+        date: formData.date.filter(v => v.trim() !== '').join(', '),
+        category: formData.category,
+        items: formData.items.filter(v => v.trim() !== '').join(', '),
+        qty: formData.qty.filter(v => String(v).trim() !== '').join(', '),
+        amount: formData.amount.filter(v => String(v).trim() !== '').join(', '),
+        supplier: formData.supplier.filter(v => v.trim() !== '').join(', '),
+        invoiceNo: formData.invoiceNo.filter(v => v.trim() !== '').join(', '),
+        purchasedBy: formData.purchasedBy,
+        budget: formData.budget ? Number(formData.budget) : 0,
+        usedForNote: formData.usedForNote
+      };
+
       if (editingId) {
-        await axios.put(`/api/purchases/${editingId}`, formData);
+        await axios.put(`/api/purchases/${editingId}`, payload);
         toast.success('Purchase updated successfully');
       } else {
-        await axios.post('/api/purchases', formData);
+        await axios.post('/api/purchases', payload);
         toast.success('Purchase added successfully');
       }
 
@@ -223,7 +288,7 @@ function PurchasesPage() {
     return f.length ? f.join(' | ') : 'None';
   };
 
-  const totalAmount = filteredPurchases.reduce((sum, p) => sum + Number(p.amount || 0), 0);
+  const totalAmount = filteredPurchases.reduce((sum, p) => sum + String(p.amount || '').split(',').reduce((s, v) => s + Number(v.trim() || 0), 0), 0);
 
   const getCategoryFullName = (categoryVal) => {
     if (!categoryVal) return '-';
@@ -345,8 +410,8 @@ function PurchasesPage() {
                 </thead>
                 <tbody className="[&_tr:last-child]:border-0">
                   {filteredPurchases.map((purchase) => (
-                    <tr key={purchase._id} onClick={() => toggleSelectRow(purchase._id)} className="cursor-pointer border-b border-border/50 hover:bg-muted/30 transition-colors group">
-                      <td className="px-3 py-2 align-middle text-[10px] w-[36px]">
+                    <tr key={purchase._id} onClick={() => setViewModal({ isOpen: true, purchase })} className="cursor-pointer border-b border-border/50 hover:bg-muted/30 transition-colors group">
+                      <td className="px-3 py-2 align-middle text-[10px] w-[36px]" onClick={(e) => { e.stopPropagation(); toggleSelectRow(purchase._id); }}>
                         <div className="flex items-center justify-center">
                           <input
                             type="checkbox"
@@ -357,19 +422,19 @@ function PurchasesPage() {
                         </div>
                       </td>
                       <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-foreground tracking-tight">
-                        {new Date(purchase.date).toLocaleDateString()}
+                        {String(purchase.date || '').split(',')[0].trim() ? formatDate(String(purchase.date || '').split(',')[0].trim()) : '—'}
                       </td>
                       <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-foreground uppercase tracking-tight">{getCategoryFullName(purchase.category)}</td>
                       <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-foreground uppercase tracking-tight">{purchase.items}</td>
                       <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-foreground uppercase tracking-tight">{purchase.qty}</td>
-                      <td className="whitespace-nowrap px-3 py-2 text-[10px] font-bold text-primary tracking-tight text-right">₱{purchase.amount?.toFixed(2)}</td>
+                      <td className="whitespace-nowrap px-3 py-2 text-[10px] font-bold text-primary tracking-tight text-right">₱{String(purchase.amount || '').split(',').reduce((s, v) => s + Number(v.trim() || 0), 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
                       <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-foreground uppercase tracking-tight">{purchase.supplier || '-'}</td>
                       <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-foreground uppercase tracking-tight">{purchase.invoiceNo || '-'}</td>
                       <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-foreground uppercase tracking-tight">{purchase.purchasedBy || '-'}</td>
                       <td className="px-3 py-2 text-[10px] font-medium text-muted-foreground uppercase tracking-tight max-w-[200px] truncate" title={purchase.usedForNote}>
                         {purchase.usedForNote ? purchase.usedForNote.length > 30 ? purchase.usedForNote.substring(0, 30) + '...' : purchase.usedForNote : '-'}
                       </td>
-                      <td className="whitespace-nowrap px-3 py-1.5 text-center">
+                      <td className="whitespace-nowrap px-3 py-1.5 text-center" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                           <button
                             onClick={() => openModal(purchase)}
@@ -395,166 +460,283 @@ function PurchasesPage() {
           )}
         </div>
 
-        {/* Modern Compact Modal */}
+        {/* Modal */}
         {isModalOpen && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background/60 p-4 backdrop-blur-[2px] animate-in fade-in duration-300">
-            <div className="w-full max-w-[540px] rounded-xl border border-border bg-card p-5 shadow-2xl animate-in zoom-in-95 slide-in-from-bottom-4 duration-300">
-              <div className="mb-4 flex items-center justify-between border-b border-border pb-3">
-                <div className="flex items-center gap-2">
-                  <div className="flex h-6 w-6 items-center justify-center rounded bg-primary/10 text-primary">
-                    {editingId ? <Edit className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background/60 backdrop-blur-[2px] p-4 animate-in fade-in duration-300">
+            <div className="w-full max-w-[1100px] max-h-[90vh] flex flex-col rounded-xl border border-border bg-card shadow-2xl animate-in fade-in zoom-in-95 slide-in-from-bottom-4 duration-300">
+
+              {/* Sticky Header */}
+              <div className="sticky top-0 z-10 bg-card border-b border-border p-5 pb-3.5 rounded-t-xl">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="flex h-6 w-6 items-center justify-center rounded bg-primary/10 text-primary">
+                      {editingId ? <Edit className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
+                    </div>
+                    <h2 className="text-[12px] font-bold text-foreground uppercase tracking-tight">
+                      {editingId ? 'EDIT PURCHASE' : 'NEW PURCHASE'}
+                    </h2>
                   </div>
-                  <h2 className="text-[12px] font-bold text-foreground">
-                    {editingId ? 'EDIT PURCHASE' : 'NEW PURCHASE'}
-                  </h2>
+                  <button onClick={closeModal} className="rounded-full flex h-5.5 w-5.5 items-center justify-center text-muted-foreground hover:bg-muted transition-colors">
+                    <X className="h-3 w-3" />
+                  </button>
                 </div>
-                <button
-                  onClick={closeModal}
-                  className="flex h-5.5 w-5.5 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted"
-                >
-                  <X className="h-3 w-3" />
-                </button>
               </div>
 
-              <form onSubmit={handleSubmit} className="space-y-3">
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <label className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Date *</label>
-                    <div className="relative w-full">
-                      <input
-                        type="date"
-                        name="date"
-                        value={formData.date}
+              {/* Scrollable Form */}
+              <div className="flex-1 overflow-y-auto p-5 pt-3">
+                <form onSubmit={handleSubmit} className="space-y-3" id="purchase-form">
+
+                  {/* Date — top level removed, now per-row */}
+
+                  {/* Category */}
+                  <fieldset className="rounded-lg border border-border bg-card px-3 pb-3 pt-2 shadow-sm space-y-1.5 min-w-0">
+                    <legend className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground px-1 -ml-1">Category</legend>
+                    <div className="relative">
+                      <select
+                        name="category"
+                        value={formData.category}
                         onChange={handleInputChange}
                         required
-                        className="block h-8 w-full rounded border border-input bg-background px-2.5 py-1 pr-8 text-[11px] font-bold uppercase tracking-wider shadow-sm transition-all focus:border-primary focus:ring-1 focus:ring-primary focus-visible:outline-none [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-2.5 [&::-webkit-calendar-picker-indicator]:cursor-pointer"
+                        className="block h-8 w-full rounded border border-input bg-background px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider shadow-sm transition-all focus:border-primary focus:ring-1 focus:ring-primary focus-visible:outline-none appearance-none cursor-pointer"
+                      >
+                        <option value="" disabled>Select Category</option>
+                        <option value="00012 - MOTORPOOL">00012 - MOTORPOOL</option>
+                        <option value="4078 - PLANT & FACILITIES">4078 - PLANT & FACILITIES</option>
+                        <option value="100E - MAINTENANCE">100E - MAINTENANCE</option>
+                        {vehicles.map(v => (
+                          <option key={v._id} value={v.plateNumber}>{v.plateNumber.toUpperCase()} - {v.model.toUpperCase()}</option>
+                        ))}
+                      </select>
+                      <div className="pointer-events-none absolute inset-y-0 right-2.5 flex items-center text-muted-foreground">
+                        <ChevronDown className="h-3 w-3" />
+                      </div>
+                    </div>
+                  </fieldset>
+
+                  {/* Items */}
+                  <fieldset className="rounded-lg border border-border bg-card px-3 pb-3 pt-2 shadow-sm space-y-2 min-w-0">
+                    <legend className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground px-1 -ml-1">Date / Items / Qty / Amount / Supplier / Invoice No.</legend>
+                    {formData.items.map((item, index) => (
+                      <div key={index} className="flex items-center gap-2 flex-wrap">
+                        <input
+                          type="date"
+                          value={formData.date[index] || ''}
+                          onChange={(e) => handleArrayChange('date', index, e.target.value)}
+                          required
+                          className="block h-8 w-[140px] rounded border border-input bg-background px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider shadow-sm transition-all focus:border-primary focus:ring-1 focus:ring-primary focus-visible:outline-none [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:ml-auto"
+                        />
+                        <input
+                          value={item}
+                          onChange={(e) => handleArrayChange('items', index, e.target.value)}
+                          placeholder="Item"
+                          required
+                          className="block h-8 flex-1 min-w-[120px] rounded border border-input bg-background px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider shadow-sm transition-all placeholder:text-muted-foreground/50 focus:border-primary focus:ring-1 focus:ring-primary focus-visible:outline-none"
+                        />
+                        <input
+                          value={formData.qty[index] || ''}
+                          onChange={(e) => handleArrayChange('qty', index, e.target.value)}
+                          placeholder="Qty"
+                          required
+                          className="block h-8 w-[70px] rounded border border-input bg-background px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider shadow-sm transition-all placeholder:text-muted-foreground/50 focus:border-primary focus:ring-1 focus:ring-primary focus-visible:outline-none"
+                        />
+                        <input
+                          type="number"
+                          step="any"
+                          value={formData.amount[index] || ''}
+                          onChange={(e) => handleArrayChange('amount', index, e.target.value)}
+                          placeholder="Amount"
+                          required
+                          className="block h-8 w-[100px] rounded border border-input bg-background px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider shadow-sm transition-all placeholder:text-muted-foreground/50 focus:border-primary focus:ring-1 focus:ring-primary focus-visible:outline-none"
+                        />
+                        <input
+                          value={formData.supplier[index] || ''}
+                          onChange={(e) => handleArrayChange('supplier', index, e.target.value)}
+                          placeholder="Supplier"
+                          className="block h-8 flex-1 min-w-[100px] rounded border border-input bg-background px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider shadow-sm transition-all placeholder:text-muted-foreground/50 focus:border-primary focus:ring-1 focus:ring-primary focus-visible:outline-none"
+                        />
+                        <input
+                          value={formData.invoiceNo[index] || ''}
+                          onChange={(e) => handleArrayChange('invoiceNo', index, e.target.value)}
+                          placeholder="Invoice No."
+                          className="block h-8 w-[110px] rounded border border-input bg-background px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider shadow-sm transition-all placeholder:text-muted-foreground/50 focus:border-primary focus:ring-1 focus:ring-primary focus-visible:outline-none"
+                        />
+                        {index === 0 ? (
+                          <button type="button" onClick={addItemRow} className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
+                            <Plus className="h-4 w-4" />
+                          </button>
+                        ) : (
+                          <button type="button" onClick={() => removeItemRow(index)} className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-muted/50 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors">
+                            <Minus className="h-4 w-4" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </fieldset>
+
+                  {/* Purchased By */}
+                  <fieldset className="rounded-lg border border-border bg-card px-3 pb-3 pt-2 shadow-sm space-y-1.5 min-w-0">
+                    <legend className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground px-1 -ml-1">Purchased By</legend>
+                    <div className="relative">
+                      <select
+                        name="purchasedBy"
+                        value={formData.purchasedBy}
+                        onChange={handleInputChange}
+                        className="block h-8 w-full rounded border border-input bg-background px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider shadow-sm transition-all focus:border-primary focus:ring-1 focus:ring-primary focus-visible:outline-none appearance-none cursor-pointer"
+                      >
+                        <option value="">Select Personnel</option>
+                        {personnels.map(p => (
+                          <option key={p._id} value={`${p.firstname} ${p.lastname}`}>{p.firstname.toUpperCase()} {p.lastname.toUpperCase()}</option>
+                        ))}
+                      </select>
+                      <div className="pointer-events-none absolute inset-y-0 right-2.5 flex items-center text-muted-foreground">
+                        <ChevronDown className="h-3 w-3" />
+                      </div>
+                    </div>
+                  </fieldset>
+
+                  {/* Budget */}
+                  <fieldset className="rounded-lg border border-border bg-card px-3 pb-3 pt-2 shadow-sm space-y-1.5 min-w-0">
+                    <legend className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground px-1 -ml-1">Budget</legend>
+                    <div className="relative">
+                      <div className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[11px] font-bold text-muted-foreground/60 select-none">₱</div>
+                      <input
+                        type="number"
+                        name="budget"
+                        value={formData.budget}
+                        onChange={handleInputChange}
+                        placeholder="Budget"
+                        className="block h-8 w-full rounded border border-input bg-background pl-7 pr-2.5 py-1 text-[11px] font-bold uppercase tracking-wider shadow-sm transition-all placeholder:text-muted-foreground/50 focus:border-primary focus:ring-1 focus:ring-primary focus-visible:outline-none"
                       />
                     </div>
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Category *</label>
-                    <select
-                      name="category"
-                      value={formData.category}
-                      onChange={handleInputChange}
-                      required
-                      className="flex h-8 w-full rounded border border-input bg-background px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider shadow-sm transition-all focus:border-primary focus:ring-1 focus:ring-primary focus-visible:outline-none"
-                    >
-                      <option value="" disabled>SELECT CATEGORY</option>
-                      <option value="00012 - MOTORPOOL">00012 - MOTORPOOL</option>
-                      <option value="4078 - PLANT & FACILITIES">4078 - PLANT & FACILITIES</option>
-                      <option value="100E - MAINTENANCE">100E - MAINTENANCE</option>
-                      {vehicles.map(v => (
-                        <option key={v._id} value={v.plateNumber}>{v.plateNumber.toUpperCase()} - {v.model.toUpperCase()}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
+                  </fieldset>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <label className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Items *</label>
-                    <input
-                      type="text"
-                      name="items"
-                      value={formData.items}
-                      onChange={handleInputChange}
-                      required
-                      className="flex h-8 w-full rounded border border-input bg-background px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider shadow-sm transition-all focus:border-primary focus:ring-1 focus:ring-primary focus-visible:outline-none"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Quantity *</label>
-                    <input
-                      type="text"
-                      name="qty"
-                      value={formData.qty}
-                      onChange={handleInputChange}
-                      required
-                      className="flex h-8 w-full rounded border border-input bg-background px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider shadow-sm transition-all focus:border-primary focus:ring-1 focus:ring-primary focus-visible:outline-none"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <label className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Amount (₱) *</label>
-                    <input
-                      type="number"
-                      step="any"
-                      name="amount"
-                      value={formData.amount}
-                      onChange={handleInputChange}
-                      required
-                      className="flex h-8 w-full rounded border border-input bg-background px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider shadow-sm transition-all focus:border-primary focus:ring-1 focus:ring-primary focus-visible:outline-none"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Supplier</label>
-                    <input
-                      name="supplier"
-                      value={formData.supplier}
-                      onChange={handleInputChange}
-                      className="flex h-8 w-full rounded border border-input bg-background px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider shadow-sm transition-all focus:border-primary focus:ring-1 focus:ring-primary focus-visible:outline-none"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <label className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Invoice No.</label>
-                    <input
-                      name="invoiceNo"
-                      value={formData.invoiceNo}
-                      onChange={handleInputChange}
-                      className="flex h-8 w-full rounded border border-input bg-background px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider shadow-sm transition-all focus:border-primary focus:ring-1 focus:ring-primary focus-visible:outline-none"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Purchased By</label>
-                    <select
-                      name="purchasedBy"
-                      value={formData.purchasedBy}
-                      onChange={handleInputChange}
-                      className="flex h-8 w-full rounded border border-input bg-background px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider shadow-sm transition-all focus:border-primary focus:ring-1 focus:ring-primary focus-visible:outline-none"
-                    >
-                      <option value="">SELECT PERSONNEL</option>
-                      {personnels.map(p => (
-                        <option key={p._id} value={`${p.firstname} ${p.lastname}`}>{p.firstname.toUpperCase()} {p.lastname.toUpperCase()}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1 col-span-2">
-                    <label className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Used For/Note</label>
+                  {/* Used For / Note */}
+                  <fieldset className="rounded-lg border border-border bg-card px-3 pb-3 pt-2 shadow-sm space-y-1.5 min-w-0">
+                    <legend className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground px-1 -ml-1">Used For / Note</legend>
                     <input
                       name="usedForNote"
                       value={formData.usedForNote}
                       onChange={handleInputChange}
-                      className="flex h-8 w-full rounded border border-input bg-background px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider shadow-sm transition-all focus:border-primary focus:ring-1 focus:ring-primary focus-visible:outline-none"
+                      placeholder="Note"
+                      className="block h-8 w-full rounded border border-input bg-background px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider shadow-sm transition-all placeholder:text-muted-foreground/50 focus:border-primary focus:ring-1 focus:ring-primary focus-visible:outline-none"
                     />
-                  </div>
-                </div>
+                  </fieldset>
 
-                <div className="flex justify-end pt-3">
-                  <button
+                </form>
+              </div>
+
+              {/* Sticky Footer */}
+              <div className="sticky bottom-0 z-10 bg-card border-t border-border p-5 pt-3 rounded-b-xl">
+                <div className="flex justify-end">
+                  <Button
                     type="submit"
+                    form="purchase-form"
                     disabled={isSubmitLoading}
-                    className="inline-flex h-8 min-w-[90px] items-center justify-center rounded-lg bg-primary px-4 text-[10px] font-bold uppercase tracking-wider text-primary-foreground shadow-sm transition-all hover:bg-primary/90 active:scale-95 disabled:opacity-50"
+                    size="sm"
+                    className="min-w-[90px] h-8 text-[10px] uppercase tracking-wider"
                   >
-                    {isSubmitLoading ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      'SUBMIT'
-                    )}
-                  </button>
+                    {isSubmitLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'SUBMIT'}
+                  </Button>
                 </div>
-              </form>
+              </div>
+
             </div>
           </div>
         )}
+
+        {/* View Modal */}
+        {viewModal.isOpen && viewModal.purchase && (() => {
+          const p = viewModal.purchase;
+          const splitField = (val) => val ? String(val).split(',').map(s => s.trim()) : [''];
+          const dates = splitField(p.date).map(d => { try { return formatDate(d); } catch { return d; } });
+          const items = splitField(p.items);
+          const qtys = splitField(p.qty);
+          const amounts = splitField(p.amount);
+          const suppliers = splitField(p.supplier);
+          const invoices = splitField(p.invoiceNo);
+          const rows = Math.max(items.length, 1);
+          const inputClass = "block h-8 w-full rounded border border-input bg-muted/30 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider shadow-sm cursor-default select-none opacity-80 overflow-hidden text-ellipsis whitespace-nowrap";
+          const roInput = (value, cls = '') => (
+            <input readOnly disabled value={value || ''} className={`block h-8 rounded border border-input bg-muted/30 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider shadow-sm cursor-default opacity-80 ${cls}`} />
+          );
+          return (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background/60 backdrop-blur-[2px] p-4 animate-in fade-in duration-300">
+              <div className="w-full max-w-[1100px] max-h-[90vh] flex flex-col rounded-xl border border-border bg-card shadow-2xl animate-in fade-in zoom-in-95 slide-in-from-bottom-4 duration-300">
+
+                {/* Header */}
+                <div className="sticky top-0 z-10 bg-card border-b border-border p-5 pb-3.5 rounded-t-xl">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="flex h-6 w-6 items-center justify-center rounded bg-primary/10 text-primary">
+                        <Edit className="h-3 w-3" />
+                      </div>
+                      <h2 className="text-[12px] font-bold text-foreground uppercase tracking-tight">PURCHASE DETAILS</h2>
+                    </div>
+                    <button onClick={() => setViewModal({ isOpen: false, purchase: null })} className="rounded-full flex h-5.5 w-5.5 items-center justify-center text-muted-foreground hover:bg-muted transition-colors">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Content */}
+                <div className="flex-1 overflow-y-auto p-5 pt-3 space-y-3">
+
+                  {/* Category */}
+                  <fieldset className="rounded-lg border border-border bg-card px-3 pb-3 pt-2 shadow-sm space-y-1.5 min-w-0">
+                    <legend className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground px-1 -ml-1">Category</legend>
+                    {roInput(getCategoryFullName(p.category), 'w-full')}
+                  </fieldset>
+
+                  {/* Items */}
+                  <fieldset className="rounded-lg border border-border bg-card px-3 pb-3 pt-2 shadow-sm space-y-2 min-w-0">
+                    <legend className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground px-1 -ml-1">Date / Items / Qty / Amount / Supplier / Invoice No.</legend>
+                    {Array.from({ length: rows }, (_, i) => (
+                      <div key={i} className="flex items-center gap-2">
+                        {roInput(dates[i] || '', 'w-[140px] shrink-0')}
+                        {roInput(items[i] || '', 'flex-1 min-w-0')}
+                        {roInput(qtys[i] || '', 'w-[70px] shrink-0')}
+                        {roInput(amounts[i] ? `₱${Number(amounts[i]).toLocaleString(undefined, { minimumFractionDigits: 2 })}` : '', 'w-[100px] shrink-0')}
+                        {roInput(suppliers[i] || '', 'flex-1 min-w-0')}
+                        {roInput(invoices[i] || '', 'w-[110px] shrink-0')}
+                        <div className="h-8 w-8 shrink-0" />
+                      </div>
+                    ))}
+                  </fieldset>
+
+                  {/* Purchased By */}
+                  <fieldset className="rounded-lg border border-border bg-card px-3 pb-3 pt-2 shadow-sm space-y-1.5 min-w-0">
+                    <legend className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground px-1 -ml-1">Purchased By</legend>
+                    {roInput(p.purchasedBy || '', 'w-full')}
+                  </fieldset>
+
+                  {/* Budget */}
+                  {p.budget > 0 && (
+                    <fieldset className="rounded-lg border border-border bg-card px-3 pb-3 pt-2 shadow-sm space-y-1.5 min-w-0">
+                      <legend className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground px-1 -ml-1">Budget</legend>
+                      {roInput(`₱${Number(p.budget).toLocaleString(undefined, { minimumFractionDigits: 2 })}`, 'w-full')}
+                    </fieldset>
+                  )}
+
+                  {/* Used For / Note */}
+                  <fieldset className="rounded-lg border border-border bg-card px-3 pb-3 pt-2 shadow-sm space-y-1.5 min-w-0">
+                    <legend className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground px-1 -ml-1">Used For / Note</legend>
+                    {roInput(p.usedForNote || '', 'w-full')}
+                  </fieldset>
+
+                </div>
+
+                {/* Footer */}
+                <div className="sticky bottom-0 z-10 bg-card border-t border-border p-5 pt-3 rounded-b-xl">
+                  <div className="flex justify-end gap-2">
+                    <Button variant="outline" size="sm" className="h-8 text-[10px] uppercase tracking-wider" onClick={() => setViewModal({ isOpen: false, purchase: null })}>Close</Button>
+                    <Button size="sm" className="h-8 text-[10px] uppercase tracking-wider" onClick={() => { setViewModal({ isOpen: false, purchase: null }); openModal(p); }}>Edit</Button>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Delete Confirmation Dialog */}
         <AlertDialog
@@ -607,19 +789,28 @@ function PurchasesPage() {
                 </tr>
               </thead>
               <tbody>
-                {filteredPurchases.map(p => (
-                  <tr key={p._id} className="break-inside-avoid">
-                    <td className="border border-black px-1 py-1 align-top whitespace-nowrap">{formatDate(p.date)}</td>
-                    <td className="border border-black px-1 py-1 align-top uppercase whitespace-nowrap font-medium">{getCategoryFullName(p.category)}</td>
-                    <td className="border border-black px-1 py-1 align-top uppercase font-medium">{p.items}</td>
-                    <td className="border border-black px-1 py-1 align-top uppercase text-center">{p.qty}</td>
-                    <td className="border border-black px-1 py-1 align-top text-right font-bold whitespace-nowrap">{Number(p.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                    <td className="border border-black px-1 py-1 align-top uppercase">{p.supplier || '-'}</td>
-                    <td className="border border-black px-1 py-1 align-top uppercase whitespace-nowrap">{p.invoiceNo || '-'}</td>
-                    <td className="border border-black px-1 py-1 align-top uppercase whitespace-nowrap">{p.purchasedBy || '-'}</td>
-                    <td className="border border-black px-1 py-1 align-top uppercase leading-tight">{p.usedForNote || '-'}</td>
-                  </tr>
-                ))}
+                {filteredPurchases.flatMap(p => {
+                  const itemList = String(p.items || '').split(',').map(s => s.trim()).filter(Boolean);
+                  const qtyList = String(p.qty || '').split(',').map(s => s.trim());
+                  const supplierList = String(p.supplier || '').split(',').map(s => s.trim());
+                  const invoiceList = String(p.invoiceNo || '').split(',').map(s => s.trim());
+                  const amountList = String(p.amount || '').split(',').map(s => s.trim());
+                  const dateList = String(p.date || '').split(',').map(s => s.trim());
+                  const rows = Math.max(itemList.length, 1);
+                  return Array.from({ length: rows }, (_, i) => (
+                    <tr key={`${p._id}-${i}`} className="break-inside-avoid">
+                      <td className="border border-black px-1 py-1 align-top whitespace-nowrap">{formatDate(dateList[i] || dateList[0] || p.date)}</td>
+                      <td className="border border-black px-1 py-1 align-top uppercase whitespace-nowrap font-medium">{getCategoryFullName(p.category)}</td>
+                      <td className="border border-black px-1 py-1 align-top uppercase font-medium">{itemList[i] || ''}</td>
+                      <td className="border border-black px-1 py-1 align-top uppercase text-center">{qtyList[i] || ''}</td>
+                      <td className="border border-black px-1 py-1 align-top text-right font-bold whitespace-nowrap">{amountList[i] ? Number(amountList[i]).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ''}</td>
+                      <td className="border border-black px-1 py-1 align-top uppercase">{supplierList[i] || ''}</td>
+                      <td className="border border-black px-1 py-1 align-top uppercase whitespace-nowrap">{invoiceList[i] || ''}</td>
+                      <td className="border border-black px-1 py-1 align-top uppercase whitespace-nowrap">{p.purchasedBy || '-'}</td>
+                      <td className="border border-black px-1 py-1 align-top uppercase leading-tight">{i === 0 ? (p.usedForNote || '-') : ''}</td>
+                    </tr>
+                  ));
+                })}
                 {/* Total Row */}
                 <tr className="bg-[#f2f2f2] break-inside-avoid">
                   <td className="border border-black px-1 py-1 font-bold bg-white" colSpan={3}></td>
@@ -664,56 +855,93 @@ function PurchasesPage() {
                 </tr>
               </thead>
               <tbody>
-                {(selectedIds.size > 0 ? filteredPurchases.filter(p => selectedIds.has(p._id)) : filteredPurchases).map((p, i) => (
-                  <tr key={p._id} style={{ height: '0.5cm' }}>
-                    <td className="border border-black px-1.5 whitespace-nowrap text-center align-middle font-medium">{formatDate(p.date)}</td>
-                    <td className="border border-black px-1.5 uppercase align-middle font-medium">{p.items || '-'}</td>
-                    <td className="border border-black px-1.5 uppercase whitespace-nowrap text-center align-middle font-medium">{p.invoiceNo || '-'}</td>
-                    <td className="border border-black px-1.5 uppercase text-left align-middle font-medium">{getCategoryFullName(p.category)}</td>
-                    <td className="border border-black px-1.5 whitespace-nowrap text-right font-bold align-middle">
-                      {Number(p.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </td>
-                  </tr>
-                ))}
+                {(selectedIds.size > 0 ? filteredPurchases.filter(p => selectedIds.has(p._id)) : filteredPurchases).flatMap(p => {
+                  const itemList = String(p.items || '').split(',').map(s => s.trim()).filter(Boolean);
+                  const invoiceList = String(p.invoiceNo || '').split(',').map(s => s.trim());
+                  const amountList = String(p.amount || '').split(',').map(s => s.trim());
+                  const dateList = String(p.date || '').split(',').map(s => s.trim());
+                  const rows = Math.max(itemList.length, 1);
+                  return Array.from({ length: rows }, (_, i) => (
+                    <tr key={`${p._id}-${i}`} style={{ height: '0.5cm' }}>
+                      <td className="border border-black px-1.5 whitespace-nowrap text-left align-middle font-medium">{formatDate(dateList[i] || dateList[0] || p.date)}</td>
+                      <td className="border border-black px-1.5 uppercase align-middle font-medium whitespace-nowrap">{itemList[i] || '-'}</td>
+                      <td className="border border-black px-1.5 uppercase whitespace-nowrap text-left align-middle font-medium">{invoiceList[i] || '-'}</td>
+                      <td className="border border-black px-1.5 uppercase text-left align-middle font-medium whitespace-nowrap">{getCategoryFullName(p.category)}</td>
+                      <td className="border border-black px-1.5 whitespace-nowrap text-right font-bold align-middle">
+                        {amountList[i] ? Number(amountList[i]).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ''}
+                      </td>
+                    </tr>
+                  ));
+                })}
 
               </tbody>
               <tfoot>
-                <tr>
-                  <td colSpan={3} className="border-0"></td>
-                  <td className="border-0 px-1.5 py-1.5 font-bold text-right align-middle text-[10pt]">
-                    Total Expenses:
-                  </td>
-                  <td className="border-0 px-1.5 py-1.5 font-bold text-right align-middle text-[10pt]">
-                    ₱{Number((selectedIds.size > 0 ? filteredPurchases.filter(p => selectedIds.has(p._id)) : filteredPurchases).reduce((sum, p) => sum + Number(p.amount || 0), 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </td>
-                </tr>
-                <tr>
-                  <td colSpan={5} className="border-0 px-20 font-bold text-[8pt] text-left">
-                    <div className="flex w-fit items-end whitespace-nowrap">
-                      <span className="min-w-fit pr-1">Less: Cash Advance per C.V #</span>
-                      <span className="border-b border-black w-[80px] inline-block"></span>
-                      <span className="min-w-fit px-1">dated</span>
-                      <span className="border-b border-black w-[80px] inline-block"></span>
-                    </div>
-                  </td>
-                </tr>
-                <tr>
-                  <td colSpan={5} className="border-0 px-20 pt-1.5 font-bold text-[8pt] text-left">
-                    <div className="flex w-fit items-end whitespace-nowrap">
-                      <span className="min-w-fit pr-1">Amount Due to (From) Company</span>
-                      <span className="border-b border-black w-[250px] inline-block"></span>
-                      <span className="w-10"></span>
-                      <span className="border-b border-black w-[120px] inline-block"></span>
-                    </div>
-                  </td>
-                </tr>
+                {(() => {
+                  const printList = selectedIds.size > 0 ? filteredPurchases.filter(p => selectedIds.has(p._id)) : filteredPurchases;
+                  const totalExpenses = printList.reduce((sum, p) => sum + String(p.amount || '').split(',').reduce((s, v) => s + Number(v.trim() || 0), 0), 0);
+                  const aca = printList.reduce((sum, p) => sum + Number(p.budget || 0), 0);
+                  const forReturn = aca - totalExpenses;
+                  return (
+                    <>
+                      <tr>
+                        <td colSpan={3} className="border-0"></td>
+                        <td className="border-0 px-1.5 py-0.5 font-bold text-right align-middle text-[8pt] whitespace-nowrap">Total Expenses:</td>
+                        <td className="border-0 px-1.5 py-0.5 font-bold text-right align-middle text-[8pt]">
+                          ₱{totalExpenses.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </td>
+                      </tr>
+                      {aca > 0 && (
+                        <>
+                          <tr>
+                            <td colSpan={3} className="border-0"></td>
+                            <td className="border-0 px-1.5 py-0.5 font-bold text-right align-middle text-[8pt] whitespace-nowrap">ACA:</td>
+                            <td className="border-0 px-1.5 py-0.5 font-bold text-right align-middle text-[8pt]">
+                              ₱{aca.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </td>
+                          </tr>
+                          <tr>
+                            <td colSpan={3} className="border-0"></td>
+                            <td className="border-0 px-1.5 py-0.5 font-bold text-right align-middle text-[8pt] whitespace-nowrap">For Return / Reimbursement:</td>
+                            <td className="border-0 px-1.5 py-0.5 font-bold text-right align-middle text-[8pt]">
+                              {forReturn < 0 ? `-₱${Math.abs(forReturn).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : `₱${forReturn.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                            </td>
+                          </tr>
+                        </>
+                      )}
+                      <tr>
+                        <td colSpan={5} className="border-0 px-20 font-bold text-[8pt] text-left">
+                          <div className="flex w-fit items-end whitespace-nowrap">
+                            <span className="min-w-fit pr-1">Less: Cash Advance per C.V #</span>
+                            <span className="border-b border-black w-[80px] inline-block"></span>
+                            <span className="min-w-fit px-1">dated</span>
+                            <span className="border-b border-black w-[80px] inline-block"></span>
+                          </div>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td colSpan={5} className="border-0 px-20 pt-1.5 font-bold text-[8pt] text-left">
+                          <div className="flex w-fit items-end whitespace-nowrap">
+                            <span className="min-w-fit pr-1">Amount Due to (From) Company</span>
+                            <span className="border-b border-black w-[250px] inline-block"></span>
+                            <span className="w-10"></span>
+                            <span className="border-b border-black w-[120px] inline-block"></span>
+                          </div>
+                        </td>
+                      </tr>
+                    </>
+                  );
+                })()}
               </tfoot>
             </table>
             <br />
             <div className="grid grid-cols-3 gap-8 text-[8pt] font-bold text-black w-[90%]">
-              <div>Prepared by:</div>
+              <div>Prepared by: JRAZ</div>
               <div>Recommended by: EAD</div>
               <div>Approved for Payment: LBC</div>
+            </div>
+            <div className="mt-4 text-[8pt] text-black">
+              <div>Note: Refer to attached supporting papers.</div>
+              <div>/mdm07</div>
             </div>
           </>
         )}

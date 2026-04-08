@@ -2,7 +2,7 @@ import mongoose from 'mongoose';
 
 const purchaseSchema = new mongoose.Schema({
   date: {
-    type: Date,
+    type: String,
     required: true
   },
   category: {
@@ -18,8 +18,14 @@ const purchaseSchema = new mongoose.Schema({
     required: true
   },
   amount: {
-    type: Number,
+    type: String,
     required: true
+  },
+  itemDates: {
+    type: String
+  },
+  itemAmounts: {
+    type: String
   },
   supplier: {
     type: String
@@ -29,6 +35,9 @@ const purchaseSchema = new mongoose.Schema({
   },
   purchasedBy: {
     type: String
+  },
+  budget: {
+    type: Number
   },
   usedForNote: {
     type: String

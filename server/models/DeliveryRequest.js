@@ -29,6 +29,11 @@ const deliveryRequestSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
+  dateSubmitted: {
+    type: Date,
+    default: Date.now,
+    immutable: true
+  },
   notes: {
     type: String,
     trim: true

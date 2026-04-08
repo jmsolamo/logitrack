@@ -196,7 +196,8 @@ router.post('/', async (req, res) => {
     const newRequest = new DeliveryRequest({
       ...req.body,
       referenceNo,
-      requestStatus: 'Pending'
+      requestStatus: 'Pending',
+      dateSubmitted: new Date()
     });
 
     const savedRequest = await newRequest.save();
@@ -350,7 +351,7 @@ router.put('/:id/approve', async (req, res) => {
           request.vehicleChangeReason = 'Vehicle changed by admin during approval';
         }
         
-        await request.save();
+        await request.save({ validateModifiedOnly: true });
 
         return res.json({
           request,
@@ -406,7 +407,7 @@ router.put('/:id/approve', async (req, res) => {
       request.vehicleChangeReason = 'Vehicle changed by admin during approval';
     }
     
-    await request.save();
+    await request.save({ validateModifiedOnly: true });
 
     res.json({ 
       request, 
@@ -449,7 +450,7 @@ router.put('/:id/decline', async (req, res) => {
     request.declineReason = declineReason;
     request.reviewedBy = reviewedBy || '';
     request.reviewedAt = new Date();
-    await request.save();
+    await request.save({ validateModifiedOnly: true });
 
     res.json(request);
   } catch (error) {
@@ -467,8 +468,10 @@ router.put('/:id', async (req, res) => {
       return res.status(404).json({ message: 'Request not found' });
     }
 
-    Object.assign(request, req.body);
-    const updatedRequest = await request.save();
+    // Exclude dateSubmitted from being updated
+    const { dateSubmitted, ...updateData } = req.body;
+    Object.assign(request, updateData);
+    const updatedRequest = await request.save({ validateModifiedOnly: true });
     res.json(updatedRequest);
   } catch (error) {
     if (error.name === 'ValidationError') {

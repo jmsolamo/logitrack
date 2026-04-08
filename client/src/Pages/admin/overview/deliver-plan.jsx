@@ -162,14 +162,7 @@ function DeliveryPlan() {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => {
-      const updated = { ...prev, [name]: value };
-      // If switching to Itinerary, clear dateTo
-      if (name === 'deliveryType' && value === 'Itinerary') {
-        updated.dateTo = '';
-      }
-      return updated;
-    });
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
   const handleArrayChange = (name, index, value) => {
@@ -384,9 +377,142 @@ function DeliveryPlan() {
     }
   };
 
+  // --- Field Trip Report Print ---
+  const printFieldTripReport = (delivery) => {
+    const date = delivery.dateFrom
+      ? new Date(delivery.dateFrom).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })
+      : '_________________';
+
+    const employees = [
+      ...(delivery.driver || []),
+      ...(delivery.helper || [])
+    ].filter(Boolean);
+
+    const plate = delivery.vehicleEquipment || '';
+    const vObj = vehicles.find(v => v.plateNumber === plate);
+    const vehicleStr = vObj ? `${plate} - ${vObj.model}` : plate;
+
+    const dests = delivery.destination || [];
+    const supps = delivery.customerSupplier || [];
+    const jobs = delivery.jobOrderNo || [];
+    const acts = delivery.activity || [];
+    const rows = Math.max(dests.length, supps.length, jobs.length, acts.length, 1);
+
+    // Build employee rows — first 4 share rows with guard/driver info, rest are extra
+    const rightColInfo = [
+      `<td colspan="2" class="no-border italic">To be filled up by Guard on Duty:</td><td colspan="3" class="no-border bold italic">For Drivers Only:</td>`,
+      `<td colspan="2" class="no-border indent no-wrap">Time Out (From Shop):</td><td colspan="3" class="no-border">Vehicle: ${vehicleStr.toUpperCase()}</td>`,
+      `<td colspan="2" class="no-border indent no-wrap">Time In (Back to Shop):</td><td colspan="3" class="no-border no-wrap">Gas Gauge: Out: ________ In: ________</td>`,
+      `<td colspan="2" class="no-border">&nbsp;</td><td colspan="3" class="no-border no-wrap">Km. Reading: Start ________ End ________</td>`,
+    ];
+
+    const totalEmpRows = Math.max(employees.length, 4);
+    let employeeRowsHtml = `<tr>
+      <td colspan="2" class="no-border no-wrap">Name of Employee(s):</td>
+      <td colspan="2" class="no-border">&nbsp;</td>
+      <td colspan="3" class="no-border right no-wrap">Date: ${date}</td>
+    </tr>`;
+
+    for (let i = 0; i < totalEmpRows; i++) {
+      const empLabel = employees[i] ? `${i + 1}. ${employees[i].toUpperCase()}` : `${i + 1}.`;
+      const rightCol = rightColInfo[i] || `<td colspan="2" class="no-border">&nbsp;</td><td colspan="3" class="no-border">&nbsp;</td>`;
+      const isLast = i === totalEmpRows - 1;
+      employeeRowsHtml += `<tr>
+        <td colspan="2" class="no-border" ${isLast ? 'style="padding-bottom:8px"' : ''}>${empLabel}</td>
+        ${rightCol}
+      </tr>`;
+    }
+
+    let detailRows = '';
+    for (let i = 0; i < rows; i++) {
+      detailRows += `<tr>
+        <td>&nbsp;${(dests[i] || '').toUpperCase()}</td>
+        <td>&nbsp;${(supps[i] || '').toUpperCase()}</td>
+        <td>&nbsp;${(jobs[i] || '').toUpperCase()}</td>
+        <td>&nbsp;${(acts[i] || '').toUpperCase()}</td>
+        <td>&nbsp;</td>
+        <td>&nbsp;</td>
+        <td>&nbsp;</td>
+      </tr>`;
+    }
+
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Field Trip Report</title>
+<style>
+  @page { margin: 0.25cm; }
+  body { font-family: "Times New Roman", serif; font-size: 10pt; margin: 0.25cm; color: black; line-height: 1.15; display: flex; flex-direction: column; align-items: center; }
+  .header { text-align: center; margin-bottom: 5px; width: 100%; }
+  .header b { display: block; font-size: 10pt; }
+  table { width: 100%; border-collapse: collapse; table-layout: fixed; margin: 0 auto; }
+  td { border: 1px solid black; padding: 4px 5px; vertical-align: top; font-size: 10pt; word-wrap: break-word; height: auto; }
+  .no-border { border: none !important; }
+  .table-header td { text-align: center; vertical-align: middle; font-weight: bold; white-space: nowrap; }
+  .no-wrap { white-space: nowrap; }
+  .right { text-align: right; }
+  .italic { font-style: italic; }
+  .bold { font-weight: bold; }
+  .indent { padding-left: 20px; }
+  .signature-label-top { text-align: left; vertical-align: top; padding-top: 5px; padding-bottom: 15px; }
+  .signature-title-row td { text-align: left; vertical-align: top; padding-top: 2px; padding-bottom: 5px; }
+  .sig-line { border-top: 1px solid black; width: 67.5%; display: block; margin-bottom: 2px; }
+</style>
+</head>
+<body>
+<div class="header">
+  <b>ENERTECH SYSTEMS INDUSTRIES, INC.</b>
+  <span>3855 Technology Rd., Prenza II, Marilao, Bulacan</span><br>
+  <b>FIELD TRIP REPORT</b>
+</div>
+<table>
+  <colgroup>
+    <col style="width:15%"><col style="width:18%"><col style="width:8%">
+    <col style="width:25%"><col style="width:8%"><col style="width:8%"><col style="width:18%">
+  </colgroup>
+  ${employeeRowsHtml}
+  <tr class="table-header">
+    <td rowspan="2">Destination</td>
+    <td rowspan="2">Supplier / Customer</td>
+    <td rowspan="2">J.O. #</td>
+    <td rowspan="2">Purpose / Job Assignment</td>
+    <td colspan="2">Time</td>
+    <td rowspan="2">Remarks</td>
+  </tr>
+  <tr class="table-header"><td>IN</td><td>OUT</td></tr>
+  ${detailRows}
+  <tr>
+    <td colspan="2" class="no-border signature-label-top">Prepared by:</td>
+    <td colspan="2" class="no-border signature-label-top">Approved by:</td>
+    <td colspan="3" class="no-border signature-label-top">Noted by:</td>
+  </tr>
+  <tr class="signature-title-row">
+    <td colspan="2" class="no-border"><span class="sig-line"></span>Employee</td>
+    <td colspan="2" class="no-border"><span class="sig-line"></span>Department Head</td>
+    <td colspan="3" class="no-border"><span class="sig-line"></span>HRD</td>
+  </tr>
+</table>
+</body>
+</html>`;
+
+    const w = window.open('', '_blank', 'width=900,height=700');
+    if (w) {
+      w.document.write(html);
+      w.document.close();
+      w.onload = () => { w.focus(); w.print(); };
+    }
+  };
+  // --- End Field Trip Report Print ---
+
   // --- Print Logic ---
   const handlePrint = (delivery) => {
     if (!delivery) return;
+
+    if (delivery.deliveryType === 'Field Trip') {
+      printFieldTripReport(delivery);
+      return;
+    }
 
     const toBase64 = (url) =>
       new Promise((resolve) => {
@@ -1089,10 +1215,9 @@ function DeliveryPlan() {
             <input
               name="dateTo"
               type="date"
-              value={formData.deliveryType === 'Itinerary' ? '' : formData.dateTo}
+              value={formData.dateTo}
               onChange={handleInputChange}
-              disabled={formData.deliveryType === 'Itinerary'}
-              className={`${inputFormClass} ${formData.deliveryType === 'Itinerary' ? 'opacity-40 cursor-not-allowed' : ''}`}
+              className={inputFormClass}
             />
           </div>
         </div>
@@ -1943,7 +2068,7 @@ function DeliveryPlan() {
                         {detailsModal.delivery.timeline.map((event, idx) => {
                           // Get the location name - check both new and old field names
                           let locationName = event.customerSupplier || event.destination || '—';
-                          
+
                           // If it's not Enertech/Company and we have an index, try to get from delivery data
                           const eventIndex = event.customerSupplierIndex ?? event.destinationIndex;
                           if (eventIndex >= 0 && locationName !== 'Enertech' && locationName !== 'Company') {
@@ -1952,7 +2077,7 @@ function DeliveryPlan() {
                             const fromDestination = detailsModal.delivery.destination?.[eventIndex];
                             locationName = fromCustomerSupplier || fromDestination || locationName;
                           }
-                          
+
                           return (
                             <div key={idx} className="flex items-start gap-3 rounded-lg bg-card p-3 border border-border/50 shadow-sm">
                               <div className={cn(

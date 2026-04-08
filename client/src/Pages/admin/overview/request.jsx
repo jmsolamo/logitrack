@@ -598,7 +598,7 @@ function RequestPage() {
                       <td className="whitespace-nowrap px-3 py-2 text-[10px] font-bold text-primary tracking-tight align-middle">
                         {req.deliveryReferenceNo || req.referenceNo || '—'}
                       </td>
-                      <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-muted-foreground align-middle">{formatDate(req.createdAt)}</td>
+                      <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-muted-foreground align-middle">{formatDateTime(req.dateSubmitted || req.createdAt)}</td>
                       <td className="whitespace-nowrap px-3 py-2 align-middle text-center">
                         <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest ${sc.bg} ${sc.text}`}>
                           <span className={`h-1.5 w-1.5 rounded-full ${sc.dot}`} />
@@ -662,7 +662,7 @@ function RequestPage() {
               <div>
                 <h2 className="text-xs font-bold uppercase tracking-widest text-foreground">Request Details</h2>
                 <p className="text-[10px] text-muted-foreground mt-0.5">
-                  <span className="font-bold text-primary">{detailsModal.request.referenceNo}</span> • {detailsModal.request.deliveryType} • Submitted {formatDateTime(detailsModal.request.createdAt)}
+                  <span className="font-bold text-primary">{detailsModal.request.referenceNo}</span> • {detailsModal.request.deliveryType} • Submitted {formatDateTime(detailsModal.request.dateSubmitted || detailsModal.request.createdAt)}
                 </p>
               </div>
               <button
