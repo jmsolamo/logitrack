@@ -203,16 +203,22 @@ function UserDeliveries() {
     setFormData(initialFormData);
   };
 
-  // Helper: check if vehicle is booked during selected dates
+  // Helper: check if vehicle is booked during selected dates (only for approved requests)
   const isVehicleBooked = (plateNumber) => {
     if (!plateNumber || !formData.dateFrom) return false;
     const startA = new Date(formData.dateFrom).setHours(0,0,0,0);
     const endA = new Date(formData.dateTo || formData.dateFrom).setHours(23,59,59,999);
     
     return activeSchedules.some(sched => {
+      // Skip if editing the same request
       if (isEditMode && sched._id === editingRequestId) return false;
+      // Skip if different vehicle
       if (sched.vehicleEquipment !== plateNumber) return false;
+      // Skip if no date
       if (!sched.dateFrom) return false;
+      // ONLY check approved requests (not pending)
+      if (sched.requestStatus !== 'Approved' && sched.requestStatus !== 'Approved with Changes') return false;
+      
       const startB = new Date(sched.dateFrom).setHours(0,0,0,0);
       const endB = new Date(sched.dateTo || sched.dateFrom).setHours(23,59,59,999);
       return startA <= endB && endA >= startB;

@@ -324,12 +324,12 @@ router.put('/:id/approve', async (req, res) => {
           additionalCharge = await calculateDeliveryCharge(finalVehicle, newDestinations);
         }
         
-        // Merge the data - ensure arrays exist
-        existingDelivery.purpose = [...new Set([...(existingDelivery.purpose || []), ...(request.purpose || [])])].filter(Boolean);
-        existingDelivery.activity = [...new Set([...(existingDelivery.activity || []), ...(request.activity || [])])].filter(Boolean);
-        existingDelivery.destination = [...new Set([...(existingDelivery.destination || []), ...(request.destination || [])])].filter(Boolean);
-        existingDelivery.jobOrderNo = [...new Set([...(existingDelivery.jobOrderNo || []), ...(request.jobOrderNo || [])])].filter(Boolean);
-        existingDelivery.customerSupplier = [...new Set([...(existingDelivery.customerSupplier || []), ...(request.customerSupplier || [])])].filter(Boolean);
+        // Merge the data - keep all values including duplicates
+        existingDelivery.purpose = [...(existingDelivery.purpose || []), ...(request.purpose || [])].filter(Boolean);
+        existingDelivery.activity = [...(existingDelivery.activity || []), ...(request.activity || [])].filter(Boolean);
+        existingDelivery.destination = [...(existingDelivery.destination || []), ...(request.destination || [])].filter(Boolean);
+        existingDelivery.jobOrderNo = [...(existingDelivery.jobOrderNo || []), ...(request.jobOrderNo || [])].filter(Boolean);
+        existingDelivery.customerSupplier = [...(existingDelivery.customerSupplier || []), ...(request.customerSupplier || [])].filter(Boolean);
         
         // Add the additional charge to deliveryCharge and totalBudget
         existingDelivery.deliveryCharge = (existingDelivery.deliveryCharge || 0) + additionalCharge;
