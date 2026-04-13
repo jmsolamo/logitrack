@@ -241,7 +241,7 @@ export default function UserJobOrders() {
       <div className="mb-4 flex flex-col justify-between gap-3 md:flex-row md:items-center shrink-0">
         <div>
           <h1 className="text-sm font-bold tracking-tight text-foreground md:text-base uppercase">Job Orders</h1>
-          <p className="text-[10px] text-muted-foreground uppercase tracking-widest">Summary for your completed deliveries</p>
+          <p className="text-[10px] text-muted-foreground uppercase tracking-widest">Job order summary for all completed deliveries</p>
         </div>
         <div className="flex items-center gap-3">
           {selectedIds.size > 0 && (
@@ -316,7 +316,7 @@ export default function UserJobOrders() {
               <p className="text-[10px] text-muted-foreground uppercase tracking-widest">Adjust filters or add deliveries.</p>
             </div>
           ) : (
-            <table className="w-full min-w-[800px] border-collapse relative">
+            <table className="w-full min-w-[1200px] border-collapse relative">
               <thead className="sticky top-0 z-10 bg-orange-500 backdrop-blur shadow-sm">
                 <tr className="border-b border-orange-600/20">
                   <th className="w-[40px] px-3 py-2.5 text-center align-middle">
@@ -374,6 +374,32 @@ export default function UserJobOrders() {
             </table>
           )}
         </div>
+
+        {/* Footer - Totals */}
+        {filteredRows.length > 0 && (
+          <div className="border-t border-border bg-muted/20 shrink-0 overflow-x-auto">
+            <table className="w-full min-w-[1200px] border-collapse" style={{ tableLayout: 'fixed' }}>
+              <tbody>
+                <tr className="bg-muted/20">
+                  <td className="w-[40px] px-3 py-2.5 text-center"></td>
+                  <td className="whitespace-nowrap px-3 py-2.5 text-center"></td>
+                  <td className="whitespace-nowrap px-3 py-2.5 text-left"></td>
+                  <td className="whitespace-nowrap px-3 py-2.5 text-left"></td>
+                  <td className="whitespace-nowrap px-3 py-2.5 text-left"></td>
+                  <td className="whitespace-nowrap px-3 py-2.5 text-left"></td>
+                  <td className="px-3 py-2.5 text-left"></td>
+                  <td className="whitespace-nowrap px-3 py-2.5 text-left font-bold uppercase text-[10px] text-foreground tracking-wide">Total:</td>
+                  <td className="whitespace-nowrap px-3 py-2.5 text-[10px] font-bold text-primary text-right">
+                    ₱ {totals.totalExpenses.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </td>
+                  <td className="whitespace-nowrap px-3 py-2.5 text-[10px] font-bold text-foreground text-right">
+                    ₱ {totals.totalCharge.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
 
@@ -425,7 +451,7 @@ export default function UserJobOrders() {
           ))}
           {/* Total Row */}
           <tr className="bg-[#f2f2f2] break-inside-avoid">
-            <td className="border border-black px-1 py-1 font-bold bg-white" colSpan={4}></td>
+            <td className="border border-black px-1 py-1 font-bold bg-white" colSpan={6}></td>
             <td className="border border-black px-1 py-1 font-bold text-center">TOTAL</td>
             <td className="border border-black px-1 py-1 font-bold text-right whitespace-nowrap">{totals.totalExpenses.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
             <td className="border border-black px-1 py-1 font-bold text-right whitespace-nowrap">{totals.totalCharge.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>

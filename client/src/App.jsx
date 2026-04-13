@@ -24,6 +24,7 @@ import VehiclesPage from './Pages/admin/management/vehicles';
 import PersonnelsPage from './Pages/admin/management/personnels';
 import MembersPage from './Pages/admin/team/members';
 import ApprovalPage from './Pages/admin/team/approval';
+import SettingsPage from './Pages/SettingsPage';
 import './lib/axios';
 import './App.css';
 
@@ -57,6 +58,7 @@ function App() {
             <Route path="delivery-expenses/diesel" element={<DieselExpenses />} />
             <Route path="delivery-expenses/breakdown" element={<DriverExpenseBreakdown />} />
             <Route path="delivery-expenses/job-orders" element={<JobOrders />} />
+            <Route path="settings" element={<SettingsPage />} />
           </Route>
 
           {/* User routes with sidebar layout */}
@@ -65,6 +67,7 @@ function App() {
             <Route path="calendar" element={<UserCalendar />} />
             <Route path="deliveries" element={<UserDeliveries />} />
             <Route path="job-orders" element={<UserJobOrders />} />
+            <Route path="settings" element={<SettingsPage />} />
           </Route>
         </Routes>
       </AlertToastProvider>

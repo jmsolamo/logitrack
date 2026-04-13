@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useLayoutEffect } from 'react';
 import {
   Plus,
   Search,
@@ -49,6 +49,9 @@ function PurchasesPage() {
   const [formData, setFormData] = useState(initialFormData);
 
   const toast = useAppToast();
+  
+  const mainTableRef = useRef(null);
+  const footerTableRef = useRef(null);
 
   useEffect(() => {
     fetchPurchases();
@@ -290,6 +293,41 @@ function PurchasesPage() {
 
   const totalAmount = filteredPurchases.reduce((sum, p) => sum + String(p.amount || '').split(',').reduce((s, v) => s + Number(v.trim() || 0), 0), 0);
 
+  // Sync columns lengths between top table and footer exactly
+  useLayoutEffect(() => {
+    if (!mainTableRef.current || !footerTableRef.current) return;
+    
+    const syncWidths = () => {
+      if (!mainTableRef.current || !footerTableRef.current) return;
+      const topThs = mainTableRef.current.querySelectorAll('thead th');
+      const footerTrs = footerTableRef.current.querySelectorAll('tr');
+      if (topThs.length === 0 || footerTrs.length === 0) return;
+      
+      const targetCells = footerTrs[0].querySelectorAll('td');
+
+      topThs.forEach((th, idx) => {
+        // Use getComputedStyle to get exactly the rendered width including any subpixel values
+        const style = window.getComputedStyle(th);
+        const width = style.width;
+        
+        if (targetCells[idx]) {
+          targetCells[idx].style.minWidth = width;
+          targetCells[idx].style.maxWidth = width;
+          targetCells[idx].style.width = width;
+        }
+      });
+    };
+
+    // Run once initially
+    syncWidths();
+
+    // Use ResizeObserver to update if columns shift size
+    const observer = new ResizeObserver(syncWidths);
+    observer.observe(mainTableRef.current);
+    
+    return () => observer.disconnect();
+  }, [filteredPurchases]);
+
   const getCategoryFullName = (categoryVal) => {
     if (!categoryVal) return '-';
     const vehicle = vehicles.find(v => v.plateNumber === categoryVal);
@@ -369,7 +407,8 @@ function PurchasesPage() {
         </div>
 
         {/* Table Layout */}
-        <div className="flex-1 overflow-auto rounded-md border border-border">
+        <div className="flex-1 min-h-0 flex flex-col border border-border rounded-md overflow-hidden bg-background">
+          <div className="flex-1 overflow-auto">
           {isLoading ? (
             <div className="flex h-[300px] flex-col items-center justify-center gap-2">
               <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -382,8 +421,7 @@ function PurchasesPage() {
               <p className="text-center text-[10px] uppercase tracking-widest text-muted-foreground">Try adjusting your search or add a new record.</p>
             </div>
           ) : (
-            <div className="relative w-full overflow-auto">
-              <table className="w-full min-w-[max-content] border-collapse relative">
+              <table ref={mainTableRef} className="w-full min-w-[max-content] border-collapse relative">
                 <thead className="sticky top-0 z-10 bg-orange-500 backdrop-blur shadow-sm">
                   <tr className="border-b border-orange-600/20">
                     <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle w-[36px]">
@@ -400,11 +438,11 @@ function PurchasesPage() {
                     <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Category</th>
                     <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Items</th>
                     <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Qty</th>
-                    <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-right align-middle">Amount</th>
                     <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Supplier</th>
                     <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Invoice No.</th>
                     <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Purchased By</th>
                     <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Note</th>
+                    <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-right align-middle">Amount</th>
                     <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-center align-middle w-[60px]">Actions</th>
                   </tr>
                 </thead>
@@ -427,15 +465,15 @@ function PurchasesPage() {
                       <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-foreground uppercase tracking-tight">{getCategoryFullName(purchase.category)}</td>
                       <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-foreground uppercase tracking-tight">{purchase.items}</td>
                       <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-foreground uppercase tracking-tight">{purchase.qty}</td>
-                      <td className="whitespace-nowrap px-3 py-2 text-[10px] font-bold text-primary tracking-tight text-right">₱{String(purchase.amount || '').split(',').reduce((s, v) => s + Number(v.trim() || 0), 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
                       <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-foreground uppercase tracking-tight">{purchase.supplier || '-'}</td>
                       <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-foreground uppercase tracking-tight">{purchase.invoiceNo || '-'}</td>
                       <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-foreground uppercase tracking-tight">{purchase.purchasedBy || '-'}</td>
                       <td className="px-3 py-2 text-[10px] font-medium text-muted-foreground uppercase tracking-tight max-w-[200px] truncate" title={purchase.usedForNote}>
                         {purchase.usedForNote ? purchase.usedForNote.length > 30 ? purchase.usedForNote.substring(0, 30) + '...' : purchase.usedForNote : '-'}
                       </td>
+                      <td className="whitespace-nowrap px-3 py-2 text-[10px] font-bold text-primary tracking-tight text-right">₱{String(purchase.amount || '').split(',').reduce((s, v) => s + Number(v.trim() || 0), 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
                       <td className="whitespace-nowrap px-3 py-1.5 text-center" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex items-center justify-center gap-1 transition-opacity">
                           <button
                             onClick={() => openModal(purchase)}
                             className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
@@ -454,6 +492,49 @@ function PurchasesPage() {
                       </td>
                     </tr>
                   ))}
+                </tbody>
+              </table>
+          )}
+          </div>
+          
+          {/* Separated True Footer - Absolutely at bottom of card */}
+          {!isLoading && filteredPurchases.length > 0 && (
+            <div className="shrink-0 overflow-x-hidden border-t-2 border-border bg-card shadow-[0_-4px_10px_rgba(0,0,0,0.05)] relative z-20"
+              onScroll={(e) => {
+                const tableContainer = e.target.previousElementSibling;
+                if (tableContainer) tableContainer.scrollLeft = e.target.scrollLeft;
+              }}
+              ref={(el) => {
+                if (el) {
+                  const tableContainer = el.previousElementSibling;
+                  if (tableContainer && !tableContainer._footerScrollLinked) {
+                    tableContainer._footerScrollLinked = true;
+                    tableContainer.addEventListener('scroll', () => {
+                      el.scrollLeft = tableContainer.scrollLeft;
+                    });
+                  }
+                }
+              }}
+            >
+              <table ref={footerTableRef} className="w-[max-content] border-collapse bg-card hidden sm:table">
+                <tbody>
+                  <tr>
+                    <td className="whitespace-nowrap px-3 py-2.5 text-[9px] w-[36px] bg-card border-t border-border"></td>
+                    <td className="whitespace-nowrap px-3 py-2.5 text-[9px] font-black uppercase tracking-[0.15em] text-foreground text-right align-middle bg-card border-t border-border"></td>
+                    <td className="whitespace-nowrap px-3 py-2.5 text-[9px] font-black uppercase tracking-[0.15em] text-foreground text-right align-middle bg-card border-t border-border"></td>
+                    <td className="whitespace-nowrap px-3 py-2.5 text-[9px] font-black uppercase tracking-[0.15em] text-foreground text-right align-middle bg-card border-t border-border"></td>
+                    <td className="whitespace-nowrap px-3 py-2.5 text-[9px] font-black uppercase tracking-[0.15em] text-foreground text-right align-middle bg-card border-t border-border"></td>
+                    <td className="whitespace-nowrap px-3 py-2.5 text-[9px] font-black uppercase tracking-[0.15em] text-foreground text-right align-middle bg-card border-t border-border"></td>
+                    <td className="whitespace-nowrap px-3 py-2.5 text-[9px] font-black uppercase tracking-[0.15em] text-foreground text-right align-middle bg-card border-t border-border"></td>
+                    <td className="whitespace-nowrap px-3 py-2.5 text-[9px] font-black uppercase tracking-[0.15em] text-foreground text-right align-middle bg-card border-t border-border"></td>
+                    <td className="whitespace-nowrap px-3 py-2.5 text-[9px] font-black uppercase tracking-[0.15em] text-foreground text-right align-middle bg-card border-t border-border">
+                      Total ({filteredPurchases.length} {filteredPurchases.length === 1 ? 'record' : 'records'})
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-2.5 text-[10px] font-black text-primary text-right align-middle bg-muted/30 border-t border-border tracking-wider">
+                      ₱ {totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-2.5 text-[9px] w-[60px] bg-card border-t border-border text-center sticky right-0 z-[30]"></td>
+                  </tr>
                 </tbody>
               </table>
             </div>

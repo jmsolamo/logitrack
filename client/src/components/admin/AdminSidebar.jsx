@@ -23,6 +23,7 @@ import {
   Banknote,
   ShoppingCart,
   X,
+  User as UserIcon,
 } from 'lucide-react';
 import favicon from '../../assets/images/favicon.png';
 
@@ -99,7 +100,6 @@ function AdminSidebar({ collapsed, onToggle, user, mobileOpen, onMobileClose }) 
 
   const userName = user?.username || 'Admin User';
   const userSubtitle = user?.department || user?.role || 'Administration';
-  const userInitial = userName.charAt(0).toUpperCase();
 
   const toggleExpand = (itemName) => {
     setExpandedItems((prev) => ({
@@ -221,8 +221,8 @@ function AdminSidebar({ collapsed, onToggle, user, mobileOpen, onMobileClose }) 
 
           {/* Collapsed user avatar */}
           <div className="border-t border-sidebar-border p-2 flex justify-center">
-            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-sidebar-primary text-[10px] font-semibold text-white">
-              {userInitial}
+            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-sidebar-primary text-white">
+              <UserIcon className="h-3.5 w-3.5" />
             </div>
           </div>
         </aside>
@@ -305,7 +305,7 @@ function AdminSidebar({ collapsed, onToggle, user, mobileOpen, onMobileClose }) 
                 LogiTrack
               </span>
               <span className="text-[10px] text-sidebar-muted-foreground leading-tight truncate">
-                Logistic Department
+                ENERTECH SYSTEMS INDUSTRIES INC.
               </span>
             </div>
           </div>
@@ -397,8 +397,8 @@ function AdminSidebar({ collapsed, onToggle, user, mobileOpen, onMobileClose }) 
             onClick={() => setUserMenuOpen(!userMenuOpen)}
             className="flex w-full items-center gap-2 rounded px-1.5 py-1.5 transition-colors hover:bg-sidebar-accent"
           >
-            <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-sidebar-primary text-[10px] font-semibold text-white">
-              {userInitial}
+            <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-sidebar-primary text-white">
+              <UserIcon className="h-3.5 w-3.5" />
             </div>
             <div className="flex flex-1 flex-col text-left overflow-hidden">
               <span className="text-[12px] font-medium text-sidebar-foreground leading-tight truncate">
@@ -472,8 +472,8 @@ function MobileSidebarContent({
             <span className="text-[12px] font-semibold text-sidebar-foreground leading-tight truncate">
               LogiTrack
             </span>
-            <span className="text-[10px] text-sidebar-muted-foreground leading-tight truncate">
-              Logistic Department
+            <span className="text-[8px] sm:text-[9px] text-sidebar-muted-foreground leading-tight truncate">
+              ENERTECH SYSTEMS INDUSTRIES INC.
             </span>
           </div>
         </div>
@@ -564,8 +564,8 @@ function MobileSidebarContent({
           onClick={() => setUserMenuOpen(!userMenuOpen)}
           className="flex w-full items-center gap-2 rounded px-1.5 py-1.5 transition-colors hover:bg-sidebar-accent"
         >
-          <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-sidebar-primary text-[10px] font-semibold text-white">
-            {userInitial}
+          <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-sidebar-primary text-white">
+            <UserIcon className="h-3.5 w-3.5" />
           </div>
           <div className="flex flex-1 flex-col text-left overflow-hidden">
             <span className="text-[12px] font-medium text-sidebar-foreground leading-tight truncate">

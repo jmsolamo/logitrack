@@ -123,12 +123,16 @@ function Calendar({ userMode = false }) {
     return deliveries.filter(d => {
       const vehicleMatch = vehicleFilter === 'all' || d.vehicleEquipment === vehicleFilter;
       const destinationMatch = destinationFilter === 'all' || (d.customerSupplier || []).includes(destinationFilter);
-      const statusMatch = statusFilter === 'all' || (d.status || 'Pending') === statusFilter;
+      const statusMatch = userMode 
+        ? (d.status || 'Pending') === 'Pending'
+        : (statusFilter === 'all' || (d.status || 'Pending') === statusFilter);
       return vehicleMatch && destinationMatch && statusMatch;
     });
   }, [deliveries, vehicleFilter, destinationFilter, statusFilter]);
 
-  const hasActiveFilters = vehicleFilter !== 'all' || destinationFilter !== 'all' || statusFilter !== 'all';
+  const hasActiveFilters = vehicleFilter !== 'all' || 
+    destinationFilter !== 'all' || 
+    statusFilter !== (userMode ? 'Pending' : 'all');
 
   const resetFilters = () => {
     setVehicleFilter('all');
@@ -363,6 +367,7 @@ function Calendar({ userMode = false }) {
                   const vehicle = getVehicleDisplay(ev.delivery.vehicleEquipment);
                   const destination = joinArray(ev.delivery.customerSupplier);
                   const purpose = joinArray(ev.delivery.purpose);
+                  const activity = joinArray(ev.delivery.activity);
                   const isMultiDay = ev.span > 1 || !ev.isTrueStart || !ev.isTrueEnd;
 
                   // Remove padding/rounding if the event bridges to previous/next week
@@ -404,7 +409,7 @@ function Calendar({ userMode = false }) {
                         </span>
                         {(ev.isTrueStart || ev.offset === 0) && (
                           <span className="text-[7px] text-muted-foreground uppercase tracking-tight truncate leading-tight">
-                            {purpose}
+                            {purpose} {activity && ` — ${activity}`}
                           </span>
                         )}
                       </div>
@@ -526,6 +531,7 @@ function Calendar({ userMode = false }) {
               const vehicle = getVehicleDisplay(ev.delivery.vehicleEquipment);
               const destination = joinArray(ev.delivery.customerSupplier);
               const purpose = joinArray(ev.delivery.purpose);
+              const activity = joinArray(ev.delivery.activity);
               const isMultiDay = ev.span > 1 || !ev.isTrueStart || !ev.isTrueEnd;
 
               const padLeft = ev.isTrueStart ? 'pl-1' : 'pl-0';
@@ -566,7 +572,7 @@ function Calendar({ userMode = false }) {
                     </span>
                     {(ev.isTrueStart || ev.offset === 0) && (
                       <span className="text-[7px] text-muted-foreground uppercase tracking-tight truncate leading-tight">
-                        {purpose}
+                        {purpose} {activity && ` — ${activity}`}
                       </span>
                     )}
                   </div>
@@ -609,7 +615,7 @@ function Calendar({ userMode = false }) {
             <p className="text-[9px] text-muted-foreground uppercase tracking-widest">This date has no planned deliveries.</p>
           </div>
         ) : (
-          <div className="flex flex-col gap-2 max-w-3xl">
+          <div className="flex flex-col gap-2 w-full">
             {dayDeliveries.map((del, di) => {
               const color = getPurposeColor(del.purpose);
               const statusColor = del.status === 'Completed'
@@ -629,7 +635,10 @@ function Calendar({ userMode = false }) {
                           {getVehicleDisplay(del.vehicleEquipment)} — {joinArray(del.customerSupplier)}
                         </span>
                       </div>
-                      <div className="text-[10px] text-muted-foreground uppercase tracking-wider pl-4 truncate">{joinArray(del.purpose)}</div>
+                      <div className="text-[10px] text-muted-foreground uppercase tracking-wider pl-4 truncate">
+                        {joinArray(del.purpose)}
+                        {del.activity?.length > 0 && ` — ${joinArray(del.activity)}`}
+                      </div>
                     </div>
                     <span className={`text-[8px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full ${statusColor} text-white shrink-0`}>
                       {statusLabel}

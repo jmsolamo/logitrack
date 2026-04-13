@@ -79,4 +79,68 @@ router.get('/profile', verifyToken, async (req, res) => {
   }
 });
 
+// Update user profile
+router.put('/update-profile', verifyToken, async (req, res) => {
+  try {
+    const { currentPassword, newUsername, newPassword } = req.body;
+
+    if (!currentPassword) {
+      return res.status(400).json({ message: 'Current password is required' });
+    }
+
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Verify current password
+    const isMatch = await user.comparePassword(currentPassword);
+    if (!isMatch) {
+      return res.status(401).json({ message: 'Incorrect current password' });
+    }
+
+    // Update username if provided
+    if (newUsername && newUsername !== user.username) {
+      const existingUser = await User.findOne({ username: newUsername });
+      if (existingUser) {
+        return res.status(400).json({ message: 'Username already taken' });
+      }
+      user.username = newUsername;
+    }
+
+    // Update password if provided
+    if (newPassword) {
+      user.password = newPassword;
+    }
+
+    await user.save();
+
+    // Generate new JWT
+    const token = jwt.sign(
+      {
+        _id: user._id,
+        username: user.username,
+        role: user.role,
+        department: user.department,
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    res.json({
+      message: 'Profile updated successfully',
+      token,
+      user: {
+        _id: user._id,
+        username: user.username,
+        role: user.role,
+        department: user.department,
+      },
+    });
+  } catch (error) {
+    console.error('Update profile error:', error);
+    res.status(500).json({ message: 'Failed to update profile', error: error.message });
+  }
+});
+
 export default router;

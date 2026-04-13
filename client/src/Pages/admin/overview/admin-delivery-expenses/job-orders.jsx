@@ -362,6 +362,32 @@ export default function JobOrders() {
             </table>
           )}
         </div>
+
+        {/* Footer - Totals */}
+        {filteredRows.length > 0 && (
+          <div className="border-t border-border bg-muted/20 shrink-0 overflow-x-auto">
+            <table className="w-full min-w-[1200px] border-collapse" style={{ tableLayout: 'fixed' }}>
+              <tbody>
+                <tr className="bg-muted/20">
+                  <td className="w-[40px] px-3 py-2.5 text-center"></td>
+                  <td className="whitespace-nowrap px-3 py-2.5 text-center"></td>
+                  <td className="whitespace-nowrap px-3 py-2.5 text-left"></td>
+                  <td className="whitespace-nowrap px-3 py-2.5 text-left"></td>
+                  <td className="whitespace-nowrap px-3 py-2.5 text-left"></td>
+                  <td className="whitespace-nowrap px-3 py-2.5 text-left"></td>
+                  <td className="px-3 py-2.5 text-left"></td>
+                  <td className="whitespace-nowrap px-3 py-2.5 text-left font-bold uppercase text-[10px] text-foreground tracking-wide">Total:</td>
+                  <td className="whitespace-nowrap px-3 py-2.5 text-[10px] font-bold text-primary text-right">
+                    ₱ {totals.totalExpenses.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </td>
+                  <td className="whitespace-nowrap px-3 py-2.5 text-[10px] font-bold text-foreground text-right">
+                    ₱ {totals.totalCharge.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
 

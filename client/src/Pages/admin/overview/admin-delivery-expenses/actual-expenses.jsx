@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef, useLayoutEffect } from 'react';
 import axios from 'axios';
 import { useAppToast } from '../../../../components/ui/alert-toast-provider';
 import {
@@ -83,6 +83,9 @@ export default function ActualExpenses() {
   });
 
   const toast = useAppToast();
+
+  const mainTableRef = useRef(null);
+  const footerTableRef = useRef(null);
 
   useEffect(() => {
     fetchData();
@@ -274,7 +277,7 @@ export default function ActualExpenses() {
 
   const uniqueDestinations = useMemo(() => {
     const list = new Set();
-    deliveries.forEach(d => (d.destination || []).forEach(dest => dest && list.add(dest)));
+    deliveries.forEach(d => (d.customerSupplier || []).forEach(dest => dest && list.add(dest)));
     return Array.from(list).sort();
   }, [deliveries]);
 
@@ -395,7 +398,7 @@ export default function ActualExpenses() {
       const searchMatch = !q || (
         (d.referenceNo || '').toLowerCase().includes(q) ||
         (d.vehicleEquipment || '').toLowerCase().includes(q) ||
-        (d.destination || []).join(' ').toLowerCase().includes(q) ||
+        (d.customerSupplier || []).join(' ').toLowerCase().includes(q) ||
         (d.driver || []).join(' ').toLowerCase().includes(q) ||
         (d.jobOrderNo || []).join(' ').toLowerCase().includes(q)
       );
@@ -405,7 +408,7 @@ export default function ActualExpenses() {
 
       const driverMatch = driverFilter === 'all' || (d.driver || []).includes(driverFilter);
       const vehicleMatch = vehicleFilter === 'all' || d.vehicleEquipment === vehicleFilter;
-      const destMatch = destinationFilter === 'all' || (d.destination || []).includes(destinationFilter);
+      const destMatch = destinationFilter === 'all' || (d.customerSupplier || []).includes(destinationFilter);
 
       let monthMatch = true;
       if (monthFilter !== 'all') {
@@ -423,6 +426,41 @@ export default function ActualExpenses() {
       return searchMatch && dateFromMatch && dateToMatch && driverMatch && vehicleMatch && destMatch && monthMatch;
     });
   }, [deliveries, searchQuery, dateFromFilter, dateToFilter, driverFilter, vehicleFilter, destinationFilter, monthFilter]);
+
+  // Sync columns lengths between top table and footer exactly
+  useLayoutEffect(() => {
+    if (!mainTableRef.current || !footerTableRef.current) return;
+    
+    const syncWidths = () => {
+      if (!mainTableRef.current || !footerTableRef.current) return;
+      const topThs = mainTableRef.current.querySelectorAll('thead th');
+      const footerTrs = footerTableRef.current.querySelectorAll('tr');
+      if (topThs.length === 0 || footerTrs.length === 0) return;
+      
+      const targetCells = footerTrs[0].querySelectorAll('td');
+
+      topThs.forEach((th, idx) => {
+        // Use getComputedStyle to get exactly the rendered width including any subpixel values
+        const style = window.getComputedStyle(th);
+        const width = style.width;
+        
+        if (targetCells[idx]) {
+          targetCells[idx].style.minWidth = width;
+          targetCells[idx].style.maxWidth = width;
+          targetCells[idx].style.width = width;
+        }
+      });
+    };
+
+    // Run once initially
+    syncWidths();
+
+    // Use ResizeObserver to update if columns shift size
+    const observer = new ResizeObserver(syncWidths);
+    observer.observe(mainTableRef.current);
+    
+    return () => observer.disconnect();
+  }, [visibleColumns, filteredDeliveries]);
 
   const generateFiltersText = () => {
     const f = [];
@@ -659,7 +697,7 @@ export default function ActualExpenses() {
                 <p className="text-[10px] text-muted-foreground uppercase tracking-widest">Adjust filters or add deliveries with expenses.</p>
               </div>
             ) : (
-              <table className="w-full min-w-[max-content] border-collapse relative">
+              <table ref={mainTableRef} className="w-full min-w-[max-content] border-collapse relative">
                 <thead className="sticky top-0 z-10 bg-orange-500 backdrop-blur shadow-sm">
                   <tr className="border-b border-orange-600/20">
                     {visibleColumns.has('referenceNo') && <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Reference No.</th>}
@@ -793,6 +831,114 @@ export default function ActualExpenses() {
               </table>
             )}
           </div>
+
+          {/* Separated True Footer - Absolutely at bottom of card */}
+          {!isLoading && filteredDeliveries.length > 0 && (
+            <div className="shrink-0 overflow-x-hidden border-t-2 border-border bg-card shadow-[0_-4px_10px_rgba(0,0,0,0.05)] relative z-20"
+              onScroll={(e) => {
+                const tableContainer = e.target.previousElementSibling;
+                if (tableContainer) tableContainer.scrollLeft = e.target.scrollLeft;
+              }}
+              ref={(el) => {
+                if (el) {
+                  const tableContainer = el.previousElementSibling;
+                  if (tableContainer && !tableContainer._footerScrollLinked) {
+                    tableContainer._footerScrollLinked = true;
+                    tableContainer.addEventListener('scroll', () => {
+                      el.scrollLeft = tableContainer.scrollLeft;
+                    });
+                  }
+                }
+              }}
+            >
+              <table ref={footerTableRef} className="w-[max-content] border-collapse bg-card hidden sm:table">
+                <tbody>
+
+                  <tr>
+                    {visibleColumns.has('referenceNo') && (
+                      <td className="whitespace-nowrap px-3 py-2.5 text-[9px] font-black uppercase tracking-[0.15em] text-foreground text-right align-middle bg-card border-t border-border"></td>
+                    )}
+                    {visibleColumns.has('date') && (
+                      <td className="whitespace-nowrap px-3 py-2.5 text-[9px] font-black uppercase tracking-[0.15em] text-foreground text-right align-middle bg-card border-t border-border"></td>
+                    )}
+                    {visibleColumns.has('driver') && (
+                      <td className="whitespace-nowrap px-3 py-2.5 text-[9px] font-black uppercase tracking-[0.15em] text-foreground text-right align-middle bg-card border-t border-border"></td>
+                    )}
+                    {visibleColumns.has('vehicle') && (
+                      <td className="whitespace-nowrap px-3 py-2.5 text-[9px] font-black uppercase tracking-[0.15em] text-foreground text-right align-middle bg-card border-t border-border"></td>
+                    )}
+                    {visibleColumns.has('destination') && (
+                      <td className="whitespace-nowrap px-3 py-2.5 text-[9px] font-black uppercase tracking-[0.15em] text-foreground text-right align-middle bg-card border-t border-border">
+                        Total ({filteredDeliveries.length} {filteredDeliveries.length === 1 ? 'record' : 'records'})
+                      </td>
+                    )}
+                    {visibleColumns.has('jobOrderNo') && (
+                      <td className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-muted-foreground text-center align-middle bg-card border-t border-border">—</td>
+                    )}
+                    {visibleColumns.has('totalExpenses') && (
+                      <td className="whitespace-nowrap px-3 py-2.5 text-[10px] font-black text-primary text-right align-middle bg-muted/30 border-t border-border tracking-wider">
+                        ₱ {totals.tExp.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </td>
+                    )}
+
+                    {visibleColumns.has('fuelLiters') && (
+                      <td className="whitespace-nowrap px-3 py-2.5 text-[10px] font-bold text-foreground text-right align-middle tracking-tight bg-card border-t border-border">
+                        {totals.fLit.toLocaleString()}
+                      </td>
+                    )}
+                    {visibleColumns.has('fuelAmount') && (
+                      <td className="whitespace-nowrap px-3 py-2.5 text-[10px] font-bold text-foreground text-right align-middle bg-card border-t border-border">
+                        {totals.fAmt.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      </td>
+                    )}
+
+                    {visibleColumns.has('tollFee') && (
+                      <td className="whitespace-nowrap px-3 py-2.5 text-[10px] font-bold text-foreground text-right align-middle bg-card border-t border-border">
+                        {totals.toll.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      </td>
+                    )}
+                    {visibleColumns.has('pierExpenses') && (
+                      <td className="whitespace-nowrap px-3 py-2.5 text-[10px] font-bold text-foreground text-right align-middle bg-card border-t border-border">
+                        {totals.pier.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      </td>
+                    )}
+
+                    {visibleColumns.has('rmDetails') && (
+                      <td className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-muted-foreground text-left align-middle bg-card border-t border-border">—</td>
+                    )}
+                    {visibleColumns.has('rmAmount') && (
+                      <td className="whitespace-nowrap px-3 py-2.5 text-[10px] font-bold text-foreground text-right align-middle bg-card border-t border-border">
+                        {totals.rmAmt.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      </td>
+                    )}
+
+                    {visibleColumns.has('meals') && (
+                      <td className="whitespace-nowrap px-3 py-2.5 text-[10px] font-bold text-foreground text-right align-middle bg-card border-t border-border">
+                        {totals.meal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      </td>
+                    )}
+                    {visibleColumns.has('load') && (
+                      <td className="whitespace-nowrap px-3 py-2.5 text-[10px] font-bold text-foreground text-right align-middle bg-card border-t border-border">
+                        {totals.load.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      </td>
+                    )}
+
+                    {visibleColumns.has('contingencyDetails') && (
+                      <td className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-muted-foreground text-left align-middle bg-card border-t border-border">—</td>
+                    )}
+                    {visibleColumns.has('contingencyAmount') && (
+                      <td className="whitespace-nowrap px-3 py-2.5 text-[10px] font-bold text-foreground text-right align-middle bg-card border-t border-border">
+                        {totals.contAmt.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      </td>
+                    )}
+
+                    {/* Action column spacer */}
+                    <td className="whitespace-nowrap px-3 py-2.5 text-center sticky right-0 bg-card border-t border-border z-[30]"></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
 
         {/* Details / Edit Modal */}

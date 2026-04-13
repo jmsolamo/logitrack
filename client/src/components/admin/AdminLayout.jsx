@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import AdminSidebar from './AdminSidebar';
-import { Menu } from 'lucide-react';
+import { Menu, User as UserIcon } from 'lucide-react';
 
 function AdminLayout() {
   const [loading, setLoading] = useState(true);
@@ -96,8 +96,8 @@ function AdminLayout() {
               className="flex items-center gap-2.5 hover:opacity-80 transition-opacity"
               title="Profile"
             >
-              <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-[10px] font-semibold text-primary-foreground">
-                {(user?.username || 'Admin').charAt(0).toUpperCase()}
+              <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                <UserIcon className="h-3.5 w-3.5" />
               </div>
               <div className="hidden sm:flex flex-col items-start text-left">
                 <span className="text-[12px] font-medium leading-none text-foreground">
