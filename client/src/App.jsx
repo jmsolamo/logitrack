@@ -7,6 +7,7 @@ import UserLayout from './components/user/UserLayout';
 import UsersDashboard from './Pages/users/users-dashboard';
 import UserCalendar from './Pages/users/user-calendar';
 import UserDeliveries from './Pages/users/user-deliveries';
+import UserJobOrders from './Pages/users/user-job-orders';
 import DeliveryPlan from './Pages/admin/overview/deliver-plan';
 import Calendar from './Pages/admin/overview/calendar';
 import ActualExpenses from './Pages/admin/overview/admin-delivery-expenses/actual-expenses';
@@ -63,6 +64,7 @@ function App() {
             <Route path="dashboard" element={<UsersDashboard />} />
             <Route path="calendar" element={<UserCalendar />} />
             <Route path="deliveries" element={<UserDeliveries />} />
+            <Route path="job-orders" element={<UserJobOrders />} />
           </Route>
         </Routes>
       </AlertToastProvider>

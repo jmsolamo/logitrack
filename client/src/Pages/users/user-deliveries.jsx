@@ -32,6 +32,8 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
 } from '../../components/ui/dropdown-menu';
 
 function UserDeliveries() {
@@ -83,6 +85,7 @@ function UserDeliveries() {
     purpose: [''],
     activity: [''],
     vehicleEquipment: '',
+    tnvsProvider: '',
     destination: [''],
     jobOrderNo: [''],
     customerSupplier: [''],
@@ -90,6 +93,7 @@ function UserDeliveries() {
   };
 
   const [formData, setFormData] = useState(initialFormData);
+  const [newCustomers, setNewCustomers] = useState({});
 
   const toast = useAppToast();
 
@@ -172,6 +176,7 @@ function UserDeliveries() {
       purpose: ensureArray(req.purpose),
       activity: ensureArray(req.activity),
       vehicleEquipment: req.vehicleEquipment || '',
+      tnvsProvider: req.tnvsProvider || '',
       destination: ensureArray(req.destination),
       jobOrderNo: ensureArray(req.jobOrderNo),
       customerSupplier: ensureArray(req.customerSupplier),
@@ -201,11 +206,13 @@ function UserDeliveries() {
     setIsEditMode(false);
     setEditingRequestId(null);
     setFormData(initialFormData);
+    setNewCustomers({});
   };
 
   // Helper: check if vehicle is booked during selected dates (only for approved requests)
   const isVehicleBooked = (plateNumber) => {
     if (!plateNumber || !formData.dateFrom) return false;
+    if (plateNumber === 'RENT_VEHICLE') return false;
     const startA = new Date(formData.dateFrom).setHours(0,0,0,0);
     const endA = new Date(formData.dateTo || formData.dateFrom).setHours(23,59,59,999);
     
@@ -270,6 +277,19 @@ function UserDeliveries() {
     setIsSubmitLoading(true);
 
     try {
+      const processedCustomerSupplier = [...formData.customerSupplier];
+      for (let i = 0; i < processedCustomerSupplier.length; i++) {
+        if (processedCustomerSupplier[i] === 'NEW_CUSTOMER' && newCustomers[i]) {
+          const newName = newCustomers[i].trim();
+          processedCustomerSupplier[i] = newName;
+          try {
+            await axios.post('/api/destinations', { name: newName });
+          } catch (e) {
+            // Might already exist, ignore error safely
+          }
+        }
+      }
+
       const payload = {
         deliveryType: formData.deliveryType,
         dateFrom: formData.dateFrom || undefined,
@@ -277,9 +297,10 @@ function UserDeliveries() {
         purpose: formData.purpose.filter((v) => v.trim() !== ''),
         activity: formData.activity.filter((v) => v.trim() !== ''),
         vehicleEquipment: formData.vehicleEquipment,
+        tnvsProvider: formData.vehicleEquipment === 'RENT_VEHICLE' ? formData.tnvsProvider : undefined,
         destination: formData.destination.filter((v) => v.trim() !== ''),
         jobOrderNo: formData.jobOrderNo.filter((v) => v.trim() !== ''),
-        customerSupplier: formData.customerSupplier.filter((v) => v.trim() !== ''),
+        customerSupplier: processedCustomerSupplier.filter((v) => v.trim() !== ''),
         requestedBy: formData.requestedBy.trim(),
         requestedByUserId: user?._id || '',
       };
@@ -332,31 +353,31 @@ function UserDeliveries() {
   const statusConfig = {
     Pending: {
       icon: Clock,
-      bg: 'bg-amber-100 dark:bg-amber-900/30',
-      text: 'text-amber-700 dark:text-amber-400',
+      bg: 'bg-amber-100',
+      text: 'text-amber-700',
       dot: 'bg-amber-500',
-      border: 'border-amber-200 dark:border-amber-800',
+      border: 'border-amber-200',
     },
     Approved: {
       icon: Clock,
-      bg: 'bg-emerald-100 dark:bg-emerald-900/30',
-      text: 'text-emerald-700 dark:text-emerald-400',
+      bg: 'bg-emerald-100',
+      text: 'text-emerald-700',
       dot: 'bg-emerald-500',
-      border: 'border-emerald-200 dark:border-emerald-800',
+      border: 'border-emerald-200',
     },
     'Approved with Changes': {
       icon: Clock,
-      bg: 'bg-blue-100 dark:bg-blue-900/30',
-      text: 'text-blue-700 dark:text-blue-400',
+      bg: 'bg-blue-100',
+      text: 'text-blue-700',
       dot: 'bg-blue-500',
-      border: 'border-blue-200 dark:border-blue-800',
+      border: 'border-blue-200',
     },
     Declined: {
       icon: Clock,
-      bg: 'bg-red-100 dark:bg-red-900/30',
-      text: 'text-red-700 dark:text-red-400',
+      bg: 'bg-red-100',
+      text: 'text-red-700',
       dot: 'bg-red-500',
-      border: 'border-red-200 dark:border-red-800',
+      border: 'border-red-200',
     },
   };
 
@@ -680,6 +701,7 @@ function UserDeliveries() {
                             {(() => {
                               const plate = req.vehicleEquipment;
                               if (!plate) return '—';
+                              if (plate === 'RENT_VEHICLE') return <span>{`Rent Vehicle${req.tnvsProvider ? ` - ${req.tnvsProvider}` : ''}`}</span>;
                               const v = vehicles.find((v) => v.plateNumber === plate);
                               return v ? <span>{`${v.plateNumber} — ${v.model}`}</span> : <span>{plate}</span>;
                             })()}
@@ -841,9 +863,9 @@ function UserDeliveries() {
                       className={selectClass}
                     >
                       <option value="" disabled>Select Vehicle / Equipment</option>
-                      {vehicles.map((v) => {
+                      <option value="RENT_VEHICLE" className="font-bold">Rent Vehicle</option>
+                      {[...vehicles].sort((a, b) => a.plateNumber.localeCompare(b.plateNumber)).map((v) => {
                         let textColor = 'inherit';
-                        let emoji = '🟢';
                         let status = (v.status || 'available').toLowerCase();
                         let displayStatus = status === 'available' ? 'Available' : v.status;
 
@@ -853,9 +875,9 @@ function UserDeliveries() {
                           displayStatus = 'Booked';
                         }
 
-                        if (status === 'available') { textColor = '#16a34a'; emoji = '🟢'; }
-                        else if (status.includes('booked')) { textColor = '#dc2626'; emoji = '🔴'; }
-                        else if (status.includes('maintenance')) { textColor = '#d97706'; emoji = '🟡'; }
+                        if (status === 'available') { textColor = '#16a34a'; }
+                        else if (status.includes('booked')) { textColor = '#dc2626'; }
+                        else if (status.includes('maintenance')) { textColor = '#d97706'; }
 
                         return (
                           <option 
@@ -864,7 +886,7 @@ function UserDeliveries() {
                             className="font-bold"
                             style={{ color: textColor }}
                           >
-                            {emoji} {v.plateNumber} — {v.model} ({displayStatus})
+                            {v.plateNumber} — {v.model} ({displayStatus})
                           </option>
                         );
                       })}
@@ -873,6 +895,15 @@ function UserDeliveries() {
                       <ChevronDown className="h-3 w-3" />
                     </div>
                   </div>
+                  {formData.vehicleEquipment === 'RENT_VEHICLE' && (
+                    <input
+                      name="tnvsProvider"
+                      value={formData.tnvsProvider}
+                      onChange={handleInputChange}
+                      className={`${inputFormClass} mt-2`}
+                      placeholder="Specify vehicle needs"
+                    />
+                  )}
                 </fieldset>
 
                 {/* Purpose & Activity */}
@@ -928,19 +959,32 @@ function UserDeliveries() {
                     <div key={`cs-${index}`}>
                       <div className="flex items-center gap-2">
                         <div className="relative flex-1">
-                          <select
-                            value={cs}
-                            onChange={(e) => handleArrayChange('customerSupplier', index, e.target.value)}
-                            className={selectClass}
-                          >
-                            <option value="" disabled>Select Customer / Supplier</option>
-                            {destinations.map((d) => (
-                              <option key={d._id} value={d.name} className="font-bold">{d.name}</option>
-                            ))}
-                          </select>
-                          <div className="pointer-events-none absolute inset-y-0 right-2.5 flex items-center text-muted-foreground">
-                            <ChevronDown className="h-3 w-3" />
-                          </div>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button
+                                type="button"
+                                className={cn(selectClass, "flex items-center justify-between text-left px-2.5 outline-none")}
+                              >
+                                <span className="font-bold text-foreground truncate max-w-[calc(100%-1.5rem)]">
+                                  {!cs ? "Select Customer / Supplier" : (cs === 'NEW_CUSTOMER' ? '-- New Customer / Supplier --' : destinations.find(d => d.name === cs)?.name || cs)}
+                                </span>
+                                <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground/70" />
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent className="z-[200] w-[var(--radix-dropdown-menu-trigger-width)] min-w-[200px] max-h-56 overflow-y-auto" align="start">
+                              <DropdownMenuRadioGroup value={cs} onValueChange={(val) => handleArrayChange('customerSupplier', index, val)}>
+                                {destinations.map((d) => (
+                                  <DropdownMenuRadioItem key={d._id} value={d.name} className="font-bold text-[11px] uppercase tracking-wider py-2 cursor-pointer">
+                                    {d.name}
+                                  </DropdownMenuRadioItem>
+                                ))}
+                                <DropdownMenuSeparator />
+                                <DropdownMenuRadioItem value="NEW_CUSTOMER" className="font-bold text-primary text-[11px] uppercase tracking-wider py-2 cursor-pointer">
+                                  -- New Customer / Supplier --
+                                </DropdownMenuRadioItem>
+                              </DropdownMenuRadioGroup>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
                         {index === 0 && (
                           <button type="button" onClick={() => addArrayField('customerSupplier')} className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
@@ -953,6 +997,15 @@ function UserDeliveries() {
                           </button>
                         )}
                       </div>
+                      {cs === 'NEW_CUSTOMER' && (
+                        <input
+                          type="text"
+                          placeholder="Enter new customer / supplier name"
+                          value={newCustomers[index] || ''}
+                          onChange={(e) => setNewCustomers({ ...newCustomers, [index]: e.target.value })}
+                          className={`${inputFormClass} mt-2 w-full`}
+                        />
+                      )}
                     </div>
                   ))}
                 </fieldset>
@@ -1081,22 +1134,22 @@ function UserDeliveries() {
 
               {/* Decline reason */}
               {detailsModal.request.requestStatus === 'Declined' && detailsModal.request.declineReason && (
-                <div className="flex items-start gap-2 rounded-md bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/50 px-3 py-2">
+                <div className="flex items-start gap-2 rounded-md bg-red-50 border border-red-200 px-3 py-2">
                   <AlertTriangle className="h-3.5 w-3.5 text-red-500 shrink-0 mt-0.5" />
                   <div>
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-red-600 dark:text-red-400">Decline Reason</p>
-                    <p className="text-[11px] text-red-700 dark:text-red-300 mt-0.5">{detailsModal.request.declineReason}</p>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-red-600">Decline Reason</p>
+                    <p className="text-[11px] text-red-700 mt-0.5">{detailsModal.request.declineReason}</p>
                   </div>
                 </div>
               )}
 
               {/* Vehicle change notification */}
               {(detailsModal.request.requestStatus === 'Approved' || detailsModal.request.requestStatus === 'Approved with Changes') && detailsModal.request.vehicleChanged && (
-                <div className="flex items-start gap-2 rounded-md bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900/50 px-3 py-2">
+                <div className="flex items-start gap-2 rounded-md bg-blue-50 border border-blue-200 px-3 py-2">
                   <AlertTriangle className="h-3.5 w-3.5 text-blue-500 shrink-0 mt-0.5" />
                   <div>
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">Vehicle Changed</p>
-                    <p className="text-[11px] text-blue-700 dark:text-blue-300 mt-0.5">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-blue-600">Vehicle Changed</p>
+                    <p className="text-[11px] text-blue-700 mt-0.5">
                       The assigned vehicle was changed from <span className="font-bold">{(() => {
                         const origPlate = detailsModal.request.originalVehicle;
                         const origVehicle = vehicles.find(v => v.plateNumber === origPlate);
@@ -1117,11 +1170,11 @@ function UserDeliveries() {
 
               {/* Combined delivery notification */}
               {(detailsModal.request.requestStatus === 'Approved' || detailsModal.request.requestStatus === 'Approved with Changes') && detailsModal.request.combinedWithDelivery && (
-                <div className="flex items-start gap-2 rounded-md bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/50 px-3 py-2">
+                <div className="flex items-start gap-2 rounded-md bg-emerald-50 border border-emerald-200 px-3 py-2">
                   <AlertTriangle className="h-3.5 w-3.5 text-emerald-500 shrink-0 mt-0.5" />
                   <div>
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Added to Existing Delivery</p>
-                    <p className="text-[11px] text-emerald-700 dark:text-emerald-300 mt-0.5">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-600">Added to Existing Delivery</p>
+                    <p className="text-[11px] text-emerald-700 mt-0.5">
                       Your request has been added to delivery <span className="font-bold">{detailsModal.request.deliveryReferenceNo}</span>.
                     </p>
                   </div>
@@ -1156,6 +1209,7 @@ function UserDeliveries() {
                     { label: 'Vehicle', value: (() => {
                       const plate = detailsModal.request.vehicleEquipment;
                       if (!plate) return '—';
+                      if (plate === 'RENT_VEHICLE') return `Rent Vehicle${detailsModal.request.tnvsProvider ? ` - ${detailsModal.request.tnvsProvider}` : ''}`;
                       const v = vehicles.find(v => v.plateNumber === plate);
                       return v ? `${v.plateNumber} — ${v.model}` : plate;
                     })() },

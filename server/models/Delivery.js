@@ -24,6 +24,10 @@ const deliverySchema = new mongoose.Schema({
     type: String,
     trim: true
   },
+  tnvsProvider: {
+    type: String,
+    trim: true
+  },
   destination: [{ type: String, trim: true }],
   driver: [{ type: String, trim: true }],
   helper: [{ type: String, trim: true }],

@@ -154,31 +154,31 @@ function RequestPage() {
   const statusConfig = {
     Pending: {
       icon: Clock,
-      bg: 'bg-amber-100 dark:bg-amber-900/30',
-      text: 'text-amber-700 dark:text-amber-400',
+      bg: 'bg-amber-100',
+      text: 'text-amber-700',
       dot: 'bg-amber-500',
-      border: 'border-amber-200 dark:border-amber-800',
+      border: 'border-amber-200',
     },
     Approved: {
       icon: CheckCircle2,
-      bg: 'bg-emerald-100 dark:bg-emerald-900/30',
-      text: 'text-emerald-700 dark:text-emerald-400',
+      bg: 'bg-emerald-100',
+      text: 'text-emerald-700',
       dot: 'bg-emerald-500',
-      border: 'border-emerald-200 dark:border-emerald-800',
+      border: 'border-emerald-200',
     },
     'Approved with Changes': {
       icon: CheckCircle2,
-      bg: 'bg-blue-100 dark:bg-blue-900/30',
-      text: 'text-blue-700 dark:text-blue-400',
+      bg: 'bg-blue-100',
+      text: 'text-blue-700',
       dot: 'bg-blue-500',
-      border: 'border-blue-200 dark:border-blue-800',
+      border: 'border-blue-200',
     },
     Declined: {
       icon: XCircle,
-      bg: 'bg-red-100 dark:bg-red-900/30',
-      text: 'text-red-700 dark:text-red-400',
+      bg: 'bg-red-100',
+      text: 'text-red-700',
       dot: 'bg-red-500',
-      border: 'border-red-200 dark:border-red-800',
+      border: 'border-red-200',
     },
   };
 
@@ -500,7 +500,7 @@ function RequestPage() {
           <p className="text-[10px] text-muted-foreground uppercase tracking-widest">
             Review and manage delivery requests from users
             {pendingCount > 0 && (
-              <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-amber-100 dark:bg-amber-900/30 px-2 py-0.5 text-[9px] font-bold text-amber-700 dark:text-amber-400">
+              <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[9px] font-bold text-amber-700">
                 {pendingCount} pending
               </span>
             )}
@@ -622,6 +622,7 @@ function RequestPage() {
                         {(() => {
                           const plate = req.vehicleEquipment;
                           if (!plate) return '—';
+                          if (plate === 'RENT_VEHICLE') return `Rent Vehicle${req.tnvsProvider ? ` - ${req.tnvsProvider}` : ''}`;
                           const v = vehicles.find((v) => v.plateNumber === plate);
                           return v ? `${v.plateNumber} — ${v.model}` : plate;
                         })()}
@@ -689,22 +690,22 @@ function RequestPage() {
 
               {/* Decline reason */}
               {detailsModal.request.requestStatus === 'Declined' && detailsModal.request.declineReason && (
-                <div className="flex items-start gap-2 rounded-md bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/50 px-3 py-2">
+                <div className="flex items-start gap-2 rounded-md bg-red-50 border border-red-200 px-3 py-2">
                   <AlertTriangle className="h-3.5 w-3.5 text-red-500 shrink-0 mt-0.5" />
                   <div>
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-red-600 dark:text-red-400">Decline Reason</p>
-                    <p className="text-[11px] text-red-700 dark:text-red-300 mt-0.5">{detailsModal.request.declineReason}</p>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-red-600">Decline Reason</p>
+                    <p className="text-[11px] text-red-700 mt-0.5">{detailsModal.request.declineReason}</p>
                   </div>
                 </div>
               )}
 
               {/* Vehicle change notification */}
               {(detailsModal.request.requestStatus === 'Approved' || detailsModal.request.requestStatus === 'Approved with Changes') && detailsModal.request.vehicleChanged && (
-                <div className="flex items-start gap-2 rounded-md bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900/50 px-3 py-2">
+                <div className="flex items-start gap-2 rounded-md bg-blue-50 border border-blue-200 px-3 py-2">
                   <AlertTriangle className="h-3.5 w-3.5 text-blue-500 shrink-0 mt-0.5" />
                   <div>
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">Vehicle Changed</p>
-                    <p className="text-[11px] text-blue-700 dark:text-blue-300 mt-0.5">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-blue-600">Vehicle Changed</p>
+                    <p className="text-[11px] text-blue-700 mt-0.5">
                       Vehicle changed from <span className="font-bold">{(() => {
                         const origPlate = detailsModal.request.originalVehicle;
                         const origVehicle = vehicles.find(v => v.plateNumber === origPlate);
@@ -721,11 +722,11 @@ function RequestPage() {
 
               {/* Combined delivery notification */}
               {(detailsModal.request.requestStatus === 'Approved' || detailsModal.request.requestStatus === 'Approved with Changes') && detailsModal.request.combinedWithDelivery && (
-                <div className="flex items-start gap-2 rounded-md bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/50 px-3 py-2">
+                <div className="flex items-start gap-2 rounded-md bg-emerald-50 border border-emerald-200 px-3 py-2">
                   <AlertTriangle className="h-3.5 w-3.5 text-emerald-500 shrink-0 mt-0.5" />
                   <div>
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Added to Existing Delivery</p>
-                    <p className="text-[11px] text-emerald-700 dark:text-emerald-300 mt-0.5">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-600">Added to Existing Delivery</p>
+                    <p className="text-[11px] text-emerald-700 mt-0.5">
                       This request has been added to delivery <span className="font-bold">{detailsModal.request.deliveryReferenceNo}</span>.
                     </p>
                   </div>
@@ -743,6 +744,7 @@ function RequestPage() {
                 { label: 'Vehicle', value: (() => {
                   const plate = detailsModal.request.vehicleEquipment;
                   if (!plate) return '—';
+                  if (plate === 'RENT_VEHICLE') return `Rent Vehicle${detailsModal.request.tnvsProvider ? ` - ${detailsModal.request.tnvsProvider}` : ''}`;
                   const v = vehicles.find((v) => v.plateNumber === plate);
                   return v ? `${v.plateNumber} — ${v.model}` : plate;
                 })() },
@@ -813,8 +815,8 @@ function RequestPage() {
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-200">
           <div className="w-full max-w-sm rounded-lg border border-border bg-card shadow-xl p-5">
             <div className="flex items-center gap-3 mb-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/30">
-                <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100">
+                <CheckCircle2 className="h-5 w-5 text-emerald-600" />
               </div>
               <div>
                 <h3 className="text-sm font-bold uppercase tracking-tight text-foreground">Approve Request</h3>
@@ -864,8 +866,8 @@ function RequestPage() {
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-200">
           <div className="w-full max-w-sm rounded-lg border border-border bg-card shadow-xl p-5">
             <div className="flex items-center gap-3 mb-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30">
-                <XCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100">
+                <XCircle className="h-5 w-5 text-red-600" />
               </div>
               <div>
                 <h3 className="text-sm font-bold uppercase tracking-tight text-foreground">Decline Request</h3>
@@ -929,8 +931,8 @@ function RequestPage() {
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-200">
           <div className="w-full max-w-md rounded-lg border border-border bg-card shadow-xl p-5">
             <div className="flex items-center gap-3 mb-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/30">
-                <Truck className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100">
+                <Truck className="h-5 w-5 text-blue-600" />
               </div>
               <div>
                 <h3 className="text-sm font-bold uppercase tracking-tight text-foreground">Approve with Vehicle Change</h3>
@@ -976,6 +978,7 @@ function RequestPage() {
                   autoFocus
                 >
                   <option value="" disabled>Select Vehicle</option>
+                  <option value="RENT_VEHICLE">Rent Vehicle</option>
                   {vehicles.map((v) => (
                     <option key={v._id} value={v.plateNumber}>
                       {v.plateNumber} — {v.model}
@@ -1015,43 +1018,45 @@ function RequestPage() {
 
       {/* ─── Personnel Assignment Modal ─── */}
       {personnelModal.isOpen && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-200">
-          <div className="w-full max-w-lg rounded-lg border border-border bg-card shadow-xl p-5 max-h-[85vh] overflow-y-auto">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/30">
-                <Users className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-              </div>
-              <div>
-                <h3 className="text-sm font-bold uppercase tracking-tight text-foreground">Assign Driver & Helper</h3>
-                <p className="text-[11px] text-muted-foreground">
-                  Assign personnel to this approved delivery.
-                </p>
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-background/60 backdrop-blur-[2px] p-4 animate-in fade-in duration-300">
+          <div className="w-full max-w-[700px] max-h-[90vh] flex flex-col rounded-xl border border-border bg-card shadow-2xl animate-in fade-in zoom-in-95 duration-300">
+
+            {/* Sticky Header */}
+            <div className="sticky top-0 z-10 bg-card border-b border-border p-5 pb-3.5 rounded-t-xl shrink-0">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="flex h-6 w-6 items-center justify-center rounded bg-emerald-500/10 text-emerald-600">
+                    <Users className="h-3 w-3" />
+                  </div>
+                  <h2 className="text-[12px] font-bold text-foreground uppercase tracking-tight">
+                    ASSIGN DRIVER & HELPER
+                  </h2>
+                </div>
+                <button
+                  onClick={() => setPersonnelModal({ isOpen: false, deliveryId: null, request: null, driver: [''], helper: [''], totalBudget: '', isLoading: false })}
+                  disabled={personnelModal.isLoading}
+                  className="rounded-full flex h-5.5 w-5.5 items-center justify-center text-muted-foreground hover:bg-muted transition-colors disabled:opacity-50"
+                >
+                  <X className="h-3 w-3" />
+                </button>
               </div>
             </div>
 
-            {/* Driver Section */}
-            <div className="mb-4">
-              <div className="flex items-center justify-between mb-2">
-                <label className="block text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
+            {/* Scrollable Content */}
+            <div className="flex-1 overflow-y-auto p-5 pt-3 space-y-3">
+
+              {/* Driver */}
+              <fieldset className="rounded-lg border border-border bg-card px-3 pb-3 pt-2 shadow-sm space-y-2 min-w-0">
+                <legend className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground px-1 -ml-1 flex items-center gap-2">
                   Driver(s)
-                </label>
-                <button
-                  type="button"
-                  onClick={addDriverField}
-                  className="inline-flex items-center gap-1 text-[10px] font-bold uppercase text-primary hover:text-primary/80 transition-colors"
-                >
-                  <Plus className="h-3 w-3" />
-                  Add Driver
-                </button>
-              </div>
-              <div className="space-y-2">
+                </legend>
                 {personnelModal.driver.map((dr, index) => (
                   <div key={`driver-${index}`} className="flex items-center gap-2">
                     <div className="relative flex-1">
                       <select
                         value={dr}
                         onChange={(e) => handleDriverChange(index, e.target.value)}
-                        className="block w-full rounded border border-input bg-background px-3 py-2 text-[11px] font-semibold uppercase shadow-sm transition-all focus:border-primary focus:ring-1 focus:ring-primary focus-visible:outline-none appearance-none cursor-pointer"
+                        className="block h-8 w-full rounded border border-input bg-background px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider shadow-sm transition-all focus:border-primary focus:ring-1 focus:ring-primary focus-visible:outline-none appearance-none cursor-pointer"
                       >
                         <option value="">Select Driver</option>
                         {personnels.filter(p => p.position === 'Driver').map((p) => (
@@ -1060,47 +1065,36 @@ function RequestPage() {
                           </option>
                         ))}
                       </select>
-                      <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-muted-foreground">
-                        <ChevronDown className="h-3.5 w-3.5" />
+                      <div className="pointer-events-none absolute inset-y-0 right-2.5 flex items-center text-muted-foreground">
+                        <ChevronDown className="h-3 w-3" />
                       </div>
                     </div>
-                    {personnelModal.driver.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => removeDriverField(index)}
-                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-muted/50 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
-                      >
+                    {index === 0 && (
+                      <button type="button" onClick={addDriverField} className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
+                        <Plus className="h-4 w-4" />
+                      </button>
+                    )}
+                    {index > 0 && (
+                      <button type="button" onClick={() => removeDriverField(index)} className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-muted/50 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors">
                         <Minus className="h-4 w-4" />
                       </button>
                     )}
                   </div>
                 ))}
-              </div>
-            </div>
+              </fieldset>
 
-            {/* Helper Section */}
-            <div className="mb-4">
-              <div className="flex items-center justify-between mb-2">
-                <label className="block text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
+              {/* Helper */}
+              <fieldset className="rounded-lg border border-border bg-card px-3 pb-3 pt-2 shadow-sm space-y-2 min-w-0">
+                <legend className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground px-1 -ml-1 flex items-center gap-2">
                   Helper(s)
-                </label>
-                <button
-                  type="button"
-                  onClick={addHelperField}
-                  className="inline-flex items-center gap-1 text-[10px] font-bold uppercase text-primary hover:text-primary/80 transition-colors"
-                >
-                  <Plus className="h-3 w-3" />
-                  Add Helper
-                </button>
-              </div>
-              <div className="space-y-2">
+                </legend>
                 {personnelModal.helper.map((hl, index) => (
                   <div key={`helper-${index}`} className="flex items-center gap-2">
                     <div className="relative flex-1">
                       <select
                         value={hl}
                         onChange={(e) => handleHelperChange(index, e.target.value)}
-                        className="block w-full rounded border border-input bg-background px-3 py-2 text-[11px] font-semibold uppercase shadow-sm transition-all focus:border-primary focus:ring-1 focus:ring-primary focus-visible:outline-none appearance-none cursor-pointer"
+                        className="block h-8 w-full rounded border border-input bg-background px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider shadow-sm transition-all focus:border-primary focus:ring-1 focus:ring-primary focus-visible:outline-none appearance-none cursor-pointer"
                       >
                         <option value="">Select Helper</option>
                         {personnels.filter(p => p.position === 'Helper').map((p) => (
@@ -1109,64 +1103,70 @@ function RequestPage() {
                           </option>
                         ))}
                       </select>
-                      <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-muted-foreground">
-                        <ChevronDown className="h-3.5 w-3.5" />
+                      <div className="pointer-events-none absolute inset-y-0 right-2.5 flex items-center text-muted-foreground">
+                        <ChevronDown className="h-3 w-3" />
                       </div>
                     </div>
-                    {personnelModal.helper.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => removeHelperField(index)}
-                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-muted/50 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
-                      >
+                    {index === 0 && (
+                      <button type="button" onClick={addHelperField} className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
+                        <Plus className="h-4 w-4" />
+                      </button>
+                    )}
+                    {index > 0 && (
+                      <button type="button" onClick={() => removeHelperField(index)} className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-muted/50 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors">
                         <Minus className="h-4 w-4" />
                       </button>
                     )}
                   </div>
                 ))}
-              </div>
-            </div>
+              </fieldset>
 
-            {/* Total Budget Section */}
-            <div className="mb-4">
-              <label className="block text-[9px] font-bold uppercase tracking-widest text-muted-foreground mb-2">
-                Total Budget
-              </label>
-              <div className="relative">
-                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[11px] font-bold text-muted-foreground/60 select-none">
-                  ₱
+              {/* Total Budget */}
+              <fieldset className="rounded-lg border border-border bg-card px-3 pb-3 pt-2 shadow-sm space-y-1.5 min-w-0">
+                <legend className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground px-1 -ml-1">Total Budget</legend>
+                <div className="relative">
+                  <div className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[11px] font-bold text-muted-foreground/60 select-none">
+                    ₱
+                  </div>
+                  <input
+                    type="number"
+                    value={personnelModal.totalBudget}
+                    onChange={(e) => setPersonnelModal(prev => ({ ...prev, totalBudget: e.target.value }))}
+                    className="block h-8 w-full rounded border border-input bg-background pl-7 pr-3 py-1 text-[11px] font-bold uppercase tracking-wider shadow-sm transition-all placeholder:text-muted-foreground/50 focus:border-primary focus:ring-1 focus:ring-primary focus-visible:outline-none"
+                    placeholder="Total Budget"
+                  />
                 </div>
-                <input
-                  type="number"
-                  value={personnelModal.totalBudget}
-                  onChange={(e) => setPersonnelModal(prev => ({ ...prev, totalBudget: e.target.value }))}
-                  className="block w-full rounded border border-input bg-background pl-7 pr-3 py-2 text-[11px] font-semibold shadow-sm transition-all focus:border-primary focus:ring-1 focus:ring-primary focus-visible:outline-none"
-                  placeholder="Enter total budget"
-                />
+              </fieldset>
+
+            </div>
+
+            {/* Sticky Footer */}
+            <div className="sticky bottom-0 z-10 bg-card border-t border-border p-5 pt-3 rounded-b-xl shrink-0">
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setPersonnelModal({ isOpen: false, deliveryId: null, request: null, driver: [''], helper: [''], totalBudget: '', isLoading: false })}
+                  disabled={personnelModal.isLoading}
+                  className="flex-1 text-[11px] h-8 uppercase tracking-wider font-bold"
+                >
+                  Skip for Now
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleAssignPersonnel}
+                  disabled={personnelModal.isLoading}
+                  className="flex-1 text-[11px] h-8 uppercase tracking-wider font-bold bg-emerald-600 hover:bg-emerald-700 text-white"
+                >
+                  {personnelModal.isLoading ? (
+                    <><Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> Assigning...</>
+                  ) : (
+                    'Assign Personnel'
+                  )}
+                </Button>
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-4 border-t border-border">
-              <button
-                onClick={() => setPersonnelModal({ isOpen: false, deliveryId: null, request: null, driver: [''], helper: [''], totalBudget: '', isLoading: false })}
-                disabled={personnelModal.isLoading}
-                className="px-3 py-1.5 rounded text-[11px] font-semibold text-muted-foreground hover:bg-accent transition-colors disabled:opacity-50"
-              >
-                Skip for Now
-              </button>
-              <button
-                onClick={handleAssignPersonnel}
-                disabled={personnelModal.isLoading}
-                className="inline-flex items-center gap-1.5 rounded-md bg-emerald-600 px-4 py-1.5 text-[11px] font-bold uppercase tracking-wider text-white hover:bg-emerald-700 transition-colors disabled:opacity-50"
-              >
-                {personnelModal.isLoading ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <CheckCircle2 className="h-3.5 w-3.5" />
-                )}
-                {personnelModal.isLoading ? 'Assigning...' : 'Assign Personnel'}
-              </button>
-            </div>
           </div>
         </div>
       )}
@@ -1176,8 +1176,8 @@ function RequestPage() {
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-200">
           <div className="w-full max-w-2xl rounded-lg border border-border bg-card shadow-xl p-5 max-h-[85vh] overflow-y-auto">
             <div className="flex items-center gap-3 mb-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/30">
-                <Truck className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100">
+                <Truck className="h-5 w-5 text-blue-600" />
               </div>
               <div>
                 <h3 className="text-sm font-bold uppercase tracking-tight text-foreground">Combine Delivery Plans</h3>
@@ -1187,13 +1187,13 @@ function RequestPage() {
               </div>
             </div>
 
-            <div className="rounded-md bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900/50 px-3 py-2 mb-4">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400 mb-1">Current Request</p>
-              <p className="text-[11px] text-blue-700 dark:text-blue-300">
+            <div className="rounded-md bg-blue-50 border border-blue-200 px-3 py-2 mb-4">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-blue-600 mb-1">Current Request</p>
+              <p className="text-[11px] text-blue-700">
                 <span className="font-bold">{combineModal.request?.referenceNo}</span> — {formatDate(combineModal.request?.dateFrom)}
                 {combineModal.request?.dateTo && ` to ${formatDate(combineModal.request?.dateTo)}`}
               </p>
-              <p className="text-[10px] text-blue-600 dark:text-blue-400 mt-1">
+              <p className="text-[10px] text-blue-600 mt-1">
                 Destinations: {(combineModal.request?.destination || []).join(', ')}
               </p>
             </div>
@@ -1238,12 +1238,12 @@ function RequestPage() {
               </div>
             </div>
 
-            <div className="rounded-md bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 px-3 py-2 mb-4">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 mb-1">
+            <div className="rounded-md bg-amber-50 border border-amber-200 px-3 py-2 mb-4">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-amber-600 mb-1">
                 <AlertTriangle className="inline h-3 w-3 mr-1" />
                 Note
               </p>
-              <p className="text-[10px] text-amber-700 dark:text-amber-300">
+              <p className="text-[10px] text-amber-700">
                 Combining will merge destinations, purposes, activities, and job orders into the selected delivery plan.
               </p>
             </div>
@@ -1290,8 +1290,8 @@ function RequestPage() {
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-200">
           <div className="w-full max-w-sm rounded-lg border border-border bg-card shadow-xl p-5">
             <div className="flex items-center gap-3 mb-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/30">
-                <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100">
+                <CheckCircle2 className="h-5 w-5 text-emerald-600" />
               </div>
               <div>
                 <h3 className="text-sm font-bold uppercase tracking-tight text-foreground">Add Budget</h3>

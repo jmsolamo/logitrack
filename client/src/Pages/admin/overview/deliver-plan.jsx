@@ -26,6 +26,8 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
 } from '../../../components/ui/dropdown-menu';
 import { cn } from '../../../lib/utils';
 
@@ -123,6 +125,7 @@ function DeliveryPlan() {
     purpose: [''],
     activity: [''],
     vehicleEquipment: '',
+    tnvsProvider: '',
     destination: [''],
     driver: [''],
     helper: [''],
@@ -133,6 +136,7 @@ function DeliveryPlan() {
   };
 
   const [formData, setFormData] = useState(initialFormData);
+  const [newCustomers, setNewCustomers] = useState({});
 
   const toast = useAppToast();
 
@@ -203,6 +207,7 @@ function DeliveryPlan() {
   const closeModal = () => {
     setIsModalOpen(false);
     setFormData(initialFormData);
+    setNewCustomers({});
   };
 
   const handleSubmit = async (e) => {
@@ -210,6 +215,19 @@ function DeliveryPlan() {
     setIsSubmitLoading(true);
 
     try {
+      const processedCustomerSupplier = [...formData.customerSupplier];
+      for (let i = 0; i < processedCustomerSupplier.length; i++) {
+        if (processedCustomerSupplier[i] === 'NEW_CUSTOMER' && newCustomers[i]) {
+          const newName = newCustomers[i].trim();
+          processedCustomerSupplier[i] = newName;
+          try {
+            await axios.post('/api/destinations', { name: newName });
+          } catch (e) {
+            // Ignore if already exists
+          }
+        }
+      }
+
       const payload = {
         deliveryType: formData.deliveryType,
         dateFrom: formData.dateFrom || undefined,
@@ -217,11 +235,12 @@ function DeliveryPlan() {
         purpose: formData.purpose.filter(v => v.trim() !== ''),
         activity: formData.activity.filter(v => v.trim() !== ''),
         vehicleEquipment: formData.vehicleEquipment,
+        tnvsProvider: formData.vehicleEquipment === 'RENT_VEHICLE' ? formData.tnvsProvider : undefined,
         destination: formData.destination.filter(v => v.trim() !== ''),
         driver: formData.driver.filter(v => v.trim() !== ''),
         helper: formData.helper.filter(v => v.trim() !== ''),
         jobOrderNo: formData.jobOrderNo.filter(v => v.trim() !== ''),
-        customerSupplier: formData.customerSupplier.filter(v => v.trim() !== ''),
+        customerSupplier: processedCustomerSupplier.filter(v => v.trim() !== ''),
         totalBudget: formData.totalBudget ? Number(formData.totalBudget) : 0,
         requestedBy: formData.requestedBy
       };
@@ -338,6 +357,7 @@ function DeliveryPlan() {
       purpose: delivery.purpose?.length ? delivery.purpose : [''],
       activity: delivery.activity?.length ? delivery.activity : [''],
       vehicleEquipment: delivery.vehicleEquipment || '',
+      tnvsProvider: delivery.tnvsProvider || '',
       destination: delivery.destination?.length ? delivery.destination : [''],
       driver: delivery.driver?.length ? delivery.driver : [''],
       helper: delivery.helper?.length ? delivery.helper : [''],
@@ -1138,6 +1158,19 @@ function DeliveryPlan() {
     setIsEditSubmitLoading(true);
 
     try {
+      const processedCustomerSupplier = [...formData.customerSupplier];
+      for (let i = 0; i < processedCustomerSupplier.length; i++) {
+        if (processedCustomerSupplier[i] === 'NEW_CUSTOMER' && newCustomers[i]) {
+          const newName = newCustomers[i].trim();
+          processedCustomerSupplier[i] = newName;
+          try {
+            await axios.post('/api/destinations', { name: newName });
+          } catch (e) {
+            // Ignore safely
+          }
+        }
+      }
+
       const payload = {
         deliveryType: formData.deliveryType,
         dateFrom: formData.dateFrom || undefined,
@@ -1145,11 +1178,12 @@ function DeliveryPlan() {
         purpose: formData.purpose.filter(v => v.trim() !== ''),
         activity: formData.activity.filter(v => v.trim() !== ''),
         vehicleEquipment: formData.vehicleEquipment,
+        tnvsProvider: formData.vehicleEquipment === 'RENT_VEHICLE' ? formData.tnvsProvider : undefined,
         destination: formData.destination.filter(v => v.trim() !== ''),
         driver: formData.driver.filter(v => v.trim() !== ''),
         helper: formData.helper.filter(v => v.trim() !== ''),
         jobOrderNo: formData.jobOrderNo.filter(v => v.trim() !== ''),
-        customerSupplier: formData.customerSupplier.filter(v => v.trim() !== ''),
+        customerSupplier: processedCustomerSupplier.filter(v => v.trim() !== ''),
         totalBudget: formData.totalBudget ? Number(formData.totalBudget) : 0,
         requestedBy: formData.requestedBy
       };
@@ -1234,7 +1268,8 @@ function DeliveryPlan() {
             className={selectClass}
           >
             <option value="" disabled>Select Vehicle / Equipment</option>
-            {vehicles.map(v => (
+            <option value="RENT_VEHICLE" className="font-bold">Rent Vehicle</option>
+            {[...vehicles].sort((a, b) => a.plateNumber.localeCompare(b.plateNumber)).map(v => (
               <option key={v._id} value={v.plateNumber} className="font-bold">{v.plateNumber} — {v.model}</option>
             ))}
           </select>
@@ -1242,6 +1277,15 @@ function DeliveryPlan() {
             <ChevronDown className="h-3 w-3" />
           </div>
         </div>
+        {formData.vehicleEquipment === 'RENT_VEHICLE' && (
+          <input
+            name="tnvsProvider"
+            value={formData.tnvsProvider}
+            onChange={handleInputChange}
+            className={`${inputFormClass} mt-2`}
+            placeholder="Specify vehicle needs"
+          />
+        )}
       </fieldset>
 
       {/* Purpose & Activity */}
@@ -1299,35 +1343,57 @@ function DeliveryPlan() {
           Customer / Supplier
         </legend>
         {formData.customerSupplier.map((cs, index) => (
-          <div key={`cs-${index}`}>
-            <div className="flex items-center gap-2">
-              <div className="relative flex-1">
-                <select
-                  value={cs}
-                  onChange={(e) => handleArrayChange('customerSupplier', index, e.target.value)}
-                  className={selectClass}
-                >
-                  <option value="" disabled>Select Customer / Supplier</option>
-                  {destinations.map(d => (
-                    <option key={d._id} value={d.name} className="font-bold">{d.name}</option>
-                  ))}
-                </select>
-                <div className="pointer-events-none absolute inset-y-0 right-2.5 flex items-center text-muted-foreground">
-                  <ChevronDown className="h-3 w-3" />
-                </div>
-              </div>
-              {index === 0 && (
-                <button type="button" onClick={() => addArrayField('customerSupplier')} className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
-                  <Plus className="h-4 w-4" />
-                </button>
-              )}
-              {index > 0 && (
-                <button type="button" onClick={() => removeArrayField('customerSupplier', index)} className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-muted/50 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors">
-                  <Minus className="h-4 w-4" />
-                </button>
-              )}
-            </div>
-          </div>
+                    <div key={`cs-${index}`}>
+                      <div className="flex items-center gap-2">
+                        <div className="relative flex-1">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button
+                                type="button"
+                                className={cn(selectClass, "flex items-center justify-between text-left px-2.5 outline-none")}
+                              >
+                                <span className="font-bold text-foreground truncate max-w-[calc(100%-1.5rem)]">
+                                  {!cs ? "Select Customer / Supplier" : (cs === 'NEW_CUSTOMER' ? '-- New Customer / Supplier --' : destinations.find(d => d.name === cs)?.name || cs)}
+                                </span>
+                                <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground/70" />
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent className="z-[200] w-[var(--radix-dropdown-menu-trigger-width)] min-w-[200px] max-h-56 overflow-y-auto" align="start">
+                              <DropdownMenuRadioGroup value={cs} onValueChange={(val) => handleArrayChange('customerSupplier', index, val)}>
+                                {destinations.map(d => (
+                                  <DropdownMenuRadioItem key={d._id} value={d.name} className="font-bold text-[11px] uppercase tracking-wider py-2 cursor-pointer">
+                                    {d.name}
+                                  </DropdownMenuRadioItem>
+                                ))}
+                                <DropdownMenuSeparator />
+                                <DropdownMenuRadioItem value="NEW_CUSTOMER" className="font-bold text-primary text-[11px] uppercase tracking-wider py-2 cursor-pointer">
+                                  -- New Customer / Supplier --
+                                </DropdownMenuRadioItem>
+                              </DropdownMenuRadioGroup>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                        {index === 0 && (
+                          <button type="button" onClick={() => addArrayField('customerSupplier')} className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
+                            <Plus className="h-4 w-4" />
+                          </button>
+                        )}
+                        {index > 0 && (
+                          <button type="button" onClick={() => removeArrayField('customerSupplier', index)} className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-muted/50 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors">
+                            <Minus className="h-4 w-4" />
+                          </button>
+                        )}
+                      </div>
+                      {cs === 'NEW_CUSTOMER' && (
+                        <input
+                          type="text"
+                          placeholder="Enter new customer / supplier name"
+                          value={newCustomers[index] || ''}
+                          onChange={(e) => setNewCustomers({ ...newCustomers, [index]: e.target.value })}
+                          className={`${inputFormClass} mt-2 w-full`}
+                        />
+                      )}
+                    </div>
         ))}
       </fieldset>
 
@@ -1786,6 +1852,7 @@ function DeliveryPlan() {
                         {(() => {
                           const plate = item.vehicleEquipment;
                           if (!plate) return '—';
+                          if (plate === 'RENT_VEHICLE') return `Rent Vehicle${item.tnvsProvider ? ` - ${item.tnvsProvider}` : ''}`;
                           const v = vehicles.find((v) => v.plateNumber === plate);
                           return v ? `${v.plateNumber} — ${v.model}` : plate;
                         })()}
@@ -1923,6 +1990,7 @@ function DeliveryPlan() {
                           purpose: detailsModal.delivery.purpose?.length ? detailsModal.delivery.purpose : [''],
                           activity: detailsModal.delivery.activity?.length ? detailsModal.delivery.activity : [''],
                           vehicleEquipment: detailsModal.delivery.vehicleEquipment || '',
+                          tnvsProvider: detailsModal.delivery.tnvsProvider || '',
                           destination: detailsModal.delivery.destination?.length ? detailsModal.delivery.destination : [''],
                           driver: detailsModal.delivery.driver?.length ? detailsModal.delivery.driver : [''],
                           helper: detailsModal.delivery.helper?.length ? detailsModal.delivery.helper : [''],
@@ -2012,9 +2080,11 @@ function DeliveryPlan() {
                   <div className="p-4 rounded-lg bg-primary/5 border border-primary/20">
                     <p className="text-[9px] text-primary/70 uppercase tracking-widest mb-1.5 font-bold">Vehicle / Equipment</p>
                     <p className="text-[13px] font-bold text-primary uppercase">
-                      {detailsModal.delivery.vehicleEquipment
-                        ? `${detailsModal.delivery.vehicleEquipment} — ${vehicles.find(v => v.plateNumber === detailsModal.delivery.vehicleEquipment)?.model || ''}`
-                        : '—'}
+                      {detailsModal.delivery.vehicleEquipment === 'RENT_VEHICLE'
+                        ? `Rent Vehicle${detailsModal.delivery.tnvsProvider ? ` - ${detailsModal.delivery.tnvsProvider}` : ''}`
+                        : detailsModal.delivery.vehicleEquipment
+                          ? `${detailsModal.delivery.vehicleEquipment} — ${vehicles.find(v => v.plateNumber === detailsModal.delivery.vehicleEquipment)?.model || ''}`
+                          : '—'}
                     </p>
                   </div>
 
@@ -2398,7 +2468,7 @@ function DeliveryPlan() {
       {/* Expenses Modal */}
       {expensesModal.isOpen && expensesModal.delivery && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-background/60 backdrop-blur-[2px] p-4 animate-in fade-in duration-300">
-          <div className="w-full max-w-[700px] max-h-[90vh] flex flex-col rounded-xl border border-border bg-card shadow-2xl animate-in fade-in zoom-in-95 duration-300">
+          <div className="w-full max-w-[1100px] max-h-[90vh] flex flex-col rounded-xl border border-border bg-card shadow-2xl animate-in fade-in zoom-in-95 duration-300">
             {/* Header */}
             <div className="sticky top-0 z-10 bg-card border-b border-border p-5 pb-3.5 rounded-t-xl shrink-0">
               <div className="flex items-center justify-between">

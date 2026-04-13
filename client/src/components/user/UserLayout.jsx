@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation, Link } from 'react-router-dom';
 import axios from 'axios';
-import { Sun, Moon, LayoutDashboard, CalendarDays, Truck, LogOut } from 'lucide-react';
+import { LayoutDashboard, CalendarDays, Truck, LogOut, ClipboardList } from 'lucide-react';
 
 import favicon from '../../assets/images/favicon.png';
 
@@ -12,25 +12,7 @@ function UserLayout() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [isDark, setIsDark] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return document.documentElement.classList.contains('dark') ||
-        localStorage.getItem('theme') === 'dark';
-    }
-    return false;
-  });
 
-  useEffect(() => {
-    if (isDark) {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
-    }
-  }, [isDark]);
-
-  const toggleTheme = () => setIsDark(!isDark);
 
   useEffect(() => {
     const checkUserRole = async () => {
@@ -86,6 +68,7 @@ function UserLayout() {
     { name: 'Dashboard', path: '/user/dashboard', icon: LayoutDashboard },
     { name: 'Calendar', path: '/user/calendar', icon: CalendarDays },
     { name: 'Deliveries', path: '/user/deliveries', icon: Truck },
+    { name: 'Job Orders', path: '/user/job-orders', icon: ClipboardList },
   ];
 
   return (
@@ -129,34 +112,12 @@ function UserLayout() {
 
         <div className="flex items-center gap-3 sm:gap-4 shrink-0">
           <button
-            onClick={toggleTheme}
-            className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors bg-accent/30"
-            title="Toggle theme"
-          >
-            {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-          </button>
-
-          <div className="flex items-center gap-2.5 border-l border-border pl-3 sm:pl-4">
-            <div className="flex h-7 w-7 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-full bg-primary text-[10px] sm:text-[12px] font-semibold text-primary-foreground shadow-sm">
-              {(user?.username || 'U').charAt(0).toUpperCase()}
-            </div>
-            <div className="hidden md:flex flex-col items-start pr-2">
-              <span className="text-[12px] font-bold leading-none text-foreground uppercase tracking-tight">
-                {user?.username || 'User'}
-              </span>
-              <span className="text-[9px] text-muted-foreground leading-none mt-1 uppercase tracking-widest">
-                {user?.department || 'User Account'}
-              </span>
-            </div>
-            
-            <button
               onClick={handleLogout}
-              className="flex h-8 w-8 items-center justify-center rounded-full text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors ml-1"
+              className="flex h-8 w-8 items-center justify-center rounded-full text-red-500 hover:bg-red-50 transition-colors ml-1"
               title="Logout"
             >
               <LogOut className="h-4 w-4" />
             </button>
-          </div>
         </div>
       </header>
 

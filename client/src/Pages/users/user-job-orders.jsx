@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
-import { useAppToast } from '../../../../components/ui/alert-toast-provider';
+import { useOutletContext } from 'react-router-dom';
+import { useAppToast } from '../../components/ui/alert-toast-provider';
 import {
   ClipboardList,
   Search,
@@ -9,8 +10,8 @@ import {
   MapPin,
   Printer
 } from 'lucide-react';
-import { Input } from '../../../../components/ui/input';
-import { Button } from '../../../../components/ui/button';
+import { Input } from '../../components/ui/input';
+import { Button } from '../../components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -18,9 +19,10 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '../../../../components/ui/dropdown-menu';
+} from '../../components/ui/dropdown-menu';
 
-export default function JobOrders() {
+export default function UserJobOrders() {
+  const { user } = useOutletContext();
   const [deliveries, setDeliveries] = useState([]);
   const [vehicles, setVehicles] = useState([]);
   const [deliveryCharges, setDeliveryCharges] = useState([]);
@@ -35,18 +37,29 @@ export default function JobOrders() {
 
   const toast = useAppToast();
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => {
+    if (user?._id) fetchData();
+  }, [user]);
 
   const fetchData = async () => {
     try {
-      const [deliveriesRes, vehiclesRes, chargesRes] = await Promise.all([
+      const [deliveriesRes, vehiclesRes, chargesRes, requestsRes] = await Promise.all([
         axios.get('/api/deliveries'),
         axios.get('/api/vehicles'),
-        axios.get('/api/delivery-charges')
+        axios.get('/api/delivery-charges'),
+        axios.get(`/api/delivery-requests/my-requests?userId=${user._id}`)
       ]);
       setVehicles(vehiclesRes.data);
       setDeliveryCharges(chargesRes.data);
-      const completed = deliveriesRes.data.filter(d => d.status === 'Completed');
+      
+      const myRequestRefs = new Set(requestsRes.data.map(r => r.deliveryReferenceNo).filter(Boolean));
+      
+      const userDeliveries = deliveriesRes.data.filter(d => 
+        myRequestRefs.has(d.referenceNo) || 
+        d.requestedBy === user.username
+      );
+
+      const completed = userDeliveries.filter(d => d.status === 'Completed');
       const sorted = completed.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
       setDeliveries(sorted);
     } catch (error) {
@@ -133,7 +146,6 @@ export default function JobOrders() {
     if (destinationFilter !== 'all') f.push(`Destination: ${destinationFilter}`);
     return f.length ? f.join(' | ') : 'None';
   };
-
 
   // --- Extract filter options ---
   const uniqueDestinations = useMemo(() => {
@@ -229,7 +241,7 @@ export default function JobOrders() {
       <div className="mb-4 flex flex-col justify-between gap-3 md:flex-row md:items-center shrink-0">
         <div>
           <h1 className="text-sm font-bold tracking-tight text-foreground md:text-base uppercase">Job Orders</h1>
-          <p className="text-[10px] text-muted-foreground uppercase tracking-widest">Job order summary for all completed deliveries</p>
+          <p className="text-[10px] text-muted-foreground uppercase tracking-widest">Summary for your completed deliveries</p>
         </div>
         <div className="flex items-center gap-3">
           {selectedIds.size > 0 && (
@@ -304,7 +316,7 @@ export default function JobOrders() {
               <p className="text-[10px] text-muted-foreground uppercase tracking-widest">Adjust filters or add deliveries.</p>
             </div>
           ) : (
-            <table className="w-full min-w-[1200px] border-collapse relative">
+            <table className="w-full min-w-[800px] border-collapse relative">
               <thead className="sticky top-0 z-10 bg-orange-500 backdrop-blur shadow-sm">
                 <tr className="border-b border-orange-600/20">
                   <th className="w-[40px] px-3 py-2.5 text-center align-middle">
@@ -413,7 +425,7 @@ export default function JobOrders() {
           ))}
           {/* Total Row */}
           <tr className="bg-[#f2f2f2] break-inside-avoid">
-            <td className="border border-black px-1 py-1 font-bold bg-white" colSpan={6}></td>
+            <td className="border border-black px-1 py-1 font-bold bg-white" colSpan={4}></td>
             <td className="border border-black px-1 py-1 font-bold text-center">TOTAL</td>
             <td className="border border-black px-1 py-1 font-bold text-right whitespace-nowrap">{totals.totalExpenses.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
             <td className="border border-black px-1 py-1 font-bold text-right whitespace-nowrap">{totals.totalCharge.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>

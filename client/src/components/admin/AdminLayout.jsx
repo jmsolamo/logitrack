@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import AdminSidebar from './AdminSidebar';
-import { Menu, Sun, Moon, Bell } from 'lucide-react';
+import { Menu } from 'lucide-react';
 
 function AdminLayout() {
   const [loading, setLoading] = useState(true);
@@ -12,25 +12,7 @@ function AdminLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const navigate = useNavigate();
 
-  const [isDark, setIsDark] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return document.documentElement.classList.contains('dark') ||
-        localStorage.getItem('theme') === 'dark';
-    }
-    return false;
-  });
 
-  useEffect(() => {
-    if (isDark) {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
-    }
-  }, [isDark]);
-
-  const toggleTheme = () => setIsDark(!isDark);
 
   useEffect(() => {
     const checkUserRole = async () => {
@@ -109,22 +91,6 @@ function AdminLayout() {
           </div>
 
           <div className="flex items-center gap-3 sm:gap-4">
-            <div className="flex items-center gap-1 sm:gap-2 sm:border-r sm:border-border sm:pr-4">
-              <button
-                onClick={toggleTheme}
-                className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
-                title="Toggle theme"
-              >
-                {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-              </button>
-              <button
-                className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors relative"
-                title="Notifications"
-              >
-                <Bell className="h-4 w-4" />
-              </button>
-            </div>
-
             {/* User Profile */}
             <button
               className="flex items-center gap-2.5 hover:opacity-80 transition-opacity"

@@ -44,18 +44,18 @@ function UsersDashboard() {
 
   const statusConfig = {
     Pending: {
-      bg: 'bg-amber-100 dark:bg-amber-900/30',
-      text: 'text-amber-700 dark:text-amber-400',
+      bg: 'bg-amber-100',
+      text: 'text-amber-700',
       dot: 'bg-amber-500',
     },
     'In Transit': {
-      bg: 'bg-blue-100 dark:bg-blue-900/30',
-      text: 'text-blue-700 dark:text-blue-400',
+      bg: 'bg-blue-100',
+      text: 'text-blue-700',
       dot: 'bg-blue-500',
     },
     Completed: {
-      bg: 'bg-emerald-100 dark:bg-emerald-900/30',
-      text: 'text-emerald-700 dark:text-emerald-400',
+      bg: 'bg-emerald-100',
+      text: 'text-emerald-700',
       dot: 'bg-emerald-500',
     },
   };
@@ -73,25 +73,25 @@ function UsersDashboard() {
       label: 'Pending',
       value: stats?.pending ?? 0,
       icon: Clock,
-      color: 'text-amber-600 dark:text-amber-400',
-      bgColor: 'bg-amber-50 dark:bg-amber-900/20',
-      borderColor: 'border-amber-200 dark:border-amber-800',
+      color: 'text-amber-600',
+      bgColor: 'bg-amber-50',
+      borderColor: 'border-amber-200',
     },
     {
       label: 'In Transit',
       value: stats?.inTransit ?? 0,
       icon: Truck,
-      color: 'text-blue-600 dark:text-blue-400',
-      bgColor: 'bg-blue-50 dark:bg-blue-900/20',
-      borderColor: 'border-blue-200 dark:border-blue-800',
+      color: 'text-blue-600',
+      bgColor: 'bg-blue-50',
+      borderColor: 'border-blue-200',
     },
     {
       label: 'Completed',
       value: stats?.completed ?? 0,
       icon: CheckCircle2,
-      color: 'text-emerald-600 dark:text-emerald-400',
-      bgColor: 'bg-emerald-50 dark:bg-emerald-900/20',
-      borderColor: 'border-emerald-200 dark:border-emerald-800',
+      color: 'text-emerald-600',
+      bgColor: 'bg-emerald-50',
+      borderColor: 'border-emerald-200',
     },
   ];
 

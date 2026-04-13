@@ -22,6 +22,10 @@ const deliveryRequestSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
+  tnvsProvider: {
+    type: String,
+    trim: true
+  },
   destination: [{ type: String, trim: true }],
   jobOrderNo: [{ type: String, trim: true }],
   customerSupplier: [{ type: String, trim: true }],
