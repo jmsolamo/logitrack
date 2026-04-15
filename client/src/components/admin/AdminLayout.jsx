@@ -3,6 +3,7 @@ import { Outlet, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import AdminSidebar from './AdminSidebar';
 import { Menu, User as UserIcon } from 'lucide-react';
+import favicon from '../../assets/images/favicon.png';
 
 function AdminLayout() {
   const [loading, setLoading] = useState(true);
@@ -88,6 +89,13 @@ function AdminLayout() {
             >
               <Menu className="h-4 w-4" />
             </button>
+            <div className="hidden sm:flex items-center gap-2">
+              <img src={favicon} alt="LogiTrack Logo" className="h-5 w-5 shrink-0 object-contain" />
+              <div className="flex flex-col leading-tight">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-foreground">LogiTrack</span>
+                <span className="text-[9px] text-muted-foreground uppercase tracking-wider">ENERTECH SYSTEMS INDUSTRIES INC.</span>
+              </div>
+            </div>
           </div>
 
           <div className="flex items-center gap-3 sm:gap-4">

@@ -24,6 +24,8 @@ import VehiclesPage from './Pages/admin/management/vehicles';
 import PersonnelsPage from './Pages/admin/management/personnels';
 import MembersPage from './Pages/admin/team/members';
 import ApprovalPage from './Pages/admin/team/approval';
+import ReviewerLayout from './components/reviewer/ReviewerLayout';
+import ReviewerRequestsPage from './Pages/reviewer/reviewer-requests';
 import SettingsPage from './Pages/SettingsPage';
 import './lib/axios';
 import './App.css';
@@ -58,6 +60,16 @@ function App() {
             <Route path="delivery-expenses/diesel" element={<DieselExpenses />} />
             <Route path="delivery-expenses/breakdown" element={<DriverExpenseBreakdown />} />
             <Route path="delivery-expenses/job-orders" element={<JobOrders />} />
+            <Route path="settings" element={<SettingsPage />} />
+          </Route>
+
+          {/* Reviewer routes */}
+          <Route path="/reviewer" element={<ReviewerLayout />}>
+            <Route index element={<UsersDashboard />} />
+            <Route path="dashboard" element={<UsersDashboard />} />
+            <Route path="calendar" element={<UserCalendar />} />
+            <Route path="deliveries" element={<UserDeliveries />} />
+            <Route path="requests" element={<ReviewerRequestsPage />} />
             <Route path="settings" element={<SettingsPage />} />
           </Route>
 

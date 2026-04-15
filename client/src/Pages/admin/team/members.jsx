@@ -207,9 +207,11 @@ function MembersPage() {
                     </td>
                     <td className="whitespace-nowrap px-3 py-2 text-[10px] font-bold tracking-tight align-middle">
                       <span className={`inline-flex px-2 py-1 rounded-full text-[8px] uppercase tracking-widest font-bold ${
-                        user.role === 'admin' 
-                          ? 'bg-blue-500/10 text-blue-600' 
-                          : 'bg-green-500/10 text-green-600'
+                        user.role === 'admin'
+                          ? 'bg-blue-500/10 text-blue-600'
+                          : user.role === 'reviewer'
+                            ? 'bg-orange-500/10 text-orange-600'
+                            : 'bg-green-500/10 text-green-600'
                       }`}>
                         {user.role}
                       </span>
@@ -328,6 +330,7 @@ function MembersPage() {
                   className="block h-9 w-full rounded border border-input bg-background px-3 text-[12px] font-medium shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
                 >
                   <option value="user">User</option>
+                  <option value="reviewer">Reviewer</option>
                   <option value="admin">Admin</option>
                 </select>
               </div>

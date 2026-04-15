@@ -33,7 +33,13 @@ function LoginPage() {
       localStorage.setItem('token', data.token);
 
       toast.success('Login successful');
-      navigate(data.user.role === 'admin' ? '/admin/dashboard' : '/user/dashboard');
+      if (data.user.role === 'admin') {
+        navigate('/admin/dashboard');
+      } else if (data.user.role === 'reviewer') {
+        navigate('/reviewer/requests');
+      } else {
+        navigate('/user/dashboard');
+      }
     } catch (error) {
       const errorMessage = error.response?.data?.message || 'Login failed';
       toast.error(errorMessage);

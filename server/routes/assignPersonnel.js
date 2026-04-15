@@ -26,10 +26,15 @@ router.put('/:id/assign-personnel', async (req, res) => {
     await delivery.save();
 
     // Also update the corresponding delivery request if it exists
-    const request = await DeliveryRequest.findOne({ referenceNo: delivery.referenceNo });
+    const request = await DeliveryRequest.findOne({ deliveryReferenceNo: delivery.referenceNo });
     if (request) {
+      const assignedPersonnel = (driver && driver.length > 0) || (helper && helper.length > 0);
       if (driver) request.driver = driver;
       if (helper) request.helper = helper;
+      if (totalBudget !== undefined) request.totalBudget = (request.totalBudget || 0) + Number(totalBudget);
+      if (assignedPersonnel) {
+        request.requestStatus = 'For Review';
+      }
       await request.save();
     }
 

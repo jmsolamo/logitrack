@@ -83,7 +83,7 @@ router.get('/schedules', async (req, res) => {
 
     // Get approved requests and check their delivery status
     const approvedRequests = await DeliveryRequest.find(
-      { requestStatus: { $in: ['Approved', 'Approved with Changes'] } },
+      { requestStatus: { $in: ['Approved', 'Approved with Changes', 'For Review'] } },
       'vehicleEquipment dateFrom dateTo requestStatus deliveryReferenceNo'
     );
 
@@ -151,18 +151,67 @@ router.get('/my-requests', async (req, res) => {
 });
 
 // @route   GET /api/delivery-requests
-// @desc    Get all delivery requests (admin)
+// @desc    Get all delivery requests (admin/reviewer)
 router.get('/', async (req, res) => {
   try {
     const filter = {};
     if (req.query.status && req.query.status !== 'all') {
       filter.requestStatus = req.query.status;
     }
+    if (req.query.reviewerStatus && req.query.reviewerStatus !== 'all') {
+      filter.reviewerStatus = req.query.reviewerStatus;
+    }
+    if (req.query.deliveryReferenceNo) {
+      filter.deliveryReferenceNo = req.query.deliveryReferenceNo;
+    }
+    if (req.query.requestStatus) {
+      const statuses = req.query.requestStatus.split(',').map((s) => s.trim()).filter(Boolean);
+      if (statuses.length === 1) {
+        filter.requestStatus = statuses[0];
+      } else if (statuses.length > 1) {
+        filter.requestStatus = { $in: statuses };
+      }
+    }
     const requests = await DeliveryRequest.find(filter).sort({ createdAt: -1 });
     res.json(requests);
   } catch (error) {
     console.error('Error fetching delivery requests:', error);
     res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @route   PUT /api/delivery-requests/:id/reviewer-accept
+// @desc    Reviewer accepts an approved request after review
+router.put('/:id/reviewer-accept', async (req, res) => {
+  try {
+    const request = await DeliveryRequest.findById(req.params.id);
+    if (!request) {
+      return res.status(404).json({ message: 'Request not found' });
+    }
+
+    if (!['Approved', 'Approved with Changes', 'For Review'].includes(request.requestStatus)) {
+      return res.status(400).json({ message: 'Only approved requests can be reviewed' });
+    }
+
+    if (request.reviewerStatus === 'Accepted') {
+      return res.status(400).json({ message: 'Request has already been accepted by reviewer' });
+    }
+
+    request.reviewerStatus = 'Accepted';
+    request.reviewerNotes = req.body.reviewerNotes || '';
+    request.reviewerReviewedBy = req.body.reviewerReviewedBy || '';
+    request.reviewerReviewedAt = new Date();
+
+    if (request.requestStatus === 'For Review') {
+      request.requestStatus = request.vehicleChanged || request.combinedWithDelivery ? 'Approved with Changes' : 'Approved';
+    }
+
+    await request.save();
+
+    res.json({ message: 'Request accepted by reviewer', request });
+  } catch (error) {
+    console.error('Error accepting request as reviewer:', error);
+    res.status(500).json({ message: 'Server error accepting request' });
   }
 });
 

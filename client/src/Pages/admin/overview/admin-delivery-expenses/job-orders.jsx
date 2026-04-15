@@ -203,6 +203,21 @@ export default function JobOrders() {
     return { totalExpenses, totalCharge };
   }, [filteredRows]);
 
+  const rowsToPrint = useMemo(() => {
+    if (selectedIds.size === 0) return filteredRows;
+    const selected = flattenedRows.filter(row => selectedIds.has(row._id));
+    return selected.length > 0 ? selected : filteredRows;
+  }, [flattenedRows, filteredRows, selectedIds]);
+
+  const printTotals = useMemo(() => {
+    let totalExpenses = 0, totalCharge = 0;
+    rowsToPrint.forEach(row => {
+      totalExpenses += Number(row.totalExpenses || 0);
+      totalCharge += Number(row.deliveryCharge || 0);
+    });
+    return { totalExpenses, totalCharge };
+  }, [rowsToPrint]);
+
   // --- Checkbox logic ---
   const toggleSelectAll = () => {
     if (selectedIds.size === filteredRows.length) {
@@ -424,7 +439,7 @@ export default function JobOrders() {
           </tr>
         </thead>
         <tbody>
-          {filteredRows.map(row => (
+          {rowsToPrint.map(row => (
             <tr key={row._id} className="break-inside-avoid">
               <td className="border border-black px-1 py-1 align-top font-bold text-center whitespace-nowrap">{row.jobOrderNo}</td>
               <td className="border border-black px-1 py-1 align-top whitespace-nowrap">{(row.dateFrom && row.dateTo ? `${formatDate(row.dateFrom)} - ${formatDate(row.dateTo)}` : formatDate(row.dateFrom)).toUpperCase()}</td>
@@ -441,8 +456,8 @@ export default function JobOrders() {
           <tr className="bg-[#f2f2f2] break-inside-avoid">
             <td className="border border-black px-1 py-1 font-bold bg-white" colSpan={6}></td>
             <td className="border border-black px-1 py-1 font-bold text-center">TOTAL</td>
-            <td className="border border-black px-1 py-1 font-bold text-right whitespace-nowrap">{totals.totalExpenses.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-            <td className="border border-black px-1 py-1 font-bold text-right whitespace-nowrap">{totals.totalCharge.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+            <td className="border border-black px-1 py-1 font-bold text-right whitespace-nowrap">{printTotals.totalExpenses.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+            <td className="border border-black px-1 py-1 font-bold text-right whitespace-nowrap">{printTotals.totalCharge.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
           </tr>
         </tbody>
       </table>

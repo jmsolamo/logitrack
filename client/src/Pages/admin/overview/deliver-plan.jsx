@@ -549,7 +549,17 @@ function DeliveryPlan() {
         img.src = url;
       });
 
-    toBase64(companyLogo).then((logoB64) => {
+    const requestPromise = axios.get('/api/delivery-requests', {
+      params: { deliveryReferenceNo: delivery.referenceNo }
+    });
+
+    Promise.all([toBase64(companyLogo), requestPromise]).then(([logoB64, requestRes]) => {
+      const request = Array.isArray(requestRes.data) ? requestRes.data[0] : requestRes.data;
+      const isAdminApproved = request && ['Approved', 'Approved with Changes', 'For Review'].includes(request.requestStatus);
+      const isReviewerAccepted = request && request.reviewerStatus === 'Accepted';
+      const dispatcherName = isAdminApproved ? 'JRAZ' : '';
+      const departmentHeadName = isReviewerAccepted ? 'EAD' : '';
+
       // --- Data ---
       const date = delivery.dateFrom
         ? new Date(delivery.dateFrom).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })
@@ -788,26 +798,33 @@ function DeliveryPlan() {
 </table>
 
 <!-- SIGNATURE BLOCK -->
-<div style="margin-top: 0.5cm; display: flex; justify-content: space-between; font-weight: bold; font-size: 9pt;">
+<div style="margin-top: 0.5cm; display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5cm; font-weight: bold; font-size: 9pt;">
   
   <!-- Prepared by -->
-  <div style="width: 4.5cm;">
-    <div style="text-align: left; margin-bottom: 1cm;">Prepared by:</div>
+  <div style="width: 4.5cm; display: flex; flex-direction: column;">
+    <div style="text-align: left; margin-bottom: 4px;">Prepared by:</div>
+    <div style="text-align: center; margin-bottom: 4px;">${dispatcherName}</div>
     <div style="border-top: 1px solid #000; padding-top: 4pt; text-align: center;">Dispatcher</div>
   </div>
-  
-  <!-- Acknowledge by -->
-  <div>
-    <div style="text-align: center; margin-bottom: 1cm;">Acknowledge by:</div>
-    <div style="display: flex; gap: 1cm;">
-      <div style="width: 4cm; border-top: 1px solid #000; padding-top: 4pt; text-align: center;">Driver</div>
-      <div style="width: 4cm; border-top: 1px solid #000; padding-top: 4pt; text-align: center;">Helper</div>
-    </div>
+
+  <!-- Driver -->
+  <div style="width: 4cm; display: flex; flex-direction: column;">
+    <div style="text-align: left; margin-bottom: 4px;">Acknowledge by:</div>
+    <div style="text-align: center; margin-bottom: 4px;">&nbsp;</div>
+    <div style="border-top: 1px solid #000; padding-top: 4pt; text-align: center;">Driver</div>
+  </div>
+
+  <!-- Helper -->
+  <div style="width: 4cm; display: flex; flex-direction: column;">
+    <div style="text-align: left; margin-bottom: 4px;">Acknowledge by:</div>
+    <div style="text-align: center; margin-bottom: 4px;">&nbsp;</div>
+    <div style="border-top: 1px solid #000; padding-top: 4pt; text-align: center;">Helper</div>
   </div>
 
   <!-- Approved by -->
-  <div style="width: 5.5cm;">
-    <div style="text-align: left; margin-bottom: 1cm;">Approved by:</div>
+  <div style="width: 5.5cm; display: flex; flex-direction: column;">
+    <div style="text-align: left; margin-bottom: 4px;">Approved by:</div>
+    <div style="text-align: center; margin-bottom: 4px;">${departmentHeadName}</div>
     <div style="border-top: 1px solid #000; padding-top: 4pt; text-align: center;">Department Manager</div>
   </div>
 

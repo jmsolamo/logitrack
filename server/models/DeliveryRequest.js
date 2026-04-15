@@ -42,6 +42,12 @@ const deliveryRequestSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
+  driver: [{ type: String, trim: true }],
+  helper: [{ type: String, trim: true }],
+  totalBudget: {
+    type: Number,
+    default: 0
+  },
 
   // Request workflow fields
   requestedByUserId: {
@@ -50,7 +56,7 @@ const deliveryRequestSchema = new mongoose.Schema({
   },
   requestStatus: {
     type: String,
-    enum: ['Pending', 'Approved', 'Approved with Changes', 'Declined'],
+    enum: ['Pending', 'Approved', 'Approved with Changes', 'For Review', 'Declined'],
     default: 'Pending'
   },
   declineReason: {
@@ -62,6 +68,22 @@ const deliveryRequestSchema = new mongoose.Schema({
     trim: true
   },
   reviewedAt: {
+    type: Date
+  },
+  reviewerStatus: {
+    type: String,
+    enum: ['Pending', 'Accepted'],
+    default: 'Pending'
+  },
+  reviewerNotes: {
+    type: String,
+    trim: true
+  },
+  reviewerReviewedBy: {
+    type: String,
+    trim: true
+  },
+  reviewerReviewedAt: {
     type: Date
   },
   // Vehicle change tracking
