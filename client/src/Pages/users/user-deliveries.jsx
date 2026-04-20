@@ -845,6 +845,9 @@ function UserDeliveries() {
                         if (status === 'available') { textColor = '#16a34a'; }
                         else if (status.includes('booked')) { textColor = '#dc2626'; }
                         else if (status.includes('maintenance')) { textColor = '#d97706'; }
+                        else if (status.includes('unavailable')) { textColor = '#dc2626'; }
+
+                        const isDisabled = status !== 'available';
 
                         return (
                           <option 
@@ -852,6 +855,7 @@ function UserDeliveries() {
                             value={v.plateNumber} 
                             className="font-bold"
                             style={{ color: textColor }}
+                            disabled={isDisabled}
                           >
                             {v.plateNumber} — {v.model} ({displayStatus})
                           </option>

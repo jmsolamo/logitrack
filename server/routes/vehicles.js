@@ -87,4 +87,63 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
+// @route   PUT /api/vehicles/:id/maintenance
+// @desc    Update vehicle maintenance status
+// @access  Public
+router.put('/:id/maintenance', async (req, res) => {
+  try {
+    const { status, maintenanceReason, maintenanceStartDate, maintenanceEndDate } = req.body;
+
+    if (!status || !['Available', 'Maintenance', 'Unavailable'].includes(status)) {
+      return res.status(400).json({ message: 'Valid status (Available, Maintenance, Unavailable) is required' });
+    }
+
+    const updateData = { status };
+
+    if (status === 'Maintenance' || status === 'Unavailable') {
+      if (!maintenanceReason || !maintenanceStartDate) {
+        return res.status(400).json({ message: 'Reason and start date are required for Maintenance/Unavailable status' });
+      }
+
+      // Prevent past dates
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (new Date(maintenanceStartDate) < today) {
+        return res.status(400).json({ message: 'Start date cannot be in the past' });
+      }
+
+      // If no end date, default to start date (1 day)
+      const effectiveEndDate = maintenanceEndDate || maintenanceStartDate;
+
+      if (new Date(maintenanceStartDate) > new Date(effectiveEndDate)) {
+        return res.status(400).json({ message: 'Start date must be before or equal to end date' });
+      }
+
+      updateData.maintenanceReason = maintenanceReason;
+      updateData.maintenanceStartDate = maintenanceStartDate;
+      updateData.maintenanceEndDate = effectiveEndDate;
+    } else {
+      // Clear maintenance fields when setting to Available
+      updateData.maintenanceReason = '';
+      updateData.maintenanceStartDate = null;
+      updateData.maintenanceEndDate = null;
+    }
+
+    const updatedVehicle = await Vehicle.findByIdAndUpdate(
+      req.params.id,
+      updateData,
+      { new: true }
+    );
+
+    if (!updatedVehicle) {
+      return res.status(404).json({ message: 'Vehicle not found' });
+    }
+
+    res.json(updatedVehicle);
+  } catch (error) {
+    console.error('Error updating vehicle maintenance:', error);
+    res.status(500).json({ message: 'Server error updating vehicle maintenance' });
+  }
+});
+
 export default router;

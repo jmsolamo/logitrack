@@ -1287,9 +1287,20 @@ function DeliveryPlan() {
           >
             <option value="" disabled>Select Vehicle / Equipment</option>
             <option value="RENT_VEHICLE" className="font-bold">Rent Vehicle</option>
-            {[...vehicles].sort((a, b) => a.plateNumber.localeCompare(b.plateNumber)).map(v => (
-              <option key={v._id} value={v.plateNumber} className="font-bold">{v.plateNumber} — {v.model}</option>
-            ))}
+            {[...vehicles].sort((a, b) => a.plateNumber.localeCompare(b.plateNumber)).map(v => {
+              const status = (v.status || 'Available').toLowerCase();
+              let textColor = 'inherit';
+              if (status === 'available') { textColor = '#16a34a'; }
+              else if (status.includes('booked')) { textColor = '#dc2626'; }
+              else if (status.includes('maintenance')) { textColor = '#d97706'; }
+              else if (status.includes('unavailable')) { textColor = '#dc2626'; }
+              const isDisabled = status !== 'available';
+              return (
+                <option key={v._id} value={v.plateNumber} className="font-bold" style={{ color: textColor }} disabled={isDisabled}>
+                  {v.plateNumber} — {v.model} ({v.status || 'Available'})
+                </option>
+              );
+            })}
           </select>
           <div className="pointer-events-none absolute inset-y-0 right-2.5 flex items-center text-muted-foreground">
             <ChevronDown className="h-3 w-3" />

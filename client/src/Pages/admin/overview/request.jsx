@@ -979,11 +979,20 @@ function RequestPage() {
                 >
                   <option value="" disabled>Select Vehicle</option>
                   <option value="RENT_VEHICLE">Rent Vehicle</option>
-                  {vehicles.map((v) => (
-                    <option key={v._id} value={v.plateNumber}>
-                      {v.plateNumber} — {v.model}
-                    </option>
-                  ))}
+                  {vehicles.map((v) => {
+                    const status = (v.status || 'Available').toLowerCase();
+                    let textColor = 'inherit';
+                    if (status === 'available') { textColor = '#16a34a'; }
+                    else if (status.includes('booked')) { textColor = '#dc2626'; }
+                    else if (status.includes('maintenance')) { textColor = '#d97706'; }
+                    else if (status.includes('unavailable')) { textColor = '#dc2626'; }
+                    const isDisabled = status !== 'available';
+                    return (
+                      <option key={v._id} value={v.plateNumber} style={{ color: textColor }} disabled={isDisabled}>
+                        {v.plateNumber} — {v.model} ({v.status || 'Available'})
+                      </option>
+                    );
+                  })}
                 </select>
                 <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-muted-foreground">
                   <ChevronDown className="h-3.5 w-3.5" />

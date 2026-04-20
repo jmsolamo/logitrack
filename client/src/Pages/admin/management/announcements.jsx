@@ -341,30 +341,39 @@ function AnnouncementsPage() {
               </div>
 
               {/* Date Range */}
+              <style>{`
+                input[type="date"]::-webkit-calendar-picker-indicator { opacity: 0; position: absolute; right: 0; width: 100%; height: 100%; cursor: pointer; }
+              `}</style>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[11px] font-bold uppercase tracking-tight text-foreground mb-1.5">
                     Start Date *
                   </label>
-                  <input
-                    type="date"
-                    name="startDate"
-                    value={formData.startDate}
-                    onChange={handleInputChange}
-                    className="flex h-8 w-full rounded border border-input bg-card/50 px-2.5 py-1 text-[11px] focus:border-primary focus:ring-1 focus:ring-primary focus-visible:outline-none"
-                  />
+                  <div className="relative">
+                    <input
+                      type="date"
+                      name="startDate"
+                      value={formData.startDate}
+                      onChange={handleInputChange}
+                      className="flex h-8 w-full rounded border border-input bg-card/50 px-2.5 pr-8 py-1 text-[11px] focus:border-primary focus:ring-1 focus:ring-primary focus-visible:outline-none"
+                    />
+                    <Calendar className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+                  </div>
                 </div>
                 <div>
                   <label className="block text-[11px] font-bold uppercase tracking-tight text-foreground mb-1.5">
                     End Date *
                   </label>
-                  <input
-                    type="date"
-                    name="endDate"
-                    value={formData.endDate}
-                    onChange={handleInputChange}
-                    className="flex h-8 w-full rounded border border-input bg-card/50 px-2.5 py-1 text-[11px] focus:border-primary focus:ring-1 focus:ring-primary focus-visible:outline-none"
-                  />
+                  <div className="relative">
+                    <input
+                      type="date"
+                      name="endDate"
+                      value={formData.endDate}
+                      onChange={handleInputChange}
+                      className="flex h-8 w-full rounded border border-input bg-card/50 px-2.5 pr-8 py-1 text-[11px] focus:border-primary focus:ring-1 focus:ring-primary focus-visible:outline-none"
+                    />
+                    <Calendar className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+                  </div>
                 </div>
               </div>
 
@@ -476,9 +485,8 @@ function AnnouncementsPage() {
                     <h3 className="flex-1 text-lg font-bold tracking-tight text-foreground pr-2">
                       {selectedAnnouncement.title}
                     </h3>
-                    <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[9px] font-bold uppercase tracking-tight ${isAnnouncementActive(selectedAnnouncement) ? 'bg-green-500/10 text-green-600 border border-green-500/20' : 'bg-gray-500/10 text-gray-600 border border-gray-500/20'} whitespace-nowrap`}>
-                      <span className={`h-1.5 w-1.5 rounded-full ${isAnnouncementActive(selectedAnnouncement) ? 'bg-green-600' : 'bg-gray-600'}`} />
-                      {isAnnouncementActive(selectedAnnouncement) ? 'ACTIVE' : 'INACTIVE'}
+                    <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[9px] font-medium tracking-tight bg-muted text-muted-foreground border border-border/50 whitespace-nowrap">
+                      {formatDate(selectedAnnouncement.createdAt)}
                     </span>
                   </div>
 
@@ -503,11 +511,11 @@ function AnnouncementsPage() {
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <p className="text-[10px] font-bold uppercase tracking-tight text-foreground/60 mb-1">Posted By</p>
-                        <p className="text-[12px] text-muted-foreground">{selectedAnnouncement.createdBy} • {formatDate(selectedAnnouncement.createdAt)}</p>
+                        <p className="text-[12px] text-muted-foreground">{selectedAnnouncement.createdBy}</p>
                       </div>
                       <div>
-                        <p className="text-[10px] font-bold uppercase tracking-tight text-foreground/60 mb-1">Status</p>
-                        <p className="text-[12px] text-muted-foreground">{isAnnouncementActive(selectedAnnouncement) ? 'Active' : 'Inactive'}</p>
+                        <p className="text-[10px] font-bold uppercase tracking-tight text-foreground/60 mb-1">Created At</p>
+                        <p className="text-[12px] text-muted-foreground">{formatDate(selectedAnnouncement.createdAt)}</p>
                       </div>
                     </div>
 

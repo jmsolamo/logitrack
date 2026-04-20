@@ -15,8 +15,20 @@ const vehicleSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['Available', 'Booked', 'Maintenance'],
+    enum: ['Available', 'Booked', 'Maintenance', 'Unavailable'],
     default: 'Available'
+  },
+  maintenanceReason: {
+    type: String,
+    default: ''
+  },
+  maintenanceStartDate: {
+    type: Date,
+    default: null
+  },
+  maintenanceEndDate: {
+    type: Date,
+    default: null
   }
 }, {
   timestamps: true
