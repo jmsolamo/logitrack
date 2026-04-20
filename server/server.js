@@ -18,6 +18,7 @@ import assignPersonnelRoutes from './routes/assignPersonnel.js';
 import purchasesRoutes from './routes/purchases.js';
 import deliveryRequestsRoutes from './routes/deliveryRequests.js';
 import usersRoutes from './routes/users.js';
+import announcementsRoutes from './routes/announcements.js';
 
 const app = express();
 
@@ -76,6 +77,7 @@ app.use('/api/deliveries', assignPersonnelRoutes);
 app.use('/api/purchases', purchasesRoutes);
 app.use('/api/delivery-requests', deliveryRequestsRoutes);
 app.use('/api/users', usersRoutes);
+app.use('/api/announcements', announcementsRoutes);
 
 // Global error handler
 app.use((err, req, res, next) => {

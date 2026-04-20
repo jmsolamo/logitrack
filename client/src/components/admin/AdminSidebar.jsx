@@ -24,6 +24,7 @@ import {
   ShoppingCart,
   X,
   User as UserIcon,
+  Bell,
 } from 'lucide-react';
 import favicon from '../../assets/images/favicon.png';
 
@@ -53,6 +54,7 @@ const navGroups = [
   {
     label: 'Management',
     items: [
+      { name: 'Announcements', icon: Bell, path: '/admin/announcements' },
       { name: 'Destinations', icon: MapPin, path: '/admin/destinations' },
       { name: 'Delivery Charge', icon: Banknote, path: '/admin/delivery-charge' },
       { name: 'Vehicles', icon: Car, path: '/admin/vehicles' },

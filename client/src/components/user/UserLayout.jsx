@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation, Link } from 'react-router-dom';
 import axios from 'axios';
 import { LayoutDashboard, CalendarDays, Truck, LogOut, ClipboardList, ChevronsUpDown, Settings, User as UserIcon } from 'lucide-react';
+import AnnouncementModal from '../ui/announcement-modal';
 
 import favicon from '../../assets/images/favicon.png';
 
@@ -10,6 +11,8 @@ function UserLayout() {
   const [isUser, setIsUser] = useState(false);
   const [user, setUser] = useState(null);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [announcements, setAnnouncements] = useState([]);
+  const [showAnnouncementModal, setShowAnnouncementModal] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -45,8 +48,37 @@ function UserLayout() {
     checkUserRole();
   }, [navigate]);
 
+  // Fetch announcements on layout mount
+  useEffect(() => {
+    if (isUser && user) {
+      const fetchAnnouncements = async () => {
+        try {
+          const token = localStorage.getItem('token');
+          const { data } = await axios.get('/api/announcements', {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+
+          if (data && data.length > 0) {
+            setAnnouncements(data);
+            
+            // Show announcement modal only once per login session
+            if (!sessionStorage.getItem('announcementShownThisSession')) {
+              setShowAnnouncementModal(true);
+              sessionStorage.setItem('announcementShownThisSession', 'true');
+            }
+          }
+        } catch (error) {
+          console.error('Error fetching announcements:', error);
+        }
+      };
+
+      fetchAnnouncements();
+    }
+  }, [isUser, user]);
+
   const handleLogout = () => {
     localStorage.removeItem('token');
+    sessionStorage.removeItem('announcementShownThisSession');
     navigate('/login');
   };
 
@@ -191,6 +223,13 @@ function UserLayout() {
           <Outlet context={{ user }} />
         </div>
       </main>
+
+      {/* Announcement Modal */}
+      <AnnouncementModal 
+        isOpen={showAnnouncementModal} 
+        announcements={announcements}
+        onClose={() => setShowAnnouncementModal(false)}
+      />
     </div>
   );
 }

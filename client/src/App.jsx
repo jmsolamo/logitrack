@@ -24,6 +24,8 @@ import VehiclesPage from './Pages/admin/management/vehicles';
 import PersonnelsPage from './Pages/admin/management/personnels';
 import MembersPage from './Pages/admin/team/members';
 import ApprovalPage from './Pages/admin/team/approval';
+import AnnouncementsPage from './Pages/admin/management/announcements';
+import AnnouncementsHistoryPage from './Pages/announcements-history';
 import ReviewerLayout from './components/reviewer/ReviewerLayout';
 import ReviewerRequestsPage from './Pages/reviewer/reviewer-requests';
 import SettingsPage from './Pages/SettingsPage';
@@ -48,6 +50,7 @@ function App() {
             <Route path="reports" element={<ReportsPage />} />
 
             <Route path="trips" element={<ActiveTripsPage />} />
+            <Route path="announcements" element={<AnnouncementsPage />} />
             <Route path="destinations" element={<DestinationPage />} />
             <Route path="delivery-charge" element={<DeliveryChargePage />} />
             <Route path="vehicles" element={<VehiclesPage />} />
@@ -81,6 +84,9 @@ function App() {
             <Route path="job-orders" element={<UserJobOrders />} />
             <Route path="settings" element={<SettingsPage />} />
           </Route>
+
+          {/* Shared route for announcements history */}
+          <Route path="/announcements-history" element={<AnnouncementsHistoryPage />} />
         </Routes>
       </AlertToastProvider>
     </BrowserRouter>

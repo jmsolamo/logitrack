@@ -10,6 +10,7 @@ import {
   Settings,
   User as UserIcon,
 } from 'lucide-react';
+import AnnouncementModal from '../ui/announcement-modal';
 import favicon from '../../assets/images/favicon.png';
 
 const reviewerNavItems = [
@@ -23,6 +24,8 @@ export default function ReviewerLayout() {
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(null);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [announcements, setAnnouncements] = useState([]);
+  const [showAnnouncementModal, setShowAnnouncementModal] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -54,6 +57,34 @@ export default function ReviewerLayout() {
 
     checkReviewerRole();
   }, [navigate]);
+
+  // Fetch announcements on layout mount
+  useEffect(() => {
+    if (user) {
+      const fetchAnnouncements = async () => {
+        try {
+          const token = localStorage.getItem('token');
+          const { data } = await axios.get('/api/announcements', {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+
+          if (data && data.length > 0) {
+            setAnnouncements(data);
+            
+            // Show announcement modal only once per login session
+            if (!sessionStorage.getItem('announcementShownThisSession')) {
+              setShowAnnouncementModal(true);
+              sessionStorage.setItem('announcementShownThisSession', 'true');
+            }
+          }
+        } catch (error) {
+          console.error('Error fetching announcements:', error);
+        }
+      };
+
+      fetchAnnouncements();
+    }
+  }, [user]);
 
   if (loading) {
     return (
@@ -152,6 +183,7 @@ export default function ReviewerLayout() {
                   onClick={() => {
                     setUserMenuOpen(false);
                     localStorage.removeItem('token');
+                    sessionStorage.removeItem('announcementShownThisSession');
                     navigate('/login');
                   }}
                   className="flex w-full items-center gap-2 px-3 py-2 text-xs text-red-500 hover:bg-red-50 hover:text-red-600 transition-colors"
@@ -170,6 +202,13 @@ export default function ReviewerLayout() {
           <Outlet context={{ user }} />
         </div>
       </main>
+
+      {/* Announcement Modal */}
+      <AnnouncementModal 
+        isOpen={showAnnouncementModal} 
+        announcements={announcements}
+        onClose={() => setShowAnnouncementModal(false)}
+      />
     </div>
   );
 }
