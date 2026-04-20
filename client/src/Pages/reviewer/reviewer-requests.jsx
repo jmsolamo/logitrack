@@ -29,6 +29,7 @@ export default function ReviewerRequestsPage() {
   const { user } = useOutletContext();
   const [requests, setRequests] = useState([]);
   const [vehicles, setVehicles] = useState([]);
+  const [deliveries, setDeliveries] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -42,17 +43,19 @@ export default function ReviewerRequestsPage() {
 
   const fetchRequests = async () => {
     try {
-      const [{ data: requestsData }, { data: vehiclesData }] = await Promise.all([
+      const [{ data: requestsData }, { data: vehiclesData }, { data: deliveriesData }] = await Promise.all([
         axios.get('/api/delivery-requests', {
           params: {
-            reviewerStatus: 'Pending',
-            requestStatus: 'For Review',
+            reviewerStatus: 'Pending,Accepted',
+            requestStatus: 'For Review,Approved',
           },
         }),
         axios.get('/api/vehicles'),
+        axios.get('/api/deliveries'),
       ]);
       setRequests(requestsData);
       setVehicles(vehiclesData);
+      setDeliveries(deliveriesData);
     } catch (error) {
       console.error('Error fetching reviewer requests:', error);
       toast.error('Failed to load review requests');
@@ -107,13 +110,6 @@ export default function ReviewerRequestsPage() {
       dot: 'bg-emerald-500',
       border: 'border-emerald-200',
     },
-    'Approved with Changes': {
-      icon: Truck,
-      bg: 'bg-blue-100',
-      text: 'text-blue-700',
-      dot: 'bg-blue-500',
-      border: 'border-blue-200',
-    },
   };
 
   const filteredRequests = useMemo(() => {
@@ -139,7 +135,6 @@ export default function ReviewerRequestsPage() {
 
     try {
       await axios.put(`/api/delivery-requests/${detailsModal.request._id}/reviewer-accept`, {
-        reviewerNotes: detailsModal.notes,
         reviewerReviewedBy: user?.department || user?.username || 'Reviewer',
       });
       toast.success('Request accepted successfully');
@@ -158,6 +153,20 @@ export default function ReviewerRequestsPage() {
     if (plate === 'RENT_VEHICLE') return `Rent Vehicle${detailsModal.request?.tnvsProvider ? ` - ${detailsModal.request.tnvsProvider}` : ''}`;
     const v = vehicles.find((v) => v.plateNumber === plate);
     return v ? `${v.plateNumber} — ${v.model}` : plate;
+  };
+
+  const getRequestBudgetLabel = (request) => {
+    if (!request) return '—';
+    const requestBudget = Number(request.totalBudget || 0);
+    if (requestBudget > 0) {
+      return `₱ ${requestBudget.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+    }
+
+    const linkedDelivery = deliveries.find((d) => d.referenceNo === request.deliveryReferenceNo);
+    const deliveryBudget = Number(linkedDelivery?.totalBudget || 0);
+    return deliveryBudget > 0
+      ? `₱ ${deliveryBudget.toLocaleString(undefined, { minimumFractionDigits: 2 })}`
+      : '—';
   };
 
   return (
@@ -192,7 +201,7 @@ export default function ReviewerRequestsPage() {
             <DropdownMenuContent align="start" className="text-[10px]">
               <DropdownMenuLabel className="text-[10px]">Filter by Status</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              {['all', 'For Review', 'Approved', 'Approved with Changes'].map((key) => (
+              {['all', 'For Review', 'Approved'].map((key) => (
                 <DropdownMenuCheckboxItem
                   key={key}
                   checked={statusFilter === key}
@@ -223,18 +232,21 @@ export default function ReviewerRequestsPage() {
               <p className="text-[10px] text-muted-foreground uppercase tracking-widest">Check back after admin approval and personnel assignment.</p>
             </div>
           ) : (
-            <table className="w-full min-w-[1200px] border-collapse relative">
+            <table className="w-full min-w-[max-content] border-collapse relative">
               <thead className="sticky top-0 z-10 bg-orange-500 backdrop-blur shadow-sm">
                 <tr className="border-b border-orange-600/20">
-                  <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Ref No</th>
+                  <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Reference No.</th>
                   <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Date Submitted</th>
                   <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-center align-middle">Status</th>
                   <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Delivery Type</th>
                   <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Delivery Date</th>
                   <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Duration</th>
+                  <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Purpose</th>
+                  <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Activity</th>
                   <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Vehicle</th>
                   <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Destination</th>
-                  <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Job Order No</th>
+                  <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-center align-middle">Job Order No</th>
+                  <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Customer / Supplier</th>
                   <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Requested By</th>
                 </tr>
               </thead>
@@ -258,9 +270,12 @@ export default function ReviewerRequestsPage() {
                       <td className="whitespace-nowrap px-3 py-2 text-[10px] font-semibold text-foreground uppercase tracking-tight align-middle">{req.deliveryType || '—'}</td>
                       <td className="whitespace-nowrap px-3 py-2 text-[10px] font-semibold text-foreground uppercase tracking-tight align-middle">{req.dateFrom && req.dateTo ? `${formatDate(req.dateFrom)} - ${formatDate(req.dateTo)}` : formatDate(req.dateFrom)}</td>
                       <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-muted-foreground tracking-tight align-middle">{computeDuration(req.dateFrom, req.dateTo)}</td>
+                      <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-foreground uppercase tracking-tight align-middle">{(req.purpose || []).filter(Boolean).join(' / ') || '—'}</td>
+                      <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-foreground uppercase tracking-tight align-middle">{(req.activity || []).filter(Boolean).join(' / ') || '—'}</td>
                       <td className="whitespace-nowrap px-3 py-2 text-[10px] font-semibold text-foreground uppercase tracking-tight align-middle">{getVehicleLabel(req.vehicleEquipment)}</td>
                       <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-foreground uppercase tracking-tight align-middle">{(req.destination || []).filter(Boolean).join(', ') || '—'}</td>
                       <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-foreground tracking-tight text-center align-middle">{(req.jobOrderNo || []).filter(Boolean).join(' / ') || '—'}</td>
+                      <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-foreground uppercase tracking-tight align-middle">{(req.customerSupplier || []).filter(Boolean).join(' / ') || '—'}</td>
                       <td className="whitespace-nowrap px-3 py-2 text-[10px] font-bold uppercase text-foreground align-middle">{req.requestedBy || '—'}</td>
                     </tr>
                   );
@@ -276,7 +291,9 @@ export default function ReviewerRequestsPage() {
           <div className="relative w-full max-w-2xl max-h-[85vh] flex flex-col rounded-lg border border-border bg-card shadow-xl overflow-hidden">
             <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-card px-4 py-3 shrink-0">
               <div>
-                <h2 className="text-xs font-bold uppercase tracking-widest text-foreground">Review Request</h2>
+                <h2 className="text-xs font-bold uppercase tracking-widest text-foreground">
+                  {detailsModal.request.requestStatus === 'Approved' ? 'Accepted Request' : 'Review Request'}
+                </h2>
                 <p className="text-[10px] text-muted-foreground mt-0.5">
                   {detailsModal.request.referenceNo} • {detailsModal.request.deliveryType} • Submitted {formatDateTime(detailsModal.request.dateSubmitted || detailsModal.request.createdAt)}
                 </p>
@@ -290,9 +307,18 @@ export default function ReviewerRequestsPage() {
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 space-y-3">
-              <div className="rounded-md bg-emerald-50 border border-emerald-200 px-3 py-2 flex items-center gap-2">
+              <div className={`rounded-md px-3 py-2 flex items-center gap-2 ${
+                detailsModal.request.requestStatus === 'Approved' 
+                  ? 'bg-emerald-50 border border-emerald-200' 
+                  : 'bg-emerald-50 border border-emerald-200'
+              }`}>
                 <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                <span className="text-xs font-bold uppercase tracking-wider text-emerald-700">Ready for Reviewer Acceptance</span>
+                <span className="text-xs font-bold uppercase tracking-wider text-emerald-700">
+                  {detailsModal.request.requestStatus === 'Approved' 
+                    ? 'Request Accepted and Approved' 
+                    : 'Ready for Reviewer Acceptance'
+                  }
+                </span>
               </div>
 
               {[
@@ -310,7 +336,7 @@ export default function ReviewerRequestsPage() {
                 { label: 'Job Order No.', value: (detailsModal.request.jobOrderNo || []).filter(Boolean).join(' / ') },
                 { label: 'Driver(s)', value: (detailsModal.request.driver || []).filter(Boolean).join(' / ') || '—' },
                 { label: 'Helper(s)', value: (detailsModal.request.helper || []).filter(Boolean).join(' / ') || '—' },
-                { label: 'Total Budget', value: detailsModal.request.totalBudget ? `₱ ${Number(detailsModal.request.totalBudget).toLocaleString(undefined, { minimumFractionDigits: 2 })}` : '—' },
+                { label: 'Total Budget', value: getRequestBudgetLabel(detailsModal.request) },
               ].map((field) => (
                 <div key={field.label} className="flex items-start gap-2 text-[11px]">
                   <span className="w-[130px] shrink-0 font-bold uppercase tracking-wider text-muted-foreground text-[9px] pt-0.5">{field.label}</span>
@@ -324,30 +350,25 @@ export default function ReviewerRequestsPage() {
                   <p className="text-[11px] text-foreground">{detailsModal.request.notes}</p>
                 </div>
               )}
-
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Reviewer Notes (optional)</label>
-                <textarea
-                  value={detailsModal.notes}
-                  onChange={(e) => setDetailsModal((prev) => ({ ...prev, notes: e.target.value }))}
-                  rows={4}
-                  className="block w-full rounded border border-input bg-background px-3 py-2 text-[11px] shadow-sm transition-colors focus:border-primary focus:ring-1 focus:ring-primary focus-visible:outline-none resize-none"
-                  placeholder="Add notes or comments before accepting the request..."
-                />
-              </div>
             </div>
 
             <div className="sticky bottom-0 z-10 border-t border-border bg-card p-4 flex flex-col gap-2 md:flex-row md:items-center md:justify-end">
-              <span className="text-[10px] text-muted-foreground">Review the request and accept once validated.</span>
-              <Button
-                type="button"
-                onClick={handleReviewAccept}
-                disabled={actionLoading}
-                className="ml-auto inline-flex h-9 items-center justify-center gap-2 rounded-md bg-emerald-600 px-4 text-[11px] font-bold uppercase tracking-wider text-white hover:bg-emerald-700 disabled:opacity-50"
-              >
-                {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-                {actionLoading ? 'Accepting...' : 'Accept Request'}
-              </Button>
+              {detailsModal.request.requestStatus === 'Approved' ? (
+                <span className="text-[10px] text-emerald-600 font-semibold">✓ This request has been accepted and approved.</span>
+              ) : (
+                <>
+                  <span className="text-[10px] text-muted-foreground">Review the request and accept once validated.</span>
+                  <Button
+                    type="button"
+                    onClick={handleReviewAccept}
+                    disabled={actionLoading}
+                    className="ml-auto inline-flex h-9 items-center justify-center gap-2 rounded-md bg-emerald-600 px-4 text-[11px] font-bold uppercase tracking-wider text-white hover:bg-emerald-700 disabled:opacity-50"
+                  >
+                    {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                    {actionLoading ? 'Accepting...' : 'Accept Request'}
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         </div>

@@ -555,10 +555,10 @@ function DeliveryPlan() {
 
     Promise.all([toBase64(companyLogo), requestPromise]).then(([logoB64, requestRes]) => {
       const request = Array.isArray(requestRes.data) ? requestRes.data[0] : requestRes.data;
-      const isAdminApproved = request && ['Approved', 'Approved with Changes', 'For Review'].includes(request.requestStatus);
+      const isAdminApproved = request && ['Approved', 'Approved with Changes'].includes(request.requestStatus);
       const isReviewerAccepted = request && request.reviewerStatus === 'Accepted';
-      const dispatcherName = isAdminApproved ? 'JRAZ' : '';
-      const departmentHeadName = isReviewerAccepted ? 'EAD' : '';
+      const dispatcherName = isAdminApproved ? 'JRAZ' : '\u00A0';
+      const departmentHeadName = 'EAD';
 
       // --- Data ---
       const date = delivery.dateFrom
@@ -651,7 +651,7 @@ function DeliveryPlan() {
 <title>Driver's Delivery Plan</title>
 <style>
   @page {
-    size: 8.5in 11in;
+    size: auto;
     margin: 0.5cm;
   }
   @media print {
@@ -807,18 +807,19 @@ function DeliveryPlan() {
     <div style="border-top: 1px solid #000; padding-top: 4pt; text-align: center;">Dispatcher</div>
   </div>
 
-  <!-- Driver -->
-  <div style="width: 4cm; display: flex; flex-direction: column;">
-    <div style="text-align: left; margin-bottom: 4px;">Acknowledge by:</div>
-    <div style="text-align: center; margin-bottom: 4px;">&nbsp;</div>
-    <div style="border-top: 1px solid #000; padding-top: 4pt; text-align: center;">Driver</div>
-  </div>
-
-  <!-- Helper -->
-  <div style="width: 4cm; display: flex; flex-direction: column;">
-    <div style="text-align: left; margin-bottom: 4px;">Acknowledge by:</div>
-    <div style="text-align: center; margin-bottom: 4px;">&nbsp;</div>
-    <div style="border-top: 1px solid #000; padding-top: 4pt; text-align: center;">Helper</div>
+  <!-- Acknowledge by -->
+  <div style="width: 8cm; display: flex; flex-direction: column; align-items: center;">
+    <div style="text-align: center; margin-bottom: 6px; width: 100%;">Acknowledge by:</div>
+    <div style="display: flex; justify-content: space-between; width: 100%; gap: 0.5cm;">
+      <div style="flex: 1; display: flex; flex-direction: column; align-items: center;">
+        <div style="text-align: center; margin-bottom: 4px;">${driverName || '&nbsp;'}</div>
+        <div style="border-top: 1px solid #000; padding-top: 4pt; text-align: center; width: 100%;">Driver</div>
+      </div>
+      <div style="flex: 1; display: flex; flex-direction: column; align-items: center;">
+        <div style="text-align: center; margin-bottom: 4px;">${helperName || '&nbsp;'}</div>
+        <div style="border-top: 1px solid #000; padding-top: 4pt; text-align: center; width: 100%;">Helper</div>
+      </div>
+    </div>
   </div>
 
   <!-- Approved by -->

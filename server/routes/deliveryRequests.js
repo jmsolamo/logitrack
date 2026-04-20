@@ -159,7 +159,12 @@ router.get('/', async (req, res) => {
       filter.requestStatus = req.query.status;
     }
     if (req.query.reviewerStatus && req.query.reviewerStatus !== 'all') {
-      filter.reviewerStatus = req.query.reviewerStatus;
+      const reviewerStatuses = req.query.reviewerStatus.split(',').map((s) => s.trim()).filter(Boolean);
+      if (reviewerStatuses.length === 1) {
+        filter.reviewerStatus = reviewerStatuses[0];
+      } else if (reviewerStatuses.length > 1) {
+        filter.reviewerStatus = { $in: reviewerStatuses };
+      }
     }
     if (req.query.deliveryReferenceNo) {
       filter.deliveryReferenceNo = req.query.deliveryReferenceNo;
@@ -203,7 +208,7 @@ router.put('/:id/reviewer-accept', async (req, res) => {
     request.reviewerReviewedAt = new Date();
 
     if (request.requestStatus === 'For Review') {
-      request.requestStatus = request.vehicleChanged || request.combinedWithDelivery ? 'Approved with Changes' : 'Approved';
+      request.requestStatus = 'Approved';
     }
 
     await request.save();
@@ -389,7 +394,8 @@ router.put('/:id/approve', async (req, res) => {
         // Update the request - track which delivery it was combined with
         request.deliveryReferenceNo = existingDelivery.referenceNo;
         request.combinedWithDelivery = true;
-        request.requestStatus = vehicleChanged ? 'Approved with Changes' : 'Approved';
+        request.requestStatus = 'For Review';
+        request.reviewerStatus = 'Pending';
         request.reviewedBy = req.body.reviewedBy || '';
         request.reviewedAt = new Date();
         
@@ -445,7 +451,8 @@ router.put('/:id/approve', async (req, res) => {
     // Update the request with delivery reference and vehicle change info
     request.deliveryReferenceNo = referenceNo;
     request.combinedWithDelivery = false;
-    request.requestStatus = vehicleChanged ? 'Approved with Changes' : 'Approved';
+    request.requestStatus = 'For Review';
+    request.reviewerStatus = 'Pending';
     request.reviewedBy = req.body.reviewedBy || '';
     request.reviewedAt = new Date();
     

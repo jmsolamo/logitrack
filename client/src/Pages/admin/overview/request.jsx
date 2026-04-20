@@ -173,13 +173,6 @@ function RequestPage() {
       dot: 'bg-blue-500',
       border: 'border-blue-200',
     },
-    'For Review': {
-      icon: Truck,
-      bg: 'bg-amber-100',
-      text: 'text-amber-700',
-      dot: 'bg-amber-500',
-      border: 'border-amber-200',
-    },
     Declined: {
       icon: XCircle,
       bg: 'bg-red-100',
@@ -552,7 +545,6 @@ function RequestPage() {
                 { key: 'Pending', label: 'Pending' },
                 { key: 'Approved', label: 'Approved' },
                 { key: 'Approved with Changes', label: 'Approved with Changes' },
-                { key: 'For Review', label: 'For Review' },
                 { key: 'Declined', label: 'Declined' },
               ].map((tab) => (
                 <DropdownMenuCheckboxItem
@@ -579,7 +571,7 @@ function RequestPage() {
             <table className="w-full min-w-[800px] border-collapse relative">
               <thead className="sticky top-0 z-10 bg-orange-500 backdrop-blur shadow-sm">
                 <tr className="border-b border-orange-600/20">
-                  <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Ref No</th>
+                  <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Reference No.</th>
                   <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Date Submitted</th>
                   <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-center align-middle">Status</th>
                   <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Delivery Type</th>
@@ -708,7 +700,7 @@ function RequestPage() {
               )}
 
               {/* Vehicle change notification */}
-              {(detailsModal.request.requestStatus === 'Approved' || detailsModal.request.requestStatus === 'Approved with Changes' || detailsModal.request.requestStatus === 'For Review') && detailsModal.request.vehicleChanged && (
+              {(detailsModal.request.requestStatus === 'Approved' || detailsModal.request.requestStatus === 'Approved with Changes') && detailsModal.request.vehicleChanged && (
                 <div className="flex items-start gap-2 rounded-md bg-blue-50 border border-blue-200 px-3 py-2">
                   <AlertTriangle className="h-3.5 w-3.5 text-blue-500 shrink-0 mt-0.5" />
                   <div>
@@ -729,7 +721,7 @@ function RequestPage() {
               )}
 
               {/* Combined delivery notification */}
-              {(detailsModal.request.requestStatus === 'Approved' || detailsModal.request.requestStatus === 'Approved with Changes' || detailsModal.request.requestStatus === 'For Review') && detailsModal.request.combinedWithDelivery && (
+              {(detailsModal.request.requestStatus === 'Approved' || detailsModal.request.requestStatus === 'Approved with Changes') && detailsModal.request.combinedWithDelivery && (
                 <div className="flex items-start gap-2 rounded-md bg-emerald-50 border border-emerald-200 px-3 py-2">
                   <AlertTriangle className="h-3.5 w-3.5 text-emerald-500 shrink-0 mt-0.5" />
                   <div>

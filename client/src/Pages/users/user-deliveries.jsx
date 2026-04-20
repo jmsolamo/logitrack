@@ -656,7 +656,7 @@ function UserDeliveries() {
                 <table className="w-full min-w-[max-content] border-collapse relative">
                   <thead className="sticky top-0 z-10 bg-orange-500 backdrop-blur shadow-sm">
                     <tr className="border-b border-orange-600/20">
-                      <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Ref No</th>
+                      <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Reference No.</th>
                       <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Date Submitted</th>
                       <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-center align-middle">Status</th>
                       <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Delivery Type</th>
@@ -669,7 +669,6 @@ function UserDeliveries() {
                       <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-center align-middle">Job Order No</th>
                       <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Customer / Supplier</th>
                       <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Requested By</th>
-                      <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-right pr-6 align-middle sticky right-0 bg-orange-500 z-10 border-l border-orange-600/20">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -724,45 +723,6 @@ function UserDeliveries() {
                           </td>
                           <td className="whitespace-nowrap px-3 py-2 text-[10px] font-semibold text-foreground uppercase tracking-tight align-middle">
                             {req.requestedBy || '—'}
-                          </td>
-                          <td className="whitespace-nowrap px-3 py-2 text-right align-middle sticky right-0 bg-card border-l border-border/30 pr-3" onClick={(e) => e.stopPropagation()}>
-                            <div className="flex items-center justify-end gap-1">
-                              {req.requestStatus === 'Pending' && (
-                                <>
-                                  <button
-                                    onClick={() => handleEdit(req)}
-                                    className="flex h-7 w-7 items-center justify-center rounded text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
-                                    title="Edit Request"
-                                  >
-                                    <Pencil className="h-3.5 w-3.5" />
-                                  </button>
-                                  <button
-                                    onClick={() => handleDelete(req._id)}
-                                    disabled={isDeleteLoading}
-                                    className="flex h-7 w-7 items-center justify-center rounded text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors disabled:opacity-50"
-                                    title="Delete Request"
-                                  >
-                                    <Trash2 className="h-3.5 w-3.5" />
-                                  </button>
-                                </>
-                              )}
-                              {req.requestStatus === 'Declined' && (
-                                <button
-                                  onClick={() => handleDelete(req._id)}
-                                  disabled={isDeleteLoading}
-                                  className="flex h-7 w-7 items-center justify-center rounded text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors disabled:opacity-50"
-                                  title="Delete Request"
-                                >
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                </button>
-                              )}
-                              {req.requestStatus === 'Approved' && (
-                                <span className="text-[10px] text-muted-foreground italic px-2">Finalized</span>
-                              )}
-                              {req.requestStatus === 'Approved with Changes' && (
-                                <span className="text-[10px] text-muted-foreground italic px-2">Finalized</span>
-                              )}
-                            </div>
                           </td>
                         </tr>
                       );
@@ -1111,8 +1071,8 @@ function UserDeliveries() {
       {/* Details Modal */}
       {detailsModal.isOpen && detailsModal.request && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-200">
-          <div className="relative w-full max-w-lg max-h-[85vh] overflow-y-auto rounded-lg border border-border bg-card shadow-xl">
-            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-card px-4 py-3">
+          <div className="relative w-full max-w-lg max-h-[85vh] flex flex-col rounded-lg border border-border bg-card shadow-xl">
+            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-card px-4 py-3 shrink-0">
               <div>
                 <h2 className="text-xs font-bold uppercase tracking-widest text-foreground">Request Details</h2>
                 <p className="text-[10px] text-muted-foreground mt-0.5">
@@ -1126,7 +1086,7 @@ function UserDeliveries() {
                 <X className="h-4 w-4" />
               </button>
             </div>
-            <div className="p-4 space-y-3">
+            <div className="flex-1 overflow-y-auto p-4 space-y-3">
               {/* Status */}
               {(() => {
                 const req = detailsModal.request;
@@ -1138,16 +1098,6 @@ function UserDeliveries() {
                   </div>
                 );
               })()}
-
-              {(detailsModal.request.requestStatus === 'Approved' || detailsModal.request.requestStatus === 'Approved with Changes' || detailsModal.request.requestStatus === 'For Review') && (
-                <div className="flex items-start gap-2 rounded-md bg-orange-50 border border-orange-200 px-3 py-2">
-                  <AlertTriangle className="h-3.5 w-3.5 text-orange-500 shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-orange-700">Dispatcher Approved</p>
-                    <p className="text-[11px] text-orange-700 mt-0.5">This request has been approved by the dispatcher and is now waiting for department manager approval.</p>
-                  </div>
-                </div>
-              )}
 
               {/* Decline reason */}
               {detailsModal.request.requestStatus === 'Declined' && detailsModal.request.declineReason && (
@@ -1243,19 +1193,21 @@ function UserDeliveries() {
                   ))}
                 </div>
               </div>
+            </div>
 
+            <div className="sticky bottom-0 z-10 border-t border-border bg-card p-4 flex flex-col gap-2 md:flex-row md:items-center md:justify-end shrink-0">
               {detailsModal.request.reviewedBy && (
-                <div className="pt-2 border-t border-border">
-                  <div className="flex items-start gap-2 text-[11px]">
-                    <span className="w-[120px] shrink-0 font-bold uppercase tracking-wider text-muted-foreground text-[9px] pt-0.5">
+                <div className="flex flex-col gap-1 mr-auto">
+                  <div className="flex items-center gap-2 text-[11px]">
+                    <span className="w-[100px] shrink-0 font-bold uppercase tracking-wider text-muted-foreground text-[9px] pt-0.5">
                       Reviewed By
                     </span>
                     <span className="font-semibold text-foreground uppercase">
-                      {detailsModal.request.reviewedBy === 'Admin' ? 'Logistics Department' : detailsModal.request.reviewedBy}
+                      {detailsModal.request.reviewedBy === 'Admin' ? 'Logistic' : detailsModal.request.reviewedBy}
                     </span>
                   </div>
-                  <div className="flex items-start gap-2 text-[11px] mt-1">
-                    <span className="w-[120px] shrink-0 font-bold uppercase tracking-wider text-muted-foreground text-[9px] pt-0.5">
+                  <div className="flex items-center gap-2 text-[11px]">
+                    <span className="w-[100px] shrink-0 font-bold uppercase tracking-wider text-muted-foreground text-[9px] pt-0.5">
                       Reviewed At
                     </span>
                     <span className="font-semibold text-foreground uppercase">
@@ -1263,6 +1215,53 @@ function UserDeliveries() {
                     </span>
                   </div>
                 </div>
+              )}
+              {detailsModal.request.requestStatus === 'Pending' && (
+                <>
+                  <span className="text-[10px] text-muted-foreground mr-auto">You can edit or delete pending requests.</span>
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      setDetailsModal({ isOpen: false, request: null });
+                      handleEdit(detailsModal.request);
+                    }}
+                    className="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-primary px-4 text-[11px] font-bold uppercase tracking-wider text-white hover:bg-primary/90"
+                  >
+                    <Pencil className="h-4 w-4" />
+                    Edit Request
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      setDetailsModal({ isOpen: false, request: null });
+                      handleDelete(detailsModal.request._id);
+                    }}
+                    disabled={isDeleteLoading}
+                    variant="destructive"
+                    className="inline-flex h-9 items-center justify-center gap-2 rounded-md px-4 text-[11px] font-bold uppercase tracking-wider"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    {isDeleteLoading ? 'Deleting...' : 'Delete Request'}
+                  </Button>
+                </>
+              )}
+              {detailsModal.request.requestStatus === 'Declined' && (
+                <Button
+                  type="button"
+                  onClick={() => {
+                    setDetailsModal({ isOpen: false, request: null });
+                    handleDelete(detailsModal.request._id);
+                  }}
+                  disabled={isDeleteLoading}
+                  variant="destructive"
+                  className="inline-flex h-9 items-center justify-center gap-2 rounded-md px-4 text-[11px] font-bold uppercase tracking-wider"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  {isDeleteLoading ? 'Deleting...' : 'Delete Request'}
+                </Button>
+              )}
+              {detailsModal.request.requestStatus === 'For Review' && (
+                <span className="text-[10px] text-amber-600 font-semibold">⏳ This request is under review by the logistics department.</span>
               )}
             </div>
           </div>
