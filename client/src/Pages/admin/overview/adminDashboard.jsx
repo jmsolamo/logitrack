@@ -669,7 +669,7 @@ export default function AdminDashboard() {
 
               {/* Top Job Orders Chart */}
               <div className="flex flex-col h-[220px]">
-                <h4 className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground mb-3">Top 5 Job Orders by Expense</h4>
+                <h4 className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground mb-3">Expenses by Job Orders</h4>
                 <div className="flex-1 w-full relative min-h-[180px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={topJobOrdersData} margin={{ top: 10, right: 10, bottom: 0, left: 0 }}>
@@ -690,63 +690,7 @@ export default function AdminDashboard() {
           </div>
 
 
-          {/* Breakdown Metric Charts */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-2 gap-4 flex-1">
-            {/* Chart 1: Deliveries */}
-            <div className="rounded-xl border border-border bg-card p-4 shadow-sm flex flex-col aspect-square sm:aspect-auto sm:h-[260px]">
-              <h3 className="text-[11px] font-bold uppercase tracking-widest text-foreground mb-4 shrink-0">Deliveries</h3>
-              <div className="flex-1 w-full relative min-h-[200px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie 
-                      data={deliveriesData} 
-                      cx="50%" 
-                      cy="50%" 
-                      innerRadius={55} 
-                      outerRadius={95} 
-                      paddingAngle={2} 
-                      dataKey="value"
-                      label={renderPieLabel}
-                      labelLine={false}
-                    >
-                      {deliveriesData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <RechartsTooltip content={<CustomMetricTooltip />} cursor={{ fill: 'transparent' }} />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
 
-            {/* Chart 2: Requests */}
-            <div className="rounded-xl border border-border bg-card p-4 shadow-sm flex flex-col aspect-square sm:aspect-auto sm:h-[260px]">
-              <h3 className="text-[11px] font-bold uppercase tracking-widest text-foreground mb-4 shrink-0">Requests</h3>
-              <div className="flex-1 w-full relative min-h-[200px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie 
-                      data={requestsData} 
-                      cx="50%" 
-                      cy="50%" 
-                      innerRadius={55} 
-                      outerRadius={95} 
-                      paddingAngle={2} 
-                      dataKey="value"
-                      label={renderPieLabel}
-                      labelLine={false}
-                    >
-                      {requestsData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <RechartsTooltip content={<CustomMetricTooltip />} cursor={{ fill: 'transparent' }} />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-
-          </div>
 
           {/* Bottom Grid: Trend Chart & Recent Activity */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 flex-1">
