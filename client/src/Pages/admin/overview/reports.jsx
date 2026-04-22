@@ -372,7 +372,7 @@ export default function ReportsPage() {
                     <DropdownMenuLabel className="text-[10px] uppercase tracking-widest">Filter by Status</DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     <DropdownMenuCheckboxItem className="text-[10px] uppercase font-bold" checked={statusFilter === 'all'} onCheckedChange={() => setStatusFilter('all')}>ALL</DropdownMenuCheckboxItem>
-                    {['Pending', 'Ongoing', 'Completed'].map(s => (
+                    {['Pending', 'In Transit', 'Completed'].map(s => (
                       <DropdownMenuCheckboxItem key={s} className="text-[10px] uppercase" checked={statusFilter === s} onCheckedChange={() => setStatusFilter(s)}>{s}</DropdownMenuCheckboxItem>
                     ))}
                   </DropdownMenuContent>
@@ -515,7 +515,7 @@ export default function ReportsPage() {
                       let sc = { bg: 'bg-muted', text: 'text-muted-foreground', dot: 'bg-muted-foreground' };
                       if (status === 'Completed') sc = { bg: 'bg-emerald-100', text: 'text-emerald-700', dot: 'bg-emerald-500' };
                       else if (status === 'Pending') sc = { bg: 'bg-orange-100', text: 'text-orange-700', dot: 'bg-orange-500' };
-                      else if (status === 'Ongoing') sc = { bg: 'bg-blue-100', text: 'text-blue-700', dot: 'bg-blue-500' };
+                      else if (status === 'In Transit') sc = { bg: 'bg-blue-100', text: 'text-blue-700', dot: 'bg-blue-500' };
 
                       return (
                         <tr key={req._id} className={`border-b border-border/50 hover:bg-muted/30 ${index % 2 === 0 ? 'bg-card/30' : ''}`}>

@@ -224,7 +224,7 @@ function UserDeliveries() {
       // Skip if no date
       if (!sched.dateFrom) return false;
       // ONLY check approved or review-ready requests (not pending)
-      if (sched.requestStatus !== 'Approved' && sched.requestStatus !== 'Approved with Changes' && sched.requestStatus !== 'For Review') return false;
+      if (sched.requestStatus !== 'Approved' && sched.requestStatus !== 'Approved with Changes') return false;
       
       const startB = new Date(sched.dateFrom).setHours(0,0,0,0);
       const endB = new Date(sched.dateTo || sched.dateFrom).setHours(23,59,59,999);
@@ -520,7 +520,7 @@ function UserDeliveries() {
                     <DropdownMenuLabel className="text-[10px] uppercase tracking-widest">Filter by Status</DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     <DropdownMenuCheckboxItem className="text-[10px] uppercase font-bold" checked={statusFilter === 'all'} onCheckedChange={() => setStatusFilter('all')}>ALL STATUS</DropdownMenuCheckboxItem>
-                    {['Pending', 'Approved', 'Approved with Changes', 'For Review', 'Declined'].map(s => (
+                    {['Pending', 'Approved', 'Approved with Changes', 'Declined'].map(s => (
                       <DropdownMenuCheckboxItem key={s} className="text-[10px] uppercase" checked={statusFilter === s} onCheckedChange={() => setStatusFilter(s)}>{s}</DropdownMenuCheckboxItem>
                     ))}
                   </DropdownMenuContent>
@@ -1115,7 +1115,7 @@ function UserDeliveries() {
               )}
 
               {/* Vehicle change notification */}
-              {(detailsModal.request.requestStatus === 'Approved' || detailsModal.request.requestStatus === 'Approved with Changes' || detailsModal.request.requestStatus === 'For Review') && detailsModal.request.vehicleChanged && (
+              {(detailsModal.request.requestStatus === 'Approved' || detailsModal.request.requestStatus === 'Approved with Changes') && detailsModal.request.vehicleChanged && (
                 <div className="flex items-start gap-2 rounded-md bg-blue-50 border border-blue-200 px-3 py-2">
                   <AlertTriangle className="h-3.5 w-3.5 text-blue-500 shrink-0 mt-0.5" />
                   <div>
@@ -1140,7 +1140,7 @@ function UserDeliveries() {
               )}
 
               {/* Combined delivery notification */}
-              {(detailsModal.request.requestStatus === 'Approved' || detailsModal.request.requestStatus === 'Approved with Changes' || detailsModal.request.requestStatus === 'For Review') && detailsModal.request.combinedWithDelivery && (
+              {(detailsModal.request.requestStatus === 'Approved' || detailsModal.request.requestStatus === 'Approved with Changes') && detailsModal.request.combinedWithDelivery && (
                 <div className="flex items-start gap-2 rounded-md bg-emerald-50 border border-emerald-200 px-3 py-2">
                   <AlertTriangle className="h-3.5 w-3.5 text-emerald-500 shrink-0 mt-0.5" />
                   <div>

@@ -81,9 +81,8 @@ router.get('/schedules', async (req, res) => {
       'vehicleEquipment dateFrom dateTo requestStatus'
     );
 
-    // Get approved requests and check their delivery status
     const approvedRequests = await DeliveryRequest.find(
-      { requestStatus: { $in: ['Approved', 'Approved with Changes', 'For Review'] } },
+      { requestStatus: { $in: ['Approved', 'Approved with Changes'] } },
       'vehicleEquipment dateFrom dateTo requestStatus deliveryReferenceNo'
     );
 
@@ -194,7 +193,7 @@ router.put('/:id/reviewer-accept', async (req, res) => {
       return res.status(404).json({ message: 'Request not found' });
     }
 
-    if (!['Approved', 'Approved with Changes', 'For Review'].includes(request.requestStatus)) {
+    if (!['Approved', 'Approved with Changes'].includes(request.requestStatus)) {
       return res.status(400).json({ message: 'Only approved requests can be reviewed' });
     }
 
@@ -207,6 +206,7 @@ router.put('/:id/reviewer-accept', async (req, res) => {
     request.reviewerReviewedBy = req.body.reviewerReviewedBy || '';
     request.reviewerReviewedAt = new Date();
 
+    // Legacy support: if somehow it's For Review, fix it
     if (request.requestStatus === 'For Review') {
       request.requestStatus = 'Approved';
     }
@@ -394,8 +394,8 @@ router.put('/:id/approve', async (req, res) => {
         // Update the request - track which delivery it was combined with
         request.deliveryReferenceNo = existingDelivery.referenceNo;
         request.combinedWithDelivery = true;
-        request.requestStatus = 'For Review';
-        request.reviewerStatus = 'Pending';
+        request.requestStatus = vehicleChanged ? 'Approved with Changes' : 'Approved';
+        request.reviewerStatus = 'Accepted'; // Auto-accept to bypass reviewer dependency
         request.reviewedBy = req.body.reviewedBy || '';
         request.reviewedAt = new Date();
         
@@ -451,8 +451,8 @@ router.put('/:id/approve', async (req, res) => {
     // Update the request with delivery reference and vehicle change info
     request.deliveryReferenceNo = referenceNo;
     request.combinedWithDelivery = false;
-    request.requestStatus = 'For Review';
-    request.reviewerStatus = 'Pending';
+    request.requestStatus = vehicleChanged ? 'Approved with Changes' : 'Approved';
+    request.reviewerStatus = 'Accepted'; // Auto-accept to bypass reviewer dependency
     request.reviewedBy = req.body.reviewedBy || '';
     request.reviewedAt = new Date();
     

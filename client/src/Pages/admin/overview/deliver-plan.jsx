@@ -291,10 +291,11 @@ function DeliveryPlan() {
   };
 
   const getStatusDisplay = (delivery) => {
+    if (delivery.status === 'Completed') return 'Completed';
     const progress = getDeliveryProgress(delivery);
     if (progress.isComplete) return 'Completed';
-    if (progress.step === 0) return 'Pending';
-    return 'In Transit';
+    if (progress.step > 0) return 'In Transit';
+    return delivery.status || 'Pending';
   };
 
   const openStatusModal = (delivery) => {
@@ -1636,6 +1637,7 @@ function DeliveryPlan() {
                 <DropdownMenuSeparator />
                 <DropdownMenuCheckboxItem className="text-[10px]" checked={statusFilter === 'all'} onCheckedChange={() => setStatusFilter('all')}>All</DropdownMenuCheckboxItem>
                 <DropdownMenuCheckboxItem className="text-[10px]" checked={statusFilter === 'Pending'} onCheckedChange={() => setStatusFilter('Pending')}>Pending</DropdownMenuCheckboxItem>
+                <DropdownMenuCheckboxItem className="text-[10px]" checked={statusFilter === 'In Transit'} onCheckedChange={() => setStatusFilter('In Transit')}>In Transit</DropdownMenuCheckboxItem>
                 <DropdownMenuCheckboxItem className="text-[10px]" checked={statusFilter === 'Completed'} onCheckedChange={() => setStatusFilter('Completed')}>Completed</DropdownMenuCheckboxItem>
               </DropdownMenuContent>
             </DropdownMenu>

@@ -89,6 +89,37 @@ router.get('/user-stats', async (req, res) => {
 // @access  Public
 router.get('/', async (req, res) => {
   try {
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    const endOfToday = new Date();
+    endOfToday.setHours(23, 59, 59, 999);
+
+    // Auto-update to Completed if the date has fully passed
+    await Delivery.updateMany(
+      {
+        status: { $in: ['Pending', 'In Transit'] },
+        $or: [
+          { dateTo: { $exists: true, $ne: null, $lt: startOfToday } },
+          { dateTo: { $exists: false }, dateFrom: { $exists: true, $ne: null, $lt: startOfToday } },
+          { dateTo: null, dateFrom: { $exists: true, $ne: null, $lt: startOfToday } }
+        ]
+      },
+      {
+        $set: { status: 'Completed' }
+      }
+    );
+
+    // Auto-update pending deliveries that should start today (or earlier) to "In Transit"
+    await Delivery.updateMany(
+      {
+        status: 'Pending',
+        dateFrom: { $lte: endOfToday }
+      },
+      {
+        $set: { status: 'In Transit' }
+      }
+    );
+
     const deliveries = await Delivery.find({}).sort({ createdAt: -1 });
     res.json(deliveries);
   } catch (error) {
