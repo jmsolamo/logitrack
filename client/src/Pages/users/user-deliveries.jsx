@@ -74,6 +74,7 @@ function UserDeliveries() {
   const [isEditMode, setIsEditMode] = useState(false);
   const [editingRequestId, setEditingRequestId] = useState(null);
   const [isDeleteLoading, setIsDeleteLoading] = useState(false);
+  const tomorrowStr = new Date(new Date().getTime() + 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
@@ -114,9 +115,29 @@ function UserDeliveries() {
 
   const toast = useAppToast();
 
-  useEffect(() => {
+    useEffect(() => {
     fetchData();
+    const interval = setInterval(fetchData, 30000); // 30s
+    return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    if (isFormModalOpen) {
+      fetchData();
+    }
+  }, [isFormModalOpen]);
+
+  useEffect(() => {
+    if (isFormModalOpen && formData.vehicleEquipment && !['UNASSIGNED', 'RENT_VEHICLE'].includes(formData.vehicleEquipment)) {
+      const status = isVehicleBooked(formData.vehicleEquipment);
+      if (status) {
+        toast.dismiss();
+        toast.warning(`Note: ${formData.vehicleEquipment} is ${status === 'Pending' ? 'reserved' : 'already booked'} on these dates.`, {
+          id: 'booking-warning',
+        });
+      }
+    }
+  }, [formData.dateFrom, formData.dateTo, formData.vehicleEquipment, isFormModalOpen]);
 
   const fetchData = async () => {
     try {
@@ -168,25 +189,33 @@ function UserDeliveries() {
     });
   };
 
-  const addArrayField = (name) => {
-    setFormData((prev) => ({
-      ...prev,
-      [name]: [...prev[name], ''],
-    }));
-  };
+  const syncedFields = ['purpose', 'activity', 'customerSupplier', 'jobOrderNo', 'destination'];
 
-  const addPurposeAndActivity = () => {
-    setFormData((prev) => ({
-      ...prev,
-      purpose: [...prev.purpose, ''],
-      activity: [...prev.activity, ''],
-    }));
+  const addArrayField = (name) => {
+    setFormData(prev => {
+      const newState = { ...prev };
+      if (syncedFields.includes(name)) {
+        syncedFields.forEach(field => {
+          newState[field] = [...prev[field], ''];
+        });
+      } else {
+        newState[name] = [...prev[name], ''];
+      }
+      return newState;
+    });
   };
 
   const removeArrayField = (name, index) => {
-    setFormData((prev) => {
-      const newArray = prev[name].filter((_, i) => i !== index);
-      return { ...prev, [name]: newArray };
+    setFormData(prev => {
+      const newState = { ...prev };
+      if (syncedFields.includes(name)) {
+        syncedFields.forEach(field => {
+          newState[field] = prev[field].filter((_, i) => i !== index);
+        });
+      } else {
+        newState[name] = prev[name].filter((_, i) => i !== index);
+      }
+      return newState;
     });
   };
 
@@ -240,25 +269,25 @@ function UserDeliveries() {
 
   // Helper: check if vehicle is booked during selected dates (only for approved requests)
   const isVehicleBooked = (plateNumber) => {
-    if (!plateNumber || !formData.dateFrom) return false;
-    if (plateNumber === 'RENT_VEHICLE' || plateNumber === 'UNASSIGNED') return false;
+    if (!plateNumber || !formData.dateFrom) return null;
+    if (plateNumber === 'RENT_VEHICLE' || plateNumber === 'UNASSIGNED') return null;
     const startA = new Date(formData.dateFrom).setHours(0,0,0,0);
     const endA = new Date(formData.dateTo || formData.dateFrom).setHours(23,59,59,999);
     
-    return activeSchedules.some(sched => {
+    const overlap = activeSchedules.find(sched => {
       // Skip if editing the same request
-      if (isEditMode && sched._id === editingRequestId) return false;
+      if (isEditMode && (String(sched._id) === String(editingRequestId) || String(sched._id) === 'REQ_' + editingRequestId)) return false;
       // Skip if different vehicle
       if (sched.vehicleEquipment !== plateNumber) return false;
-      // Skip if no date
       if (!sched.dateFrom) return false;
-      // ONLY check approved or review-ready requests (not pending)
-      if (sched.requestStatus !== 'Approved' && sched.requestStatus !== 'Approved with Changes') return false;
       
       const startB = new Date(sched.dateFrom).setHours(0,0,0,0);
       const endB = new Date(sched.dateTo || sched.dateFrom).setHours(23,59,59,999);
       return startA <= endB && endA >= startB;
     });
+
+    if (!overlap) return null;
+    return overlap.requestStatus;
   };
 
   const handleSubmit = async (e) => {
@@ -271,41 +300,25 @@ function UserDeliveries() {
       toast.error('Date From is required');
       return;
     }
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(0, 0, 0, 0);
+    if (new Date(formData.dateFrom) < tomorrow) {
+      toast.error('Delivery requests must be made at least one day in advance (Tomorrow onwards).');
+      return;
+    }
     if (!formData.vehicleEquipment) {
       toast.error('Vehicle / Equipment is required');
       return;
     }
-    if (formData.vehicleEquipment === 'UNASSIGNED') {
-      // Skip booking check — admin will assign vehicle later
-    } else
-    if (isVehicleBooked(formData.vehicleEquipment)) {
-      toast.error(`The selected vehicle (${formData.vehicleEquipment}) is already booked during these dates.`);
-      return;
+    if (formData.vehicleEquipment !== 'UNASSIGNED') {
+      const bookingStatus = isVehicleBooked(formData.vehicleEquipment);
+      if (bookingStatus && (bookingStatus === 'Approved' || bookingStatus === 'Approved with Changes')) {
+        toast.error(`The selected vehicle (${formData.vehicleEquipment}) is already booked during these dates.`);
+        return;
+      }
     }
-    if (formData.purpose.filter(v => v.trim() !== '').length === 0) {
-      toast.error('At least one Purpose is required');
-      return;
-    }
-    if (formData.activity.filter(v => v.trim() !== '').length === 0) {
-      toast.error('At least one Activity is required');
-      return;
-    }
-    if (formData.destination.filter(v => v.trim() !== '').length === 0) {
-      toast.error('At least one Destination is required');
-      return;
-    }
-    if (formData.jobOrderNo.filter(v => v.trim() !== '').length === 0) {
-      toast.error('At least one Job Order No is required');
-      return;
-    }
-    if (formData.customerSupplier.filter(v => v.trim() !== '').length === 0) {
-      toast.error('At least one Customer / Supplier is required');
-      return;
-    }
-    if (!formData.requestedBy?.trim()) {
-      toast.error('Requested By is required');
-      return;
-    }
+    
     setIsSubmitLoading(true);
 
     try {
@@ -332,17 +345,62 @@ function UserDeliveries() {
         }
       }
 
+      // Sync filtering & Validation: Check that if any field in a row is filled, all are filled
+      const syncedIndices = [];
+      const maxRows = Math.max(
+        formData.purpose.length,
+        formData.activity.length,
+        processedCustomerSupplier.length,
+        formData.jobOrderNo.length,
+        processedDestination.length
+      );
+
+      for (let i = 0; i < maxRows; i++) {
+        const rowValues = {
+          Purpose: (formData.purpose[i] || '').trim(),
+          Activity: (formData.activity[i] || '').trim(),
+          Customer: (processedCustomerSupplier[i] || '').trim(),
+          'Job Order No': (formData.jobOrderNo[i] || '').trim(),
+          Destination: (processedDestination[i] || '').trim()
+        };
+        
+        const filledFields = Object.entries(rowValues).filter(([_, v]) => v !== '');
+        
+        if (filledFields.length > 0 && filledFields.length < 5) {
+          const missing = Object.entries(rowValues).filter(([_, v]) => v === '').map(([k]) => k);
+          toast.error(`Row ${i + 1} is incomplete. Please fill: ${missing.join(', ')}`);
+          setIsSubmitLoading(false);
+          if (typeof setIsEditSubmitLoading === 'function') setIsEditSubmitLoading(false);
+          return;
+        }
+        
+        if (filledFields.length === 5) syncedIndices.push(i);
+      }
+
+      if (syncedIndices.length === 0) {
+        toast.error('At least one complete row of Purpose, Activity, Customer, Job Order, and Destination is required.');
+        setIsSubmitLoading(false);
+        if (typeof setIsEditSubmitLoading === 'function') setIsEditSubmitLoading(false);
+        return;
+      }
+
+      if (!formData.requestedBy?.trim()) {
+        toast.error('Requested By is required');
+        setIsSubmitLoading(false);
+        return;
+      }
+
       const payload = {
         deliveryType: formData.deliveryType,
         dateFrom: formData.dateFrom || undefined,
         dateTo: formData.dateTo || undefined,
-        purpose: formData.purpose.filter((v) => v.trim() !== ''),
-        activity: formData.activity.filter((v) => v.trim() !== ''),
+        purpose: syncedIndices.map(i => formData.purpose[i] || ''),
+        activity: syncedIndices.map(i => formData.activity[i] || ''),
+        customerSupplier: syncedIndices.map(i => processedCustomerSupplier[i] || ''),
+        jobOrderNo: syncedIndices.map(i => formData.jobOrderNo[i] || ''),
+        destination: syncedIndices.map(i => processedDestination[i] || ''),
         vehicleEquipment: formData.vehicleEquipment,
         tnvsProvider: formData.vehicleEquipment === 'RENT_VEHICLE' ? formData.tnvsProvider : undefined,
-        destination: processedDestination.filter((v) => v.trim() !== ''),
-        jobOrderNo: formData.jobOrderNo.filter((v) => v.trim() !== ''),
-        customerSupplier: processedCustomerSupplier.filter((v) => v.trim() !== ''),
         requestedBy: formData.requestedBy.trim(),
         requestedByUserId: user?._id || '',
       };
@@ -842,7 +900,7 @@ function UserDeliveries() {
                       <input
                         name="dateFrom"
                         type="date"
-                        min={new Date().toISOString().split('T')[0]}
+                        min={tomorrowStr}
                         value={formData.dateFrom}
                         onChange={handleInputChange}
                         className={inputFormClass}
@@ -853,7 +911,7 @@ function UserDeliveries() {
                       <input
                         name="dateTo"
                         type="date"
-                        min={new Date().toISOString().split('T')[0]}
+                        min={tomorrowStr}
                         value={formData.dateTo}
                         onChange={handleInputChange}
                         className={inputFormClass}
@@ -884,7 +942,7 @@ function UserDeliveries() {
                         // Dynamically override status if overlapping dates are selected
                         if (isVehicleBooked(v.plateNumber)) {
                           status = 'booked';
-                          displayStatus = 'Booked';
+                          displayStatus = 'Already Booked';
                         }
 
                         if (status === 'available') { textColor = '#16a34a'; }
@@ -907,10 +965,23 @@ function UserDeliveries() {
                         );
                       })}
                     </select>
+                    
                     <div className="pointer-events-none absolute inset-y-0 right-2.5 flex items-center text-muted-foreground">
                       <ChevronDown className="h-3 w-3" />
                     </div>
                   </div>
+                  {formData.vehicleEquipment && !['UNASSIGNED', 'RENT_VEHICLE'].includes(formData.vehicleEquipment) && (() => {
+                    const bookingStatus = isVehicleBooked(formData.vehicleEquipment);
+                    if (!bookingStatus) return null;
+                    return (
+                      <div className="mt-2 rounded bg-red-50 border border-red-200 p-2 animate-in slide-in-from-top-1 duration-300">
+                        <p className="text-[10px] font-bold text-red-600 flex items-center gap-1.5 uppercase tracking-wider">
+                          <AlertTriangle className="h-3 w-3" />
+                          Vehicle is already ${bookingStatus === 'Pending' ? 'reserved (Pending)' : 'booked'} on these dates.
+                        </p>
+                      </div>
+                    );
+                  })()}
                   {formData.vehicleEquipment === 'RENT_VEHICLE' && (
                     <input
                       name="tnvsProvider"
@@ -953,12 +1024,12 @@ function UserDeliveries() {
                         />
                       </div>
                       {index === 0 && (
-                        <button type="button" onClick={addPurposeAndActivity} className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
+                        <button type="button" onClick={() => addArrayField('purpose')} className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
                           <Plus className="h-4 w-4" />
                         </button>
                       )}
                       {index > 0 && (
-                        <button type="button" onClick={() => { removeArrayField('purpose', index); removeArrayField('activity', index); }} className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-muted/50 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors">
+                        <button type="button" onClick={() => { removeArrayField('purpose', index); }} className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-muted/50 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors">
                           <Minus className="h-4 w-4" />
                         </button>
                       )}

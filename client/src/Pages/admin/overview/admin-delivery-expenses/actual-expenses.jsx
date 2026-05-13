@@ -179,7 +179,7 @@ export default function ActualExpenses() {
     };
 
     setFormData({
-      fuel: processArray(latestDelivery.fuel).length > 0 ? processArray(latestDelivery.fuel) : [{ amount: 0, liters: 0, gasStation: '', invoiceNo: '', paymentType: '', date: '' }],
+      fuel: processArray(latestDelivery.fuel).length > 0 ? processArray(latestDelivery.fuel) : [{ amount: 0, liters: 0, price: 0, gasStation: '', invoiceNo: '', paymentType: '', date: '' }],
       tollFee: processArray(latestDelivery.tollFee).length > 0 ? processArray(latestDelivery.tollFee) : [{ details: '', amt: 0, date: '' }],
       pierExpenses: processArray(latestDelivery.pierExpenses).length > 0 ? processArray(latestDelivery.pierExpenses) : [{ details: '', amt: 0, date: '' }],
       repairAndMaintenance: processArray(latestDelivery.repairAndMaintenance).length > 0 ? processArray(latestDelivery.repairAndMaintenance) : [{ details: '', amt: 0, date: '' }],
@@ -197,7 +197,7 @@ export default function ActualExpenses() {
       let finalValue = value;
       if (value === '') {
         finalValue = field === 'date' ? null : '';
-      } else if (['amount', 'amt', 'liters'].includes(field)) {
+      } else if (['amount', 'amt', 'liters', 'price'].includes(field)) {
         finalValue = Number(value);
       } else if (field === 'date') {
         finalValue = value;
@@ -205,10 +205,19 @@ export default function ActualExpenses() {
         finalValue = String(value).toUpperCase();
       }
 
-      arr[index] = {
+      const updatedItem = {
         ...arr[index],
         [field]: finalValue
       };
+
+      // Auto-calculate amount if liters or price changes
+      if (category === 'fuel' && (field === 'liters' || field === 'price')) {
+        const liters = field === 'liters' ? Number(finalValue) : Number(arr[index].liters || 0);
+        const price = field === 'price' ? Number(finalValue) : Number(arr[index].price || 0);
+        updatedItem.amount = Number((liters * price).toFixed(2));
+      }
+
+      arr[index] = updatedItem;
       return { ...prev, [category]: arr };
     });
   };
@@ -812,7 +821,7 @@ export default function ActualExpenses() {
                     {visibleColumns.has('fuelAmount') && <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-right align-middle">Amount</th>}
 
                     {visibleColumns.has('tollFee') && <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-right align-middle">Toll Fee</th>}
-                    {visibleColumns.has('pierExpenses') && <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-right align-middle">Pier Expenses</th>}
+                    {visibleColumns.has('pierExpenses') && <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-right align-middle">Pier / Airport Expenses</th>}
 
                     {visibleColumns.has('rmDetails') && <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Repair & Maintenance</th>}
                     {visibleColumns.has('rmAmount') && <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-right align-middle">Amount</th>}
@@ -1183,10 +1192,11 @@ export default function ActualExpenses() {
                           </select>
                           <Input placeholder="Gas Station" value={f.gasStation || ''} onChange={(e) => handleExpenseChange('fuel', idx, 'gasStation', e.target.value)} className="flex-1 h-8 text-[11px] font-bold uppercase tracking-wider bg-background" />
                           <Input type="number" placeholder="Liters" value={f.liters || ''} onChange={(e) => handleExpenseChange('fuel', idx, 'liters', e.target.value)} className="w-[80px] h-8 text-[11px] font-bold uppercase tracking-wider bg-background px-2.5" />
+                          <Input type="number" placeholder="Price" value={f.price || ''} onChange={(e) => handleExpenseChange('fuel', idx, 'price', e.target.value)} className="w-[80px] h-8 text-[11px] font-bold uppercase tracking-wider bg-background px-2.5" />
                           <Input type="number" placeholder="Amount" value={f.amount || ''} onChange={(e) => handleExpenseChange('fuel', idx, 'amount', e.target.value)} className="w-[100px] h-8 text-[11px] font-bold uppercase tracking-wider bg-background px-2.5" />
                           <Input placeholder="Invoice No." value={f.invoiceNo || ''} onChange={(e) => handleExpenseChange('fuel', idx, 'invoiceNo', e.target.value)} className="w-[130px] h-8 text-[11px] font-bold uppercase tracking-wider bg-background" />
                           {idx === 0 && (
-                            <button type="button" onClick={() => addExpenseItem('fuel', { amount: 0, liters: 0, gasStation: '', invoiceNo: '', paymentType: '', date: '' })} className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
+                            <button type="button" onClick={() => addExpenseItem('fuel', { amount: 0, liters: 0, price: 0, gasStation: '', invoiceNo: '', paymentType: '', date: '' })} className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
                               <Plus className="h-4 w-4" />
                             </button>
                           )}
@@ -1202,7 +1212,7 @@ export default function ActualExpenses() {
                     {/* Component Details */}
                     {[
                       { key: 'tollFee', label: 'Toll Fee' },
-                      { key: 'pierExpenses', label: 'Pier Expenses' },
+                      { key: 'pierExpenses', label: 'Pier / Airport Expenses' },
                       { key: 'repairAndMaintenance', label: 'Repair & Maintenance' },
                       { key: 'mealExpenses', label: 'Meal Expenses' },
                       { key: 'loadExpenses', label: 'Load Expenses' },
@@ -1248,6 +1258,7 @@ export default function ActualExpenses() {
                             <div className="w-[150px] h-8 text-[11px] font-bold uppercase tracking-wider bg-muted/20 px-2.5 rounded border border-border/30 flex items-center">{f.paymentType || '—'}</div>
                             <div className="flex-1 h-8 text-[11px] font-bold uppercase tracking-wider bg-muted/20 px-2.5 rounded border border-border/30 flex items-center truncate">{f.gasStation || '—'}</div>
                             <div className="w-[80px] h-8 text-[11px] font-bold uppercase tracking-wider bg-muted/20 px-2.5 rounded border border-border/30 flex items-center justify-end">{f.liters || 0}</div>
+                            <div className="w-[80px] h-8 text-[11px] font-bold uppercase tracking-wider bg-muted/20 px-2.5 rounded border border-border/30 flex items-center justify-end">{f.price || 0}</div>
                             <div className="w-[100px] h-8 text-[11px] font-bold uppercase tracking-wider bg-muted/20 px-2.5 rounded border border-border/30 flex items-center justify-end">{f.amount || 0}</div>
                             <div className="w-[130px] h-8 text-[11px] font-bold uppercase tracking-wider bg-muted/20 px-2.5 rounded border border-border/30 flex items-center truncate">{f.invoiceNo || '—'}</div>
                           </div>
@@ -1258,7 +1269,7 @@ export default function ActualExpenses() {
                     {/* Other Expense Categories Read Mode */}
                     {[
                       { key: 'tollFee', label: 'Toll Fee', arr: detailsModal.delivery.tollFee },
-                      { key: 'pierExpenses', label: 'Pier Expenses', arr: detailsModal.delivery.pierExpenses },
+                      { key: 'pierExpenses', label: 'Pier / Airport Expenses', arr: detailsModal.delivery.pierExpenses },
                       { key: 'repairAndMaintenance', label: 'Repair & Maintenance', arr: detailsModal.delivery.repairAndMaintenance },
                       { key: 'mealExpenses', label: 'Meal Expenses', arr: detailsModal.delivery.mealExpenses },
                       { key: 'loadExpenses', label: 'Load Expenses', arr: detailsModal.delivery.loadExpenses },
@@ -1360,7 +1371,7 @@ export default function ActualExpenses() {
               <th className="border border-black px-1 py-1 font-bold align-middle text-right whitespace-nowrap">LITERS</th>
               <th className="border border-black px-1 py-1 font-bold align-middle text-right whitespace-nowrap">AMOUNT</th>
               <th className="border border-black px-1 py-1 font-bold align-middle text-right whitespace-nowrap">TOLL FEE</th>
-              <th className="border border-black px-1 py-1 font-bold align-middle text-right whitespace-nowrap">PIER EXPENSES</th>
+              <th className="border border-black px-1 py-1 font-bold align-middle text-right whitespace-nowrap" style={{ lineHeight: '1.15' }}>PIER / AIRPORT<br />EXPENSES</th>
               <th className="border border-black px-1 py-1 font-bold align-middle whitespace-nowrap">REPAIR AND MAINTENANCE</th>
               <th className="border border-black px-1 py-1 font-bold align-middle text-right whitespace-nowrap">AMOUNT</th>
               <th className="border border-black px-1 py-1 font-bold align-middle text-right whitespace-nowrap">MEALS</th>

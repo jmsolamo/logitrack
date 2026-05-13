@@ -265,10 +265,8 @@ export default function UsersDashboard() {
                         <p className="text-[11px] text-muted-foreground mt-1 line-clamp-2 leading-relaxed">
                           {description}
                         </p>
-                        <div className="mt-2">
-                          <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[8px] font-bold uppercase tracking-wider ${getStatusStyle(displayStatus)}`}>
-                            {displayStatus || 'Pending'}
-                          </span>
+                        <div className="mt-2 text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
+                          {displayStatus || 'Pending'}
                         </div>
                       </div>
                     </div>

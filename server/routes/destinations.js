@@ -22,9 +22,9 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ message: 'Destination name is required' });
     }
     const pool = getPool();
-    const existingDestination = await destinationsMysql.findByName(pool, name);
-    if (existingDestination) {
-      return res.status(400).json({ message: 'Destination already exists' });
+    const existingCombination = await destinationsMysql.findByCombination(pool, name, customerSupplier);
+    if (existingCombination) {
+      return res.status(400).json({ message: 'Destination with this Customer/Supplier already exists' });
     }
     const savedDestination = await destinationsMysql.createDestination(pool, { name, customerSupplier });
     res.status(201).json(savedDestination);
@@ -41,6 +41,13 @@ router.put('/:id', async (req, res) => {
       return res.status(400).json({ message: 'Destination name is required' });
     }
     const pool = getPool();
+    
+    // Check if the combination already exists for another record
+    const existingCombination = await destinationsMysql.findByCombination(pool, name, customerSupplier);
+    if (existingCombination && existingCombination._id !== req.params.id) {
+       return res.status(400).json({ message: 'Destination with this Customer/Supplier already exists' });
+    }
+
     const updatedDestination = await destinationsMysql.updateDestination(pool, req.params.id, { name, customerSupplier });
     if (!updatedDestination) {
       return res.status(404).json({ message: 'Destination not found' });

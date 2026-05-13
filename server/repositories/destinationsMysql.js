@@ -23,6 +23,14 @@ export const findByName = async (pool, name) => {
   return rows[0] || null;
 };
 
+export const findByCombination = async (pool, name, customerSupplier) => {
+  const [rows] = await pool.query(
+    'SELECT * FROM destinations WHERE destination = ? AND customer_supplier <=> ? LIMIT 1',
+    [String(name).toUpperCase(), customerSupplier || null]
+  );
+  return map(rows[0]);
+};
+
 export const createDestination = async (pool, body) => {
   const [r] = await pool.query(`INSERT INTO destinations (destination, customer_supplier) VALUES (?, ?)`, [
     String(body.name).toUpperCase(),

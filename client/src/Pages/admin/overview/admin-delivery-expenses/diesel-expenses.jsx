@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
+import { useRef } from 'react';
 import { useAppToast } from '../../../../components/ui/alert-toast-provider';
 import {
   ClipboardList,
@@ -224,6 +225,8 @@ export default function DieselExpenses() {
     });
     return { totalLiters, totalAmount };
   }, [filteredRows]);
+
+  const footerTableRef = useRef(null);
 
   const exportToCSV = () => {
     const rowsToExport = selectedIds.size > 0
@@ -460,6 +463,48 @@ export default function DieselExpenses() {
             </table>
           )}
         </div>
+
+        {/* Separated True Footer - Absolutely at bottom of card */}
+        {!isLoading && filteredRows.length > 0 && (
+          <div className="shrink-0 overflow-x-hidden border-t-2 border-border bg-card shadow-[0_-4px_10px_rgba(0,0,0,0.05)] relative z-20"
+            onScroll={(e) => {
+              const tableContainer = e.target.previousElementSibling;
+              if (tableContainer) tableContainer.scrollLeft = e.target.scrollLeft;
+            }}
+            ref={(el) => {
+              if (el) {
+                const tableContainer = el.previousElementSibling;
+                if (tableContainer && !tableContainer._footerScrollLinked) {
+                  tableContainer._footerScrollLinked = true;
+                  tableContainer.addEventListener('scroll', () => {
+                    el.scrollLeft = tableContainer.scrollLeft;
+                  });
+                }
+              }
+            }}
+          >
+            <table ref={footerTableRef} className="w-full min-w-[900px] border-collapse bg-card hidden sm:table">
+              <tbody>
+                <tr>
+                  <td className="whitespace-nowrap px-3 py-2.5 text-[9px] w-[40px] bg-card border-t border-border"></td>
+                  <td className="whitespace-nowrap px-3 py-2.5 text-[9px] font-black uppercase tracking-[0.15em] text-foreground text-right align-middle bg-card border-t border-border"></td>
+                  <td className="whitespace-nowrap px-3 py-2.5 text-[9px] font-black uppercase tracking-[0.15em] text-foreground text-right align-middle bg-card border-t border-border"></td>
+                  <td className="whitespace-nowrap px-3 py-2.5 text-[9px] font-black uppercase tracking-[0.15em] text-foreground text-right align-middle bg-card border-t border-border"></td>
+                  <td className="whitespace-nowrap px-3 py-2.5 text-[9px] font-black uppercase tracking-[0.15em] text-foreground text-right align-middle bg-card border-t border-border"></td>
+                  <td className="whitespace-nowrap px-3 py-2.5 text-[9px] font-black uppercase tracking-[0.15em] text-foreground text-right align-middle bg-card border-t border-border">
+                    Total ({filteredRows.length} {filteredRows.length === 1 ? 'record' : 'records'})
+                  </td>
+                  <td className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-muted-foreground text-center align-middle bg-card border-t border-border"></td>
+                  <td className="whitespace-nowrap px-3 py-2.5 text-[10px] font-bold text-foreground text-right align-middle tracking-tight bg-card border-t border-border"></td>
+                  <td className="whitespace-nowrap px-3 py-2.5 text-[10px] font-black text-primary text-right align-middle bg-muted/30 border-t border-border tracking-wider">
+                    ₱ {totals.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </td>
+                  <td className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-muted-foreground text-left align-middle bg-card border-t border-border"></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
 
@@ -513,9 +558,8 @@ export default function DieselExpenses() {
           ))}
           {/* Total Row */}
           <tr className="bg-[#f2f2f2] break-inside-avoid">
-            <td className="border border-black px-1 py-1 font-bold bg-white" colSpan={6}></td>
-            <td className="border border-black px-1 py-1 font-bold text-center">TOTAL</td>
-            <td className="border border-black px-1 py-1 font-bold text-right whitespace-nowrap">{totals.totalLiters.toLocaleString()}</td>
+            <td className="border border-black px-1 py-1 font-bold bg-white text-right" colSpan={7}>TOTAL</td>
+            <td className="border border-black px-1 py-1 font-bold text-right whitespace-nowrap"></td>
             <td className="border border-black px-1 py-1 font-bold text-right whitespace-nowrap">{totals.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
             <td className="border border-black px-1 py-1 font-bold bg-white"></td>
           </tr>

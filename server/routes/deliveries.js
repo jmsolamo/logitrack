@@ -2,8 +2,28 @@ import express from 'express';
 import { getPool } from '../db/pool.js';
 import * as deliveriesMysql from '../repositories/deliveriesMysql.js';
 import * as deliveryChargesMysql from '../repositories/deliveryChargesMysql.js';
+import * as deliveryRequestsMysql from '../repositories/deliveryRequestsMysql.js';
 
 const router = express.Router();
+
+const generateRequestReferenceNo = async (pool) => {
+  const prefix = 'REQ';
+  const now = new Date();
+  const yyyy = now.getFullYear();
+  const mm = String(now.getMonth() + 1).padStart(2, '0');
+  const dd = String(now.getDate()).padStart(2, '0');
+  const dateStr = `${yyyy}${mm}${dd}`;
+  const pattern = `${prefix}-${dateStr}-`;
+  const latest = await deliveryRequestsMysql.latestRequestReferenceNo(pool, pattern);
+  let seq = 1;
+  if (latest) {
+    const parts = latest.split('-');
+    const lastPart = parts[parts.length - 1];
+    const lastSeq = parseInt(lastPart, 10);
+    if (!Number.isNaN(lastSeq)) seq = lastSeq + 1;
+  }
+  return `${pattern}${String(seq).padStart(3, '0')}`;
+};
 
 const calculateDeliveryCharge = async (pool, plateNumber, destinations) =>
   deliveryChargesMysql.calculateDeliveryCharge(pool, plateNumber, destinations);
@@ -87,6 +107,20 @@ router.post('/', async (req, res) => {
       finalDeliveryCharge = await calculateDeliveryCharge(pool, req.body.vehicleEquipment, req.body.destination);
     }
     const saved = await deliveriesMysql.insertDelivery(pool, { ...req.body, status: req.body.status || 'Pending' }, referenceNo, finalDeliveryCharge);
+    
+    // Automatically create a companion request for Manager (Reviewer) visibility
+    try {
+      const requestRefNo = await generateRequestReferenceNo(pool);
+      await deliveryRequestsMysql.createRequest(pool, {
+        ...req.body,
+        deliveryReferenceNo: referenceNo, 
+        requestStatus: 'Approved', 
+        reviewerStatus: 'Pending',
+      }, requestRefNo);
+    } catch (reqError) {
+      console.error('Failed to create companion request for direct delivery:', reqError);
+    }
+
     res.status(201).json(saved);
   } catch (error) {
     console.error('Error creating delivery:', error);

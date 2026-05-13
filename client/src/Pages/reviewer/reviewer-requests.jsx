@@ -237,7 +237,6 @@ export default function ReviewerRequestsPage() {
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
-
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm" className={`flex items-center gap-2 h-8 bg-background ${dateFromFilter || dateToFilter ? 'border-primary text-primary' : ''}`}>

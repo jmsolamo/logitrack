@@ -229,7 +229,7 @@ export default function DriverExpenseBreakdown() {
         'Particulars',
         'Diesel',
         'Toll Fee',
-        'Pier',
+        'Pier / Airport',
         'Repair & Maint.',
         'Load',
         'Meals',
@@ -505,7 +505,7 @@ export default function DriverExpenseBreakdown() {
                     <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Particulars</th>
                     <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-right align-middle">Diesel</th>
                     <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-right align-middle">Toll Fee</th>
-                    <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-right align-middle">Pier</th>
+                    <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-right align-middle">Pier / Airport</th>
                     <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-right align-middle">Repair & Maint.</th>
                     <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-right align-middle">Load</th>
                     <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-right align-middle">Meals</th>
@@ -621,7 +621,7 @@ export default function DriverExpenseBreakdown() {
               <th>PARTICULARS</th>
               <th>DIESEL</th>
               <th>TOLL FEE</th>
-              <th>PIER EXPENSES</th>
+              <th style={{ lineHeight: '1.15' }}>PIER / AIRPORT<br />EXPENSES</th>
               <th style={{ lineHeight: '1.15' }}>REPAIR AND<br />MAINTENANCE</th>
               <th>LOAD</th>
               <th>MEALS</th>
@@ -692,16 +692,20 @@ export default function DriverExpenseBreakdown() {
               <td style={{ textAlign: 'right' }}>{fmt(pTotals.contingency)}</td>
               <td style={{ textAlign: 'right' }}>{fmt(pTotals.total)}</td>
             </tr>
-            {/* ACA / FOR RETURN Aligned with columns */}
+            {/* ACA / FOR RETURN Aligned with columns but overlaid to not affect width */}
             <tr style={{ fontWeight: 'bold' }}>
-              <td colSpan={9} style={{ border: 'none' }}></td>
-              <td style={{ textAlign: 'right', border: 'none', paddingTop: '0.3cm' }}>ACA:</td>
-              <td style={{ textAlign: 'right', border: 'none', paddingTop: '0.3cm' }}>{fmt(printItems.reduce((a, c) => a + (c.totalBudget || 0), 0))}</td>
+              <td colSpan={10} style={{ border: 'none' }}></td>
+              <td style={{ textAlign: 'right', border: 'none', paddingTop: '0.3cm', position: 'relative' }}>
+                <div style={{ position: 'absolute', right: '100%', whiteSpace: 'nowrap', marginRight: '0.2cm' }}>ACA:</div>
+                {fmt(printItems.reduce((a, c) => a + (c.totalBudget || 0), 0))}
+              </td>
             </tr>
             <tr style={{ fontWeight: 'bold' }}>
-              <td colSpan={9} style={{ border: 'none' }}></td>
-              <td style={{ textAlign: 'right', border: 'none', paddingTop: '0.1cm', paddingBottom: '0.8cm' }}>FOR RETURN:</td>
-              <td style={{ textAlign: 'right', border: 'none', paddingTop: '0.1cm', paddingBottom: '0.8cm' }}>{fmt(printItems.reduce((a, c) => a + (c.totalBudget || 0), 0) - pTotals.total)}</td>
+              <td colSpan={10} style={{ border: 'none' }}></td>
+              <td style={{ textAlign: 'right', border: 'none', paddingTop: '0.1cm', paddingBottom: '0.8cm', position: 'relative' }}>
+                <div style={{ position: 'absolute', right: '100%', whiteSpace: 'nowrap', marginRight: '0.2cm' }}>FOR RETURN / REIMBURSE:</div>
+                {fmt(printItems.reduce((a, c) => a + (c.totalBudget || 0), 0) - pTotals.total)}
+              </td>
             </tr>
           </tbody>
         </table>

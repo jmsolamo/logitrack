@@ -190,25 +190,33 @@ function DeliveryPlan() {
     });
   };
 
-  const addArrayField = (name) => {
-    setFormData(prev => ({
-      ...prev,
-      [name]: [...prev[name], '']
-    }));
-  };
+  const syncedFields = ['purpose', 'activity', 'customerSupplier', 'jobOrderNo', 'destination'];
 
-  const addPurposeAndActivity = () => {
-    setFormData(prev => ({
-      ...prev,
-      purpose: [...prev.purpose, ''],
-      activity: [...prev.activity, '']
-    }));
+  const addArrayField = (name) => {
+    setFormData(prev => {
+      const newState = { ...prev };
+      if (syncedFields.includes(name)) {
+        syncedFields.forEach(field => {
+          newState[field] = [...prev[field], ''];
+        });
+      } else {
+        newState[name] = [...prev[name], ''];
+      }
+      return newState;
+    });
   };
 
   const removeArrayField = (name, index) => {
     setFormData(prev => {
-      const newArray = prev[name].filter((_, i) => i !== index);
-      return { ...prev, [name]: newArray };
+      const newState = { ...prev };
+      if (syncedFields.includes(name)) {
+        syncedFields.forEach(field => {
+          newState[field] = prev[field].filter((_, i) => i !== index);
+        });
+      } else {
+        newState[name] = prev[name].filter((_, i) => i !== index);
+      }
+      return newState;
     });
   };
 
@@ -241,31 +249,76 @@ function DeliveryPlan() {
           const newDestName = newDestinations[i].trim();
           processedDestination[i] = newDestName;
           
-          // Auto-save new destination to the DB
-          try {
-            await axios.post('/api/destinations', { 
-              name: newDestName,
-              customerSupplier: processedCustomerSupplier[i]
-            });
-          } catch (e) {
-            // Ignore if already exists or fails
+          // Auto-save new destination to the DB only if combo doesn't already exist
+          const alreadyExists = destinations.some(
+            d => d.name?.toUpperCase() === newDestName.toUpperCase() &&
+                 (d.customerSupplier || '') === (processedCustomerSupplier[i] || '')
+          );
+          if (!alreadyExists) {
+            try {
+              await axios.post('/api/destinations', { 
+                name: newDestName,
+                customerSupplier: processedCustomerSupplier[i]
+              });
+            } catch (e) {
+              // Ignore if already exists or fails
+            }
           }
         }
+      }
+
+            // Sync filtering & Validation: Check that if any field in a row is filled, all are filled
+      const syncedIndices = [];
+      const maxRows = Math.max(
+        formData.purpose.length,
+        formData.activity.length,
+        processedCustomerSupplier.length,
+        formData.jobOrderNo.length,
+        processedDestination.length
+      );
+
+      for (let i = 0; i < maxRows; i++) {
+        const rowValues = {
+          Purpose: (formData.purpose[i] || '').trim(),
+          Activity: (formData.activity[i] || '').trim(),
+          Customer: (processedCustomerSupplier[i] || '').trim(),
+          'Job Order No': (formData.jobOrderNo[i] || '').trim(),
+          Destination: (processedDestination[i] || '').trim()
+        };
+        
+        const filledFields = Object.entries(rowValues).filter(([_, v]) => v !== '');
+        
+        if (filledFields.length > 0 && filledFields.length < 5) {
+          const missing = Object.entries(rowValues).filter(([_, v]) => v === '').map(([k]) => k);
+          toast.error(`Row ${i + 1} is incomplete. Please fill: ${missing.join(', ')}`);
+          setIsSubmitLoading(false);
+          if (typeof setIsEditSubmitLoading === 'function') setIsEditSubmitLoading(false);
+          return;
+        }
+        
+        if (filledFields.length === 5) syncedIndices.push(i);
+      }
+
+      if (syncedIndices.length === 0) {
+        toast.error('At least one complete row of Purpose, Activity, Customer, Job Order, and Destination is required.');
+        setIsSubmitLoading(false);
+        if (typeof setIsEditSubmitLoading === 'function') setIsEditSubmitLoading(false);
+        return;
       }
 
       const payload = {
         deliveryType: formData.deliveryType,
         dateFrom: formData.dateFrom || undefined,
         dateTo: formData.dateTo || undefined,
-        purpose: formData.purpose.filter(v => v.trim() !== ''),
-        activity: formData.activity.filter(v => v.trim() !== ''),
+        purpose: syncedIndices.map(i => formData.purpose[i] || ''),
+        activity: syncedIndices.map(i => formData.activity[i] || ''),
         vehicleEquipment: formData.vehicleEquipment,
         tnvsProvider: formData.vehicleEquipment === 'RENT_VEHICLE' ? formData.tnvsProvider : undefined,
-        destination: processedDestination.filter(v => v.trim() !== ''),
+        destination: syncedIndices.map(i => processedDestination[i] || ''),
         driver: formData.driver.filter(v => v.trim() !== ''),
         helper: formData.helper.filter(v => v.trim() !== ''),
-        jobOrderNo: formData.jobOrderNo.filter(v => v.trim() !== ''),
-        customerSupplier: processedCustomerSupplier.filter(v => v.trim() !== ''),
+        jobOrderNo: syncedIndices.map(i => formData.jobOrderNo[i] || ''),
+        customerSupplier: syncedIndices.map(i => processedCustomerSupplier[i] || ''),
         totalBudget: formData.totalBudget ? Number(formData.totalBudget) : 0,
         requestedBy: formData.requestedBy
       };
@@ -1290,30 +1343,75 @@ function DeliveryPlan() {
           const newDestName = newDestinations[i].trim();
           processedDestination[i] = newDestName;
           
-          try {
-            await axios.post('/api/destinations', { 
-              name: newDestName,
-              customerSupplier: processedCustomerSupplier[i]
-            });
-          } catch (e) {
-            // Ignore
+          const alreadyExists = destinations.some(
+            d => d.name?.toUpperCase() === newDestName.toUpperCase() &&
+                 (d.customerSupplier || '') === (processedCustomerSupplier[i] || '')
+          );
+          if (!alreadyExists) {
+            try {
+              await axios.post('/api/destinations', { 
+                name: newDestName,
+                customerSupplier: processedCustomerSupplier[i]
+              });
+            } catch (e) {
+              // Ignore
+            }
           }
         }
+      }
+
+            // Sync filtering & Validation: Check that if any field in a row is filled, all are filled
+      const syncedIndices = [];
+      const maxRows = Math.max(
+        formData.purpose.length,
+        formData.activity.length,
+        processedCustomerSupplier.length,
+        formData.jobOrderNo.length,
+        processedDestination.length
+      );
+
+      for (let i = 0; i < maxRows; i++) {
+        const rowValues = {
+          Purpose: (formData.purpose[i] || '').trim(),
+          Activity: (formData.activity[i] || '').trim(),
+          Customer: (processedCustomerSupplier[i] || '').trim(),
+          'Job Order No': (formData.jobOrderNo[i] || '').trim(),
+          Destination: (processedDestination[i] || '').trim()
+        };
+        
+        const filledFields = Object.entries(rowValues).filter(([_, v]) => v !== '');
+        
+        if (filledFields.length > 0 && filledFields.length < 5) {
+          const missing = Object.entries(rowValues).filter(([_, v]) => v === '').map(([k]) => k);
+          toast.error(`Row ${i + 1} is incomplete. Please fill: ${missing.join(', ')}`);
+          setIsSubmitLoading(false);
+          if (typeof setIsEditSubmitLoading === 'function') setIsEditSubmitLoading(false);
+          return;
+        }
+        
+        if (filledFields.length === 5) syncedIndices.push(i);
+      }
+
+      if (syncedIndices.length === 0) {
+        toast.error('At least one complete row of Purpose, Activity, Customer, Job Order, and Destination is required.');
+        setIsSubmitLoading(false);
+        if (typeof setIsEditSubmitLoading === 'function') setIsEditSubmitLoading(false);
+        return;
       }
 
       const payload = {
         deliveryType: formData.deliveryType,
         dateFrom: formData.dateFrom || undefined,
         dateTo: formData.dateTo || undefined,
-        purpose: formData.purpose.filter(v => v.trim() !== ''),
-        activity: formData.activity.filter(v => v.trim() !== ''),
+        purpose: syncedIndices.map(i => formData.purpose[i] || ''),
+        activity: syncedIndices.map(i => formData.activity[i] || ''),
         vehicleEquipment: formData.vehicleEquipment,
         tnvsProvider: formData.vehicleEquipment === 'RENT_VEHICLE' ? formData.tnvsProvider : undefined,
-        destination: processedDestination.filter(v => v.trim() !== ''),
+        destination: syncedIndices.map(i => processedDestination[i] || ''),
         driver: formData.driver.filter(v => v.trim() !== ''),
         helper: formData.helper.filter(v => v.trim() !== ''),
-        jobOrderNo: formData.jobOrderNo.filter(v => v.trim() !== ''),
-        customerSupplier: processedCustomerSupplier.filter(v => v.trim() !== ''),
+        jobOrderNo: syncedIndices.map(i => formData.jobOrderNo[i] || ''),
+        customerSupplier: syncedIndices.map(i => processedCustomerSupplier[i] || ''),
         totalBudget: formData.totalBudget ? Number(formData.totalBudget) : 0,
         requestedBy: formData.requestedBy
       };
@@ -1466,12 +1564,12 @@ function DeliveryPlan() {
 
             {/* Buttons */}
             {index === 0 && (
-              <button type="button" onClick={addPurposeAndActivity} className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
+              <button type="button" onClick={() => addArrayField('purpose')} className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
                 <Plus className="h-4 w-4" />
               </button>
             )}
             {index > 0 && (
-              <button type="button" onClick={() => { removeArrayField('purpose', index); removeArrayField('activity', index); }} className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-muted/50 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors">
+              <button type="button" onClick={() => { removeArrayField('purpose', index); }} className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-muted/50 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors">
                 <Minus className="h-4 w-4" />
               </button>
             )}
@@ -1935,7 +2033,7 @@ function DeliveryPlan() {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            {(searchQuery || typeFilter !== 'all' || statusFilter !== 'Pending' || dateFromFilter || dateToFilter || purposeFilter !== 'all' || vehicleFilter !== 'all' || destinationFilter !== 'all' || personnelFilter !== 'all') && (
+            {(searchQuery || typeFilter !== 'all' || statusFilter !== 'all' || dateFromFilter || dateToFilter || purposeFilter !== 'all' || vehicleFilter !== 'all' || destinationFilter !== 'all' || personnelFilter !== 'all') && (
               <Button variant="ghost" size="sm" onClick={handleReset} className="h-8 gap-1.5 text-xs text-muted-foreground">
                 <RotateCcw className="h-3 w-3" />
                 Reset
@@ -1943,36 +2041,7 @@ function DeliveryPlan() {
             )}
           </div>
 
-          <div className="flex items-center gap-2">
-            {/* Column Visibility Toggle */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="flex items-center gap-1.5 h-8 px-2.5 pb-0 bg-background">
-                  <Columns className="h-3 w-3" />
-                  <span className="text-[10px] font-medium">Columns</span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="text-xs max-h-[242px] overflow-y-auto">
-                <DropdownMenuLabel className="text-[10px]">Toggle Columns</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                {tableColumns.map((col) => (
-                  <DropdownMenuCheckboxItem
-                    key={col.key}
-                    className="capitalize text-[10px]"
-                    checked={visibleColumns.has(col.key)}
-                    onCheckedChange={() => toggleColumn(col.key)}
-                  >
-                    {col.label}
-                  </DropdownMenuCheckboxItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-
-            {/* Create Button */}
-            <Button size="sm" className="h-8 w-8 rounded-full p-0 text-white" onClick={openModal}>
-              <Plus className="h-4 w-4" />
-            </Button>
-          </div>
+          {/* Column Visibility and Create Button removed as requested */}
         </div>
 
         {/* Table Content */}

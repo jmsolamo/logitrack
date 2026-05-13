@@ -47,38 +47,21 @@ const generateRequestReferenceNo = async (pool) => {
 router.get('/schedules', async (req, res) => {
   try {
     const pool = getPool();
-    const { pending: pendingRows, approved: approvedRows } = await deliveryRequestsMysql.listSchedulesData(pool);
-    const pendingRequests = pendingRows.map((r) => ({
-      _id: String(r.id),
+    
+    // Fetch Active Deliveries from deliveries table only
+    const [activeDeliveries] = await pool.query(
+      "SELECT id, vehicle_equipment, date_from, date_to, status FROM deliveries WHERE status NOT IN ('Completed', 'Cancelled')"
+    );
+
+    const active = activeDeliveries.map(r => ({
+      _id: 'DEL_' + r.id,
       vehicleEquipment: r.vehicle_equipment,
       dateFrom: r.date_from,
       dateTo: r.date_to,
-      requestStatus: r.request_status,
+      requestStatus: r.status 
     }));
-    const activeApprovedRequests = [];
-    for (const r of approvedRows) {
-      if (r.delivery_reference_no) {
-        const delivery = await deliveriesMysql.findDeliveryByReferenceNo(pool, r.delivery_reference_no);
-        if (delivery && delivery.status !== 'Completed') {
-          activeApprovedRequests.push({
-            _id: String(r.id),
-            vehicleEquipment: r.vehicle_equipment,
-            dateFrom: r.date_from,
-            dateTo: r.date_to,
-            requestStatus: r.request_status,
-          });
-        }
-      } else {
-        activeApprovedRequests.push({
-          _id: String(r.id),
-          vehicleEquipment: r.vehicle_equipment,
-          dateFrom: r.date_from,
-          dateTo: r.date_to,
-          requestStatus: r.request_status,
-        });
-      }
-    }
-    res.json([...pendingRequests, ...activeApprovedRequests]);
+
+    res.json(active);
   } catch (error) {
     console.error('Error fetching schedules:', error);
     res.status(500).json({ message: 'Server error fetching schedules' });

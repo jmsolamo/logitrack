@@ -52,6 +52,7 @@ export const buildFullDelivery = (main, subs) => {
   }));
   d.fuel = subs.fuel.map((f) => ({
     liters: Number(f.liters),
+    price: Number(f.price || 0),
     amount: Number(f.amount),
     gasStation: f.gas_station,
     invoiceNo: f.invoice_no,
@@ -79,7 +80,7 @@ export const buildFullDelivery = (main, subs) => {
     sumArray(d.mealExpenses, 'amt') +
     sumArray(d.loadExpenses, 'amt') +
     sumArray(d.contingency, 'amt');
-  d.totalExpenses = totalExpenses;
+  d.totalExpenses = Number(totalExpenses.toFixed(2));
   let duration = 0;
   if (d.deliveryType === 'Itinerary') duration = 1;
   else if (d.dateFrom && d.dateTo) {
@@ -105,7 +106,7 @@ export const loadSubs = async (conn, deliveryId) => {
       [deliveryId],
     ),
     conn.query(
-      'SELECT liters, amount, gas_station, invoice_no, payment_type, expense_date FROM delivery_fuel WHERE delivery_id = ?',
+      'SELECT liters, price, amount, gas_station, invoice_no, payment_type, expense_date FROM delivery_fuel WHERE delivery_id = ?',
       [deliveryId],
     ),
     conn.query('SELECT details, amt, expense_date FROM delivery_toll_fees WHERE delivery_id = ?', [deliveryId]),
@@ -201,10 +202,11 @@ export const insertDeliveryChildren = async (conn, deliveryId, body) => {
   const fuelArr = Array.isArray(body.fuel) ? body.fuel : [];
   for (const f of fuelArr) {
     await conn.query(
-      `INSERT INTO delivery_fuel (delivery_id, liters, amount, gas_station, invoice_no, payment_type, expense_date) VALUES (?,?,?,?,?,?,?)`,
+      `INSERT INTO delivery_fuel (delivery_id, liters, price, amount, gas_station, invoice_no, payment_type, expense_date) VALUES (?,?,?,?,?,?,?,?)`,
       [
         deliveryId,
         Number(f.liters) || 0,
+        Number(f.price) || 0,
         Number(f.amount) || 0,
         f.gasStation ?? null,
         f.invoiceNo ?? null,
