@@ -11,6 +11,8 @@ import {
   CalendarDays,
   MapPin,
   ChevronDown,
+  Calendar,
+  RotateCcw,
 } from 'lucide-react';
 import axios from 'axios';
 import { useAppToast } from '../../components/ui/alert-toast-provider';
@@ -25,6 +27,12 @@ import {
   DropdownMenuTrigger,
 } from '../../components/ui/dropdown-menu';
 
+const joinArray = (arr, separator = ' / ') => {
+  if (!arr || !Array.isArray(arr)) return '—';
+  const filtered = arr.filter(Boolean);
+  return filtered.length > 0 ? filtered.join(separator) : '—';
+};
+
 export default function ReviewerRequestsPage() {
   const { user } = useOutletContext();
   const [requests, setRequests] = useState([]);
@@ -33,6 +41,8 @@ export default function ReviewerRequestsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [dateFromFilter, setDateFromFilter] = useState('');
+  const [dateToFilter, setDateToFilter] = useState('');
   const [detailsModal, setDetailsModal] = useState({ isOpen: false, request: null, notes: '' });
   const [actionLoading, setActionLoading] = useState(false);
   const toast = useAppToast();
@@ -122,12 +132,25 @@ export default function ReviewerRequestsPage() {
         (r.destination || []).join(' ').toLowerCase().includes(q) ||
         (r.vehicleEquipment || '').toLowerCase().includes(q) ||
         (r.purpose || []).join(' ').toLowerCase().includes(q) ||
+        (r.activity || []).join(' ').toLowerCase().includes(q) ||
+        (r.jobOrderNo || []).join(' ').toLowerCase().includes(q) ||
         (r.customerSupplier || []).join(' ').toLowerCase().includes(q);
 
-      const statusMatch = statusFilter === 'all' || r.requestStatus === statusFilter;
-      return searchMatch && statusMatch;
+      let displayStatus = r.requestStatus;
+      if (r.reviewerStatus === 'Pending') {
+        displayStatus = 'For Review';
+      } else if (r.reviewerStatus === 'Accepted') {
+        displayStatus = 'Approved';
+      }
+
+      const statusMatch = statusFilter === 'all' || displayStatus === statusFilter;
+
+      const dateFromMatch = !dateFromFilter || (r.dateFrom && new Date(r.dateFrom) >= new Date(dateFromFilter));
+      const dateToMatch = !dateToFilter || (r.dateFrom && new Date(r.dateFrom) <= new Date(dateToFilter));
+
+      return searchMatch && statusMatch && dateFromMatch && dateToMatch;
     });
-  }, [requests, searchQuery, statusFilter]);
+  }, [requests, searchQuery, statusFilter, dateFromFilter, dateToFilter]);
 
   const handleReviewAccept = async () => {
     if (!detailsModal.request) return;
@@ -137,12 +160,12 @@ export default function ReviewerRequestsPage() {
       await axios.put(`/api/delivery-requests/${detailsModal.request._id}/reviewer-accept`, {
         reviewerReviewedBy: user?.department || user?.username || 'Reviewer',
       });
-      toast.success('Request accepted successfully');
+      toast.success('Request approved successfully');
       setDetailsModal({ isOpen: false, request: null, notes: '' });
       await fetchRequests();
     } catch (error) {
-      console.error('Error accepting request:', error);
-      toast.error(error.response?.data?.message || 'Failed to accept request');
+      console.error('Error approving request:', error);
+      toast.error(error.response?.data?.message || 'Failed to approve request');
     } finally {
       setActionLoading(false);
     }
@@ -150,6 +173,7 @@ export default function ReviewerRequestsPage() {
 
   const getVehicleLabel = (plate) => {
     if (!plate) return '—';
+    if (plate === 'UNASSIGNED') return 'UNASSIGNED';
     if (plate === 'RENT_VEHICLE') return `Rent Vehicle${detailsModal.request?.tnvsProvider ? ` - ${detailsModal.request.tnvsProvider}` : ''}`;
     const v = vehicles.find((v) => v.plateNumber === plate);
     return v ? `${v.plateNumber} — ${v.model}` : plate;
@@ -173,7 +197,7 @@ export default function ReviewerRequestsPage() {
     <div className="flex h-full flex-col bg-background p-[5px] overflow-hidden animate-in fade-in duration-500">
       <div className="mb-4 flex flex-col justify-between gap-3 md:flex-row md:items-center shrink-0">
         <div>
-          <h1 className="text-sm font-bold tracking-tight text-foreground md:text-base uppercase">Reviewer Review</h1>
+          <h1 className="text-sm font-bold tracking-tight text-foreground md:text-base uppercase">Review Deliveries</h1>
           <p className="text-[10px] text-muted-foreground uppercase tracking-widest">
             Review admin-approved delivery requests and accept after validation.
           </p>
@@ -214,6 +238,49 @@ export default function ReviewerRequestsPage() {
             </DropdownMenuContent>
           </DropdownMenu>
 
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className={`flex items-center gap-2 h-8 bg-background ${dateFromFilter || dateToFilter ? 'border-primary text-primary' : ''}`}>
+                <Calendar className="h-3.5 w-3.5" />
+                <span className="text-[10px]">Date Range</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="p-3 space-y-2">
+              <DropdownMenuLabel className="text-[10px]">Filter by Delivery Date</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <div className="space-y-1">
+                <label className="text-[9px] text-muted-foreground">From</label>
+                <input
+                  type="date"
+                  value={dateFromFilter}
+                  onChange={(e) => setDateFromFilter(e.target.value)}
+                  className="h-8 w-full rounded border border-input bg-background px-2 text-[10px]"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[9px] text-muted-foreground">To</label>
+                <input
+                  type="date"
+                  value={dateToFilter}
+                  onChange={(e) => setDateToFilter(e.target.value)}
+                  className="h-8 w-full rounded border border-input bg-background px-2 text-[10px]"
+                />
+              </div>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {(searchQuery || statusFilter !== 'all' || dateFromFilter || dateToFilter) && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => { setSearchQuery(''); setStatusFilter('all'); setDateFromFilter(''); setDateToFilter(''); }}
+              className="h-8 gap-1.5 text-[10px] text-muted-foreground shrink-0 uppercase tracking-wider font-bold"
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+              Reset
+            </Button>
+          )}
+
           <div className="ml-auto flex h-8 items-center rounded border border-primary/30 bg-primary/10 px-3 text-[10px] font-bold text-primary uppercase tracking-wider shrink-0">
             {filteredRequests.length} Requests
           </div>
@@ -244,15 +311,22 @@ export default function ReviewerRequestsPage() {
                   <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Purpose</th>
                   <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Activity</th>
                   <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Vehicle</th>
+                  <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Customer / Supplier</th>
                   <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Destination</th>
                   <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-center align-middle">Job Order No</th>
-                  <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Customer / Supplier</th>
                   <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Requested By</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredRequests.map((req, index) => {
-                  const sc = statusConfig[req.requestStatus] || statusConfig.Approved;
+                  let displayStatus = req.requestStatus;
+                  if (req.reviewerStatus === 'Pending') {
+                    displayStatus = 'For Review';
+                  } else if (req.reviewerStatus === 'Accepted') {
+                    displayStatus = 'Approved';
+                  }
+                  
+                  const sc = statusConfig[displayStatus] || statusConfig.Approved;
                   return (
                     <tr
                       key={req._id}
@@ -264,7 +338,7 @@ export default function ReviewerRequestsPage() {
                       <td className="whitespace-nowrap px-3 py-2 align-middle text-center">
                         <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest ${sc.bg} ${sc.text}`}>
                           <span className={`h-1.5 w-1.5 rounded-full ${sc.dot}`} />
-                          {req.requestStatus}
+                          {displayStatus}
                         </span>
                       </td>
                       <td className="whitespace-nowrap px-3 py-2 text-[10px] font-semibold text-foreground uppercase tracking-tight align-middle">{req.deliveryType || '—'}</td>
@@ -273,9 +347,9 @@ export default function ReviewerRequestsPage() {
                       <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-foreground uppercase tracking-tight align-middle">{(req.purpose || []).filter(Boolean).join(' / ') || '—'}</td>
                       <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-foreground uppercase tracking-tight align-middle">{(req.activity || []).filter(Boolean).join(' / ') || '—'}</td>
                       <td className="whitespace-nowrap px-3 py-2 text-[10px] font-semibold text-foreground uppercase tracking-tight align-middle">{getVehicleLabel(req.vehicleEquipment)}</td>
+                      <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-foreground uppercase tracking-tight align-middle">{(req.customerSupplier || []).filter(Boolean).join(' / ') || '—'}</td>
                       <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-foreground uppercase tracking-tight align-middle">{(req.destination || []).filter(Boolean).join(', ') || '—'}</td>
                       <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-foreground tracking-tight text-center align-middle">{(req.jobOrderNo || []).filter(Boolean).join(' / ') || '—'}</td>
-                      <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-foreground uppercase tracking-tight align-middle">{(req.customerSupplier || []).filter(Boolean).join(' / ') || '—'}</td>
                       <td className="whitespace-nowrap px-3 py-2 text-[10px] font-bold uppercase text-foreground align-middle">{req.requestedBy || '—'}</td>
                     </tr>
                   );
@@ -292,7 +366,7 @@ export default function ReviewerRequestsPage() {
             <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-card px-4 py-3 shrink-0">
               <div>
                 <h2 className="text-xs font-bold uppercase tracking-widest text-foreground">
-                  {detailsModal.request.requestStatus === 'Approved' ? 'Accepted Request' : 'Review Request'}
+                  {detailsModal.request.reviewerStatus === 'Accepted' ? 'Approved Request' : 'Review Request'}
                 </h2>
                 <p className="text-[10px] text-muted-foreground mt-0.5">
                   {detailsModal.request.referenceNo} • {detailsModal.request.deliveryType} • Submitted {formatDateTime(detailsModal.request.dateSubmitted || detailsModal.request.createdAt)}
@@ -308,15 +382,15 @@ export default function ReviewerRequestsPage() {
 
             <div className="flex-1 overflow-y-auto p-4 space-y-3">
               <div className={`rounded-md px-3 py-2 flex items-center gap-2 ${
-                detailsModal.request.requestStatus === 'Approved' 
+                detailsModal.request.reviewerStatus === 'Accepted' 
                   ? 'bg-emerald-50 border border-emerald-200' 
-                  : 'bg-emerald-50 border border-emerald-200'
+                  : 'bg-amber-50 border border-amber-200'
               }`}>
-                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                <span className="text-xs font-bold uppercase tracking-wider text-emerald-700">
-                  {detailsModal.request.requestStatus === 'Approved' 
-                    ? 'Request Accepted and Approved' 
-                    : 'Ready for Reviewer Acceptance'
+                <CheckCircle2 className={`h-4 w-4 ${detailsModal.request.reviewerStatus === 'Accepted' ? 'text-emerald-600' : 'text-amber-600'}`} />
+                <span className={`text-xs font-bold uppercase tracking-wider ${detailsModal.request.reviewerStatus === 'Accepted' ? 'text-emerald-700' : 'text-amber-700'}`}>
+                  {detailsModal.request.reviewerStatus === 'Accepted' 
+                    ? 'Request Approved by Reviewer' 
+                    : 'Ready for Reviewer Approval'
                   }
                 </span>
               </div>
@@ -353,11 +427,11 @@ export default function ReviewerRequestsPage() {
             </div>
 
             <div className="sticky bottom-0 z-10 border-t border-border bg-card p-4 flex flex-col gap-2 md:flex-row md:items-center md:justify-end">
-              {detailsModal.request.requestStatus === 'Approved' ? (
-                <span className="text-[10px] text-emerald-600 font-semibold">✓ This request has been accepted and approved.</span>
+              {detailsModal.request.reviewerStatus === 'Accepted' ? (
+                <span className="text-[10px] text-emerald-600 font-semibold">✓ This request has been approved by the reviewer.</span>
               ) : (
                 <>
-                  <span className="text-[10px] text-muted-foreground">Review the request and accept once validated.</span>
+                  <span className="text-[10px] text-muted-foreground">Review the request and approve once validated.</span>
                   <Button
                     type="button"
                     onClick={handleReviewAccept}
@@ -365,7 +439,7 @@ export default function ReviewerRequestsPage() {
                     className="ml-auto inline-flex h-9 items-center justify-center gap-2 rounded-md bg-emerald-600 px-4 text-[11px] font-bold uppercase tracking-wider text-white hover:bg-emerald-700 disabled:opacity-50"
                   >
                     {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-                    {actionLoading ? 'Accepting...' : 'Accept Request'}
+                    {actionLoading ? 'Approving...' : 'Approve Request'}
                   </Button>
                 </>
               )}

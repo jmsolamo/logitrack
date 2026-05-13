@@ -1,14 +1,13 @@
 import dotenv from 'dotenv';
 
-// Load environment variables FIRST before any other imports
 dotenv.config();
 
 import express from 'express';
-import mongoose from 'mongoose';
 import cors from 'cors';
+import { getPool } from './db/pool.js';
+import seedDefaultAdmin from './utils/seed.js';
 import authRoutes from './routes/auth.js';
 import seedRoutes from './routes/seed.js';
-import seedDefaultAdmin from './utils/seed.js';
 import personnelsRoutes from './routes/personnels.js';
 import vehiclesRoutes from './routes/vehicles.js';
 import destinationsRoutes from './routes/destinations.js';
@@ -20,40 +19,51 @@ import deliveryRequestsRoutes from './routes/deliveryRequests.js';
 import usersRoutes from './routes/users.js';
 import announcementsRoutes from './routes/announcements.js';
 import dashboardRoutes from './routes/dashboard.js';
+import historyRoutes from './routes/history.js';
+import departmentsRoutes from './routes/departments.js';
 
 const app = express();
+app.set('trust proxy', true);
 
-// Allow specific origins and credentials
-app.use(cors({
-  origin: [
-    'http://localhost:3000',
-    'https://logistic-monitoring-system.vercel.app',
-    'https://logitrack-app.vercel.app'
-  ],
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
+// Build allowed origins from env var + defaults
+const defaultOrigins = [
+  'http://localhost:3000',
+  'https://logistic-monitoring-system.vercel.app',
+  'https://logitrack-app.vercel.app',
+];
+const envOrigins = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(',').map((o) => o.trim())
+  : [];
+const allowedOrigins = [...defaultOrigins, ...envOrigins];
+
+app.use(
+  cors({
+    origin: allowedOrigins,
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+  }),
+);
 app.use(express.json());
 
-// Serverless-friendly MongoDB connection
-let isConnected = false;
-const connectDB = async () => {
-  if (isConnected) return;
+let dbReady = false;
+const connectDb = async () => {
+  if (dbReady) return;
   try {
-    const db = await mongoose.connect(process.env.MONGODB_URI);
-    isConnected = db.connections[0].readyState === 1;
-    console.log('MongoDB connected');
-    // Seed default admin account on first connection
+    const pool = getPool();
+    const conn = await pool.getConnection();
+    await conn.ping();
+    conn.release();
+    dbReady = true;
+    console.log('MySQL connected');
     await seedDefaultAdmin();
   } catch (error) {
-    console.error('MongoDB connection error:', error);
+    console.error('MySQL connection error:', error);
   }
 };
 
-// Ensure DB is connected before handling any requests
 app.use(async (req, res, next) => {
-  await connectDB();
+  await connectDb();
   next();
 });
 
@@ -80,21 +90,20 @@ app.use('/api/delivery-requests', deliveryRequestsRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/announcements', announcementsRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/history', historyRoutes);
+app.use('/api/departments', departmentsRoutes);
 
-// Global error handler
 app.use((err, req, res, next) => {
   console.error('Global error handler:', err);
   res.status(err.status || 500).json({
     message: err.message || 'Internal server error',
-    error: process.env.NODE_ENV === 'development' ? err.stack : undefined
+    error: process.env.NODE_ENV === 'development' ? err.stack : undefined,
   });
 });
 
-if (process.env.NODE_ENV !== 'production') {
-  const PORT = process.env.PORT || 5000;
-  app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-  });
-}
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
 
 export default app;

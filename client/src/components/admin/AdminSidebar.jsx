@@ -25,6 +25,7 @@ import {
   X,
   User as UserIcon,
   Bell,
+  History,
 } from 'lucide-react';
 import favicon from '../../assets/images/favicon.png';
 
@@ -65,6 +66,7 @@ const navGroups = [
     label: 'Team',
     items: [
       { name: 'Members', icon: Users, path: '/admin/members' },
+      { name: 'History Log', icon: History, path: '/admin/history' },
     ],
   },
 ];
@@ -152,7 +154,6 @@ function AdminSidebar({ collapsed, onToggle, user, mobileOpen, onMobileClose }) 
                 isActive={isActive}
                 isGroupActive={isGroupActive}
                 handleNavClick={handleNavClick}
-                userInitial={userInitial}
                 userName={userName}
                 userSubtitle={userSubtitle}
                 userMenuOpen={userMenuOpen}
@@ -283,7 +284,6 @@ function AdminSidebar({ collapsed, onToggle, user, mobileOpen, onMobileClose }) 
               isActive={isActive}
               isGroupActive={isGroupActive}
               handleNavClick={handleNavClick}
-              userInitial={userInitial}
               userName={userName}
               userSubtitle={userSubtitle}
               userMenuOpen={userMenuOpen}
@@ -454,7 +454,6 @@ function MobileSidebarContent({
   isActive,
   isGroupActive,
   handleNavClick,
-  userInitial,
   userName,
   userSubtitle,
   userMenuOpen,

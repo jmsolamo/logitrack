@@ -9,7 +9,8 @@ import {
   Calendar,
   CalendarDays,
   User,
-  Printer
+  Printer,
+  Download
 } from 'lucide-react';
 import { useOutletContext } from 'react-router-dom';
 import { Input } from '../../../../components/ui/input';
@@ -95,6 +96,21 @@ export default function DriverExpenseBreakdown() {
     toast.success('Filters cleared');
   };
 
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filteredDeliveries.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredDeliveries.map(d => d._id)));
+    }
+  };
+
+  const toggleSelect = (id) => {
+    const newSet = new Set(selectedIds);
+    if (newSet.has(id)) newSet.delete(id);
+    else newSet.add(id);
+    setSelectedIds(newSet);
+  };
+
   // --- Helpers ---
   const joinArray = (arr) => {
     if (!arr || !Array.isArray(arr)) return '—';
@@ -131,18 +147,6 @@ export default function DriverExpenseBreakdown() {
     (item.mealExpenses || []).forEach(m => { if (m.details) details.push(m.details); });
     (item.contingency || []).forEach(c => { if (c.details) details.push(c.details); });
     return details.length > 0 ? details.join(', ') : '—';
-  };
-
-  const buildParticularsLines = (item) => {
-    const details = [];
-    (item.fuel || []).forEach(f => { if (f.gasStation) details.push(f.gasStation); });
-    (item.tollFee || []).forEach(t => { if (t.details) details.push(t.details); });
-    (item.pierExpenses || []).forEach(p => { if (p.details) details.push(p.details); });
-    (item.repairAndMaintenance || []).forEach(r => { if (r.details) details.push(r.details); });
-    (item.loadExpenses || []).forEach(l => { if (l.details) details.push(l.details); });
-    (item.mealExpenses || []).forEach(m => { if (m.details) details.push(m.details); });
-    (item.contingency || []).forEach(c => { if (c.details) details.push(c.details); });
-    return details;
   };
 
   const fmt = (val) => Number(val || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -205,23 +209,69 @@ export default function DriverExpenseBreakdown() {
     });
   }, [deliveries, searchQuery, driverFilter, dateFromFilter, dateToFilter, monthFilter]);
 
-  // --- Checkbox logic ---
-  const toggleSelectAll = () => {
-    if (selectedIds.size === filteredDeliveries.length) {
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(filteredDeliveries.map(d => d._id)));
-    }
+  const exportToCSV = () => {
+    const rowsToExport = selectedIds.size > 0
+        ? deliveries.filter(item => selectedIds.has(item._id))
+        : filteredDeliveries;
+
+    if (rowsToExport.length === 0) return toast.warning('No data to export');
+
+    const headers = [
+        'Driver',
+        'Helper',
+        'Job Order No.',
+        'Customer / Supplier',
+        'Destination',
+        'Purpose',
+        'Activity',
+        'Date',
+        'Vehicle',
+        'Particulars',
+        'Diesel',
+        'Toll Fee',
+        'Pier',
+        'Repair & Maint.',
+        'Load',
+        'Meals',
+        'Contingency',
+        'Total Expenses'
+    ];
+
+    const data = rowsToExport.map(item => [
+        joinArray(item.driver),
+        joinArray(item.helper),
+        joinArray(item.jobOrderNo),
+        joinArray(item.customerSupplier),
+        joinArray(item.destination),
+        joinArray(item.purpose),
+        joinArray(item.activity),
+        item.dateFrom && item.dateTo ? `${formatDate(item.dateFrom)} - ${formatDate(item.dateTo)}` : formatDate(item.dateFrom),
+        item.vehicleEquipment || '—',
+        buildParticulars(item),
+        sumField(item.fuel, 'amount'),
+        sumField(item.tollFee, 'amt'),
+        sumField(item.pierExpenses, 'amt'),
+        sumField(item.repairAndMaintenance, 'amt'),
+        sumField(item.loadExpenses, 'amt'),
+        sumField(item.mealExpenses, 'amt'),
+        sumField(item.contingency, 'amt'),
+        item.totalExpenses
+    ]);
+
+    const csvContent = [
+        headers.join(','),
+        ...data.map(row => row.map(field => `"${String(field || '').replace(/"/g, '""')}"`).join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    const dateStr = new Date().toISOString().split('T')[0];
+    link.download = `driver_expenses_${dateStr}.csv`;
+    link.click();
+    toast.success(`${selectedIds.size > 0 ? 'Selected' : 'Filtered'} report exported successfully`);
   };
 
-  const toggleSelect = (id) => {
-    const newSet = new Set(selectedIds);
-    if (newSet.has(id)) newSet.delete(id);
-    else newSet.add(id);
-    setSelectedIds(newSet);
-  };
-
-  const isAllSelected = filteredDeliveries.length > 0 && selectedIds.size === filteredDeliveries.length;
   const hasActiveFilters = searchQuery || driverFilter !== 'all' || monthFilter !== 'all' || dateFromFilter || dateToFilter;
 
   // ========== PRINT DATA ==========
@@ -301,12 +351,27 @@ export default function DriverExpenseBreakdown() {
         {/* Header */}
         <div className="mb-4 flex flex-col justify-between gap-3 md:flex-row md:items-center shrink-0">
           <div>
-            <h1 className="text-sm font-bold tracking-tight text-foreground md:text-base uppercase">Driver Expenses</h1>
-            <p className="text-[10px] text-muted-foreground uppercase tracking-widest">Complete expense breakdown per driver for all completed deliveries</p>
+            <h1 className="text-sm font-bold tracking-tight text-foreground md:text-base uppercase">Driver Expense Breakdown</h1>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-widest">Detailed expense summaries per driver and helper</p>
           </div>
-          {selectedIds.size > 0 && (
-            <span className="text-[10px] font-bold text-primary uppercase tracking-wider">{selectedIds.size} selected</span>
-          )}
+          <div className="flex items-center gap-3">
+            {selectedIds.size > 0 && (
+              <span className="text-[10px] font-bold text-primary uppercase tracking-wider">{selectedIds.size} selected</span>
+            )}
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={exportToCSV}
+              className="h-8 gap-1.5 text-[10px] uppercase font-bold tracking-wider border-emerald-500/50 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700"
+            >
+              <Download className="h-3.5 w-3.5" />
+              Export CSV
+            </Button>
+            <Button variant="default" size="sm" onClick={() => window.print()} disabled={printItems.length === 0} className="h-8 gap-1.5 text-[10px] uppercase tracking-wider font-bold shrink-0 shadow-sm">
+              <Printer className="h-3.5 w-3.5" />
+              Print Report
+            </Button>
+          </div>
         </div>
 
         {/* Table & Filters Card */}
@@ -400,13 +465,6 @@ export default function DriverExpenseBreakdown() {
                   Reset
                 </Button>
               )}
-
-              <div className="ml-auto">
-                <Button variant="default" size="sm" onClick={() => window.print()} disabled={printItems.length === 0} className="h-8 gap-1.5 text-[10px] uppercase tracking-wider font-bold shrink-0 shadow-sm">
-                  <Printer className="h-3.5 w-3.5" />
-                  Print Report
-                </Button>
-              </div>
             </div>
           </div>
 
@@ -430,7 +488,7 @@ export default function DriverExpenseBreakdown() {
                     <th className="w-[40px] px-3 py-2.5 text-center align-middle">
                       <input
                         type="checkbox"
-                        checked={isAllSelected}
+                        checked={filteredDeliveries.length > 0 && selectedIds.size === filteredDeliveries.length}
                         onChange={toggleSelectAll}
                         className="h-3.5 w-3.5 accent-white cursor-pointer"
                       />
@@ -438,6 +496,7 @@ export default function DriverExpenseBreakdown() {
                     <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Driver</th>
                     <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Helper</th>
                     <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-center align-middle">Job Order No.</th>
+                    <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Customer / Supplier</th>
                     <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Destination</th>
                     <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Purpose</th>
                     <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Activity</th>
@@ -473,6 +532,7 @@ export default function DriverExpenseBreakdown() {
                       <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-foreground uppercase tracking-tight">{joinArray(item.helper)}</td>
                       <td className="whitespace-nowrap px-3 py-2 text-[10px] font-bold text-primary tracking-tight text-center">{joinArray(item.jobOrderNo)}</td>
                       <td className="px-3 py-2 text-[10px] font-medium text-foreground uppercase tracking-tight max-w-[200px] truncate" title={joinArray(item.customerSupplier)}>{joinArray(item.customerSupplier)}</td>
+                      <td className="px-3 py-2 text-[10px] font-medium text-foreground uppercase tracking-tight max-w-[200px] truncate" title={joinArray(item.destination)}>{joinArray(item.destination)}</td>
                       <td className="px-3 py-2 text-[10px] font-medium text-foreground uppercase tracking-tight max-w-[180px] truncate" title={joinArray(item.purpose)}>{joinArray(item.purpose)}</td>
                       <td className="px-3 py-2 text-[10px] font-medium text-foreground uppercase tracking-tight max-w-[180px] truncate" title={joinArray(item.activity)}>{joinArray(item.activity)}</td>
                       <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-foreground tracking-tight">

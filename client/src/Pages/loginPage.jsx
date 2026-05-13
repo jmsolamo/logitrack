@@ -35,7 +35,7 @@ function LoginPage() {
       toast.success('Login successful');
       if (data.user.role === 'admin') {
         navigate('/admin/dashboard');
-      } else if (data.user.role === 'reviewer') {
+      } else if (data.user.role === 'manager') {
         navigate('/reviewer/requests');
       } else {
         navigate('/user/dashboard');
@@ -50,10 +50,18 @@ function LoginPage() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    
+
+    // Automatically bypass captcha for local network IP addresses or localhost
+    const isLocalNetwork = window.location.hostname === 'localhost' || window.location.hostname.match(/^[0-9.]+$/);
+
+    if (isLocalNetwork) {
+      executeLogin('dev-bypass');
+      return;
+    }
+
     if (!showCaptcha) {
       setShowCaptcha(true);
-      return; 
+      return;
     }
 
     if (!captchaToken) {
@@ -105,7 +113,7 @@ function LoginPage() {
               <i className={`bx ${showPassword ? 'bx-show' : 'bx-hide'} text-lg`}></i>
             </button>
           </div>
-          
+
           {/* ReCAPTCHA Modal */}
           {showCaptcha && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">

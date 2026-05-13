@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef, useLayoutEffect } from 'react';
 import axios from 'axios';
 import { useAppToast } from '../../../../components/ui/alert-toast-provider';
 import {
@@ -7,7 +7,9 @@ import {
   Loader2,
   RotateCcw,
   MapPin,
-  Printer
+  Printer,
+  CalendarIcon,
+  Download
 } from 'lucide-react';
 import { Input } from '../../../../components/ui/input';
 import { Button } from '../../../../components/ui/button';
@@ -28,12 +30,16 @@ export default function JobOrders() {
 
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
-  const [destinationFilter, setDestinationFilter] = useState('all');
+  const [customerSupplierFilter, setCustomerSupplierFilter] = useState('all');
+  const [monthFilter, setMonthFilter] = useState('all');
+  const [dateRange, setDateRange] = useState({ start: '', end: '' });
 
   // Checkboxes
   const [selectedIds, setSelectedIds] = useState(new Set());
 
   const toast = useAppToast();
+  const mainTableRef = useRef(null);
+  const footerTableRef = useRef(null);
 
   useEffect(() => { fetchData(); }, []);
 
@@ -59,7 +65,9 @@ export default function JobOrders() {
 
   const handleReset = () => {
     setSearchQuery('');
-    setDestinationFilter('all');
+    setCustomerSupplierFilter('all');
+    setMonthFilter('all');
+    setDateRange({ start: '', end: '' });
     setSelectedIds(new Set());
     toast.success('Filters cleared');
   };
@@ -130,16 +138,27 @@ export default function JobOrders() {
   const generateFiltersText = () => {
     const f = [];
     if (searchQuery) f.push(`Search: ${searchQuery}`);
-    if (destinationFilter !== 'all') f.push(`Destination: ${destinationFilter}`);
+    if (customerSupplierFilter !== 'all') f.push(`Customer/Supplier: ${customerSupplierFilter}`);
     return f.length ? f.join(' | ') : 'None';
   };
 
 
   // --- Extract filter options ---
-  const uniqueDestinations = useMemo(() => {
+  const uniqueCustomerSuppliers = useMemo(() => {
     const list = new Set();
-    deliveries.forEach(d => (d.customerSupplier || []).forEach(dest => dest && list.add(dest)));
+    deliveries.forEach(d => (d.customerSupplier || []).forEach(cs => cs && list.add(cs)));
     return Array.from(list).sort();
+  }, [deliveries]);
+
+  const uniqueMonths = useMemo(() => {
+    const list = new Set();
+    deliveries.forEach(d => {
+      if (d.dateFrom) {
+        const m = new Date(d.dateFrom).toLocaleString('default', { month: 'long', year: 'numeric' });
+        list.add(m);
+      }
+    });
+    return Array.from(list).sort((a, b) => new Date(a) - new Date(b));
   }, [deliveries]);
 
   // --- Flatten deliveries into individual job order rows ---
@@ -147,20 +166,23 @@ export default function JobOrders() {
     const rows = [];
     deliveries.forEach(d => {
       const jobs = d.jobOrderNo || [];
-      const dests = d.customerSupplier || [];
+      const csList = d.customerSupplier || [];
+      const destList = d.destination || [];
       const purposes = d.purpose || [];
-      const maxLen = Math.max(jobs.length, 1);
-
-      // If there's only one destination, use it for all job orders
-      const singleDestination = dests.length === 1 ? dests[0] : null;
+      
+      const maxLen = Math.max(jobs.length, csList.length, destList.length, 1);
 
       for (let i = 0; i < maxLen; i++) {
+        const currentCS = csList[i] || csList[0] || '—';
+        const currentDest = destList[i] || destList[0] || '—';
+        
         rows.push({
           _id: `${d._id}-${i}`,
           deliveryId: d._id,
           index: i,
           jobOrderNo: jobs[i] || '—',
-          destination: singleDestination || dests[i] || '—',
+          customerSupplier: currentCS,
+          destination: currentDest,
           purpose: purposes[i] || purposes[0] || '—',
           dateFrom: d.dateFrom,
           dateTo: d.dateTo,
@@ -168,7 +190,7 @@ export default function JobOrders() {
           helper: d.helper,
           vehicleEquipment: d.vehicleEquipment,
           totalExpenses: d.totalExpenses,
-          deliveryCharge: getDeliveryChargeForDest(d, singleDestination || dests[i]),
+          deliveryCharge: getDeliveryChargeForDest(d, currentDest === '—' ? null : currentDest),
         });
       }
     });
@@ -179,26 +201,95 @@ export default function JobOrders() {
   const filteredRows = useMemo(() => {
     return flattenedRows.filter(row => {
       const q = searchQuery.toLowerCase();
+      const vehicleDisplay = getVehicleDisplay(row.vehicleEquipment).toLowerCase();
       const searchMatch = !q || (
         (row.jobOrderNo || '').toLowerCase().includes(q) ||
         (row.vehicleEquipment || '').toLowerCase().includes(q) ||
-        (row.destination || '').toLowerCase().includes(q) ||
-        (row.driver || []).join(' ').toLowerCase().includes(q) ||
-        (row.helper || []).join(' ').toLowerCase().includes(q) ||
-        (row.purpose || '').toLowerCase().includes(q)
+        vehicleDisplay.includes(q) ||
+        (row.customerSupplier || '').toLowerCase().includes(q)
       );
 
-      const destMatch = destinationFilter === 'all' || row.destination === destinationFilter;
+      const csMatch = customerSupplierFilter === 'all' || row.customerSupplier === customerSupplierFilter;
 
-      return searchMatch && destMatch;
+      const mMatch = monthFilter === 'all' || (row.dateFrom && new Date(row.dateFrom).toLocaleString('default', { month: 'long', year: 'numeric' }) === monthFilter);
+      
+      const dStart = dateRange.start ? new Date(dateRange.start).setHours(0,0,0,0) : null;
+      const dEnd = dateRange.end ? new Date(dateRange.end).setHours(23,59,59,999) : null;
+      let rangeMatch = true;
+      if (dStart || dEnd) {
+        const rDate = row.dateFrom ? new Date(row.dateFrom).getTime() : null;
+        if (!rDate) {
+          rangeMatch = false;
+        } else {
+          if (dStart && rDate < dStart) rangeMatch = false;
+          if (dEnd && rDate > dEnd) rangeMatch = false;
+        }
+      }
+
+      return searchMatch && csMatch && mMatch && rangeMatch;
     });
-  }, [flattenedRows, searchQuery, destinationFilter]);
+  }, [flattenedRows, searchQuery, customerSupplierFilter, monthFilter, dateRange]);
+
+  const exportToCSV = () => {
+    const rowsToExport = selectedIds.size > 0 
+      ? flattenedRows.filter(row => selectedIds.has(row._id))
+      : filteredRows;
+
+    if (rowsToExport.length === 0) return toast.warning('No data to export');
+
+    const headers = [
+      'Job Order No.',
+      'Customer / Supplier',
+      'Destination',
+      'Purpose',
+      'Date From',
+      'Date To',
+      'Driver',
+      'Helper',
+      'Vehicle',
+      'Total Expenses',
+      'Delivery Charge'
+    ];
+
+    const data = rowsToExport.map(row => [
+      row.jobOrderNo,
+      row.customerSupplier,
+      row.destination,
+      row.purpose,
+      formatDate(row.dateFrom),
+      formatDate(row.dateTo),
+      (row.driver || []).join(' / '),
+      (row.helper || []).join(' / '),
+      row.vehicleEquipment || '—',
+      row.totalExpenses,
+      row.deliveryCharge
+    ]);
+
+    const csvContent = [
+      headers.join(','),
+      ...data.map(row => row.map(field => `"${String(field || '').replace(/"/g, '""')}"`).join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    const dateStr = new Date().toISOString().split('T')[0];
+    link.download = `job_orders_${dateStr}.csv`;
+    link.click();
+    toast.success(`${selectedIds.size > 0 ? 'Selected' : 'Filtered'} report exported successfully`);
+  };
 
   const totals = useMemo(() => {
     let totalExpenses = 0, totalCharge = 0;
+    const processedDeliveryIds = new Set();
+    
     filteredRows.forEach(row => {
-      totalExpenses += Number(row.totalExpenses || 0);
       totalCharge += Number(row.deliveryCharge || 0);
+      
+      if (!processedDeliveryIds.has(row.deliveryId)) {
+        totalExpenses += Number(row.totalExpenses || 0);
+        processedDeliveryIds.add(row.deliveryId);
+      }
     });
     return { totalExpenses, totalCharge };
   }, [filteredRows]);
@@ -211,9 +302,15 @@ export default function JobOrders() {
 
   const printTotals = useMemo(() => {
     let totalExpenses = 0, totalCharge = 0;
+    const processedDeliveryIds = new Set();
+    
     rowsToPrint.forEach(row => {
-      totalExpenses += Number(row.totalExpenses || 0);
       totalCharge += Number(row.deliveryCharge || 0);
+      
+      if (!processedDeliveryIds.has(row.deliveryId)) {
+        totalExpenses += Number(row.totalExpenses || 0);
+        processedDeliveryIds.add(row.deliveryId);
+      }
     });
     return { totalExpenses, totalCharge };
   }, [rowsToPrint]);
@@ -235,7 +332,37 @@ export default function JobOrders() {
   };
 
   const isAllSelected = filteredRows.length > 0 && selectedIds.size === filteredRows.length;
-  const hasActiveFilters = searchQuery || destinationFilter !== 'all';
+  const hasActiveFilters = searchQuery || customerSupplierFilter !== 'all' || monthFilter !== 'all' || dateRange.start || dateRange.end;
+
+  // Sync columns lengths between top table and footer exactly
+  useLayoutEffect(() => {
+    if (!mainTableRef.current || !footerTableRef.current) return;
+    
+    const syncWidths = () => {
+      if (!mainTableRef.current || !footerTableRef.current) return;
+      const topThs = mainTableRef.current.querySelectorAll('thead th');
+      const footerTrs = footerTableRef.current.querySelectorAll('tr');
+      if (topThs.length === 0 || footerTrs.length === 0) return;
+      
+      const targetCells = footerTrs[0].querySelectorAll('td');
+
+      topThs.forEach((th, idx) => {
+        const style = window.getComputedStyle(th);
+        const width = style.width;
+        
+        if (targetCells[idx]) {
+          targetCells[idx].style.minWidth = width;
+          targetCells[idx].style.maxWidth = width;
+          targetCells[idx].style.width = width;
+        }
+      });
+    };
+
+    syncWidths();
+    const observer = new ResizeObserver(syncWidths);
+    observer.observe(mainTableRef.current);
+    return () => observer.disconnect();
+  }, [filteredRows]);
 
   return (
     <>
@@ -250,6 +377,15 @@ export default function JobOrders() {
           {selectedIds.size > 0 && (
             <span className="text-[10px] font-bold text-primary uppercase tracking-wider">{selectedIds.size} selected</span>
           )}
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={exportToCSV}
+            className="h-8 gap-1.5 text-[10px] uppercase font-bold tracking-wider border-emerald-500/50 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700"
+          >
+            <Download className="h-3.5 w-3.5" />
+            Export CSV
+          </Button>
           <Button size="sm" onClick={() => window.print()} className="h-8 gap-1.5 text-[10px] uppercase font-bold tracking-wider">
             <Printer className="h-3.5 w-3.5" />
             Print Report
@@ -267,30 +403,67 @@ export default function JobOrders() {
             <div className="relative w-[200px] shrink-0">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <Input
-                placeholder="Search..."
+                placeholder="Search JO# / Vehicle / Customer..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="h-8 text-xs bg-background pl-8"
               />
             </div>
 
-            {/* Destination Filter */}
+            {/* Customer/Supplier Filter */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className={`flex items-center gap-2 h-8 bg-background shrink-0 ${destinationFilter !== 'all' ? 'border-primary text-primary' : ''}`}>
+                <Button variant="outline" size="sm" className={`flex items-center gap-2 h-8 bg-background shrink-0 ${customerSupplierFilter !== 'all' ? 'border-primary text-primary' : ''}`}>
                   <MapPin className='h-3.5 w-3.5' />
-                  <span className="text-[10px] font-bold tracking-wider uppercase max-w-[120px] truncate">{destinationFilter === 'all' ? 'Dest.' : destinationFilter}</span>
+                  <span className="text-[10px] font-bold tracking-wider uppercase max-w-[140px] truncate">{customerSupplierFilter === 'all' ? 'Customer/Supplier' : customerSupplierFilter}</span>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-[200px] max-h-[300px] overflow-y-auto">
-                <DropdownMenuLabel className="text-[10px] uppercase tracking-widest">Filter by Destination</DropdownMenuLabel>
+              <DropdownMenuContent align="start" className="w-[240px] max-h-[300px] overflow-y-auto">
+                <DropdownMenuLabel className="text-[10px] uppercase tracking-widest">Filter by Customer / Supplier</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuCheckboxItem className="text-[10px] uppercase font-bold" checked={destinationFilter === 'all'} onCheckedChange={() => setDestinationFilter('all')}>ALL DESTINATIONS</DropdownMenuCheckboxItem>
-                {uniqueDestinations.map(d => (
-                  <DropdownMenuCheckboxItem key={d} className="text-[10px] uppercase truncate" checked={destinationFilter === d} onCheckedChange={() => setDestinationFilter(d)}>{d}</DropdownMenuCheckboxItem>
+                <DropdownMenuCheckboxItem className="text-[10px] uppercase font-bold" checked={customerSupplierFilter === 'all'} onCheckedChange={() => setCustomerSupplierFilter('all')}>ALL</DropdownMenuCheckboxItem>
+                {uniqueCustomerSuppliers.map(cs => (
+                  <DropdownMenuCheckboxItem key={cs} className="text-[10px] uppercase truncate" checked={customerSupplierFilter === cs} onCheckedChange={() => setCustomerSupplierFilter(cs)}>{cs}</DropdownMenuCheckboxItem>
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
+
+            {/* Month Filter */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className={`flex items-center gap-2 h-8 bg-background shrink-0 ${monthFilter !== 'all' ? 'border-primary text-primary' : ''}`}>
+                  <CalendarIcon className='h-3.5 w-3.5' />
+                  <span className="text-[10px] font-bold tracking-wider uppercase max-w-[120px] truncate">{monthFilter === 'all' ? 'Month' : monthFilter}</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-[200px] max-h-[300px] overflow-y-auto">
+                <DropdownMenuLabel className="text-[10px] uppercase tracking-widest">Filter by Month</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuCheckboxItem className="text-[10px] uppercase font-bold" checked={monthFilter === 'all'} onCheckedChange={() => setMonthFilter('all')}>ALL MONTHS</DropdownMenuCheckboxItem>
+                {uniqueMonths.map(m => (
+                  <DropdownMenuCheckboxItem key={m} className="text-[10px] uppercase truncate" checked={monthFilter === m} onCheckedChange={() => setMonthFilter(m)}>{m}</DropdownMenuCheckboxItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Date Range */}
+            <div className="flex items-center gap-1.5 shrink-0">
+              <Input
+                type="date"
+                value={dateRange.start}
+                onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
+                className={`h-8 w-[120px] text-[10px] font-bold uppercase tracking-wider bg-background ${(dateRange.start || dateRange.end) ? 'border-primary text-primary' : ''}`}
+                title="Start Date"
+              />
+              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">TO</span>
+              <Input
+                type="date"
+                value={dateRange.end}
+                onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
+                className={`h-8 w-[120px] text-[10px] font-bold uppercase tracking-wider bg-background ${(dateRange.start || dateRange.end) ? 'border-primary text-primary' : ''}`}
+                title="End Date"
+              />
+            </div>
 
             {hasActiveFilters && (
               <Button variant="ghost" size="sm" onClick={handleReset} className="h-8 gap-1.5 text-[10px] text-muted-foreground shrink-0 uppercase tracking-wider font-bold">
@@ -319,7 +492,7 @@ export default function JobOrders() {
               <p className="text-[10px] text-muted-foreground uppercase tracking-widest">Adjust filters or add deliveries.</p>
             </div>
           ) : (
-            <table className="w-full min-w-[1200px] border-collapse relative">
+            <table ref={mainTableRef} className="w-full min-w-[max-content] border-collapse relative">
               <thead className="sticky top-0 z-10 bg-orange-500 backdrop-blur shadow-sm">
                 <tr className="border-b border-orange-600/20">
                   <th className="w-[40px] px-3 py-2.5 text-center align-middle">
@@ -335,6 +508,7 @@ export default function JobOrders() {
                   <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Driver</th>
                   <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Helper</th>
                   <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Vehicle</th>
+                  <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Customer / Supplier</th>
                   <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Destination</th>
                   <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Activity</th>
                   <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-right align-middle bg-orange-600/40">Total Expenses</th>
@@ -363,10 +537,15 @@ export default function JobOrders() {
                     <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-foreground uppercase tracking-tight">{joinArray(row.driver)}</td>
                     <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-foreground uppercase tracking-tight">{joinArray(row.helper)}</td>
                     <td className="whitespace-nowrap px-3 py-2 text-[10px] font-semibold text-foreground uppercase tracking-tight">{getVehicleDisplay(row.vehicleEquipment)}</td>
+                    <td className="px-3 py-2 text-[10px] font-medium text-foreground uppercase tracking-tight max-w-[200px] truncate" title={row.customerSupplier}>{row.customerSupplier}</td>
                     <td className="px-3 py-2 text-[10px] font-medium text-foreground uppercase tracking-tight max-w-[200px] truncate" title={row.destination}>{row.destination}</td>
                     <td className="px-3 py-2 text-[10px] font-medium text-foreground uppercase tracking-tight max-w-[180px] truncate" title={row.purpose}>{row.purpose}</td>
                     <td className="whitespace-nowrap px-3 py-2 text-[10px] font-bold text-primary text-right bg-muted/10">
-                      ₱ {Number(row.totalExpenses || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      {index === 0 || filteredRows[index - 1].deliveryId !== row.deliveryId ? (
+                        `₱ ${Number(row.totalExpenses || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                      ) : (
+                        <span className="text-muted-foreground/50">—</span>
+                      )}
                     </td>
                     <td className="whitespace-nowrap px-3 py-2 text-[10px] font-bold text-foreground text-right">
                       ₱ {row.deliveryCharge.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -378,24 +557,42 @@ export default function JobOrders() {
           )}
         </div>
 
-        {/* Footer - Totals */}
-        {filteredRows.length > 0 && (
-          <div className="border-t border-border bg-muted/20 shrink-0 overflow-x-auto">
-            <table className="w-full min-w-[1200px] border-collapse" style={{ tableLayout: 'fixed' }}>
+        {/* Footer - Totals with Scroll Sync */}
+        {!isLoading && filteredRows.length > 0 && (
+          <div 
+            className="shrink-0 overflow-x-hidden border-t-2 border-border bg-card shadow-[0_-4px_10px_rgba(0,0,0,0.05)] relative z-20"
+            onScroll={(e) => {
+              const tableContainer = e.target.previousElementSibling;
+              if (tableContainer) tableContainer.scrollLeft = e.target.scrollLeft;
+            }}
+            ref={(el) => {
+              if (el) {
+                const tableContainer = el.previousElementSibling;
+                if (tableContainer && !tableContainer._footerScrollLinked) {
+                  tableContainer._footerScrollLinked = true;
+                  tableContainer.addEventListener('scroll', () => {
+                    el.scrollLeft = tableContainer.scrollLeft;
+                  });
+                }
+              }
+            }}
+          >
+            <table ref={footerTableRef} className="w-[max-content] border-collapse bg-card">
               <tbody>
-                <tr className="bg-muted/20">
-                  <td className="w-[40px] px-3 py-2.5 text-center"></td>
+                <tr className="bg-muted/5">
+                  <td className="px-3 py-2.5 text-center"></td>
                   <td className="whitespace-nowrap px-3 py-2.5 text-center"></td>
                   <td className="whitespace-nowrap px-3 py-2.5 text-left"></td>
                   <td className="whitespace-nowrap px-3 py-2.5 text-left"></td>
                   <td className="whitespace-nowrap px-3 py-2.5 text-left"></td>
                   <td className="whitespace-nowrap px-3 py-2.5 text-left"></td>
                   <td className="px-3 py-2.5 text-left"></td>
-                  <td className="whitespace-nowrap px-3 py-2.5 text-left font-bold uppercase text-[10px] text-foreground tracking-wide">Total:</td>
-                  <td className="whitespace-nowrap px-3 py-2.5 text-[10px] font-bold text-primary text-right">
+                  <td className="px-3 py-2.5 text-left"></td>
+                  <td className="px-3 py-2.5 text-right text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Total:</td>
+                  <td className="whitespace-nowrap px-3 py-2.5 text-[10px] font-black text-primary text-right bg-muted/20 border-t border-border">
                     ₱ {totals.totalExpenses.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </td>
-                  <td className="whitespace-nowrap px-3 py-2.5 text-[10px] font-bold text-foreground text-right">
+                  <td className="whitespace-nowrap px-3 py-2.5 text-[10px] font-black text-foreground text-right border-t border-border">
                     ₱ {totals.totalCharge.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </td>
                 </tr>
@@ -432,6 +629,7 @@ export default function JobOrders() {
             <th className="border border-black px-1 py-1 font-bold align-middle whitespace-nowrap">DRIVER</th>
             <th className="border border-black px-1 py-1 font-bold align-middle whitespace-nowrap">HELPER</th>
             <th className="border border-black px-1 py-1 font-bold align-middle whitespace-nowrap">VEHICLE</th>
+            <th className="border border-black px-1 py-1 font-bold align-middle whitespace-nowrap">CUSTOMER / SUPPLIER</th>
             <th className="border border-black px-1 py-1 font-bold align-middle whitespace-nowrap">DESTINATION</th>
             <th className="border border-black px-1 py-1 font-bold align-middle whitespace-nowrap">ACTIVITY</th>
             <th className="border border-black px-1 py-1 font-bold align-middle text-right whitespace-nowrap">TOTAL EXPENSES</th>
@@ -439,22 +637,29 @@ export default function JobOrders() {
           </tr>
         </thead>
         <tbody>
-          {rowsToPrint.map(row => (
+          {rowsToPrint.map((row, index) => (
             <tr key={row._id} className="break-inside-avoid">
               <td className="border border-black px-1 py-1 align-top font-bold text-center whitespace-nowrap">{row.jobOrderNo}</td>
               <td className="border border-black px-1 py-1 align-top whitespace-nowrap">{(row.dateFrom && row.dateTo ? `${formatDate(row.dateFrom)} - ${formatDate(row.dateTo)}` : formatDate(row.dateFrom)).toUpperCase()}</td>
               <td className="border border-black px-1 py-1 align-top uppercase whitespace-nowrap font-medium text-center">{formatDriverInitials(row.driver)}</td>
               <td className="border border-black px-1 py-1 align-top uppercase whitespace-nowrap font-medium text-center">{formatDriverInitials(row.helper)}</td>
               <td className="border border-black px-1 py-1 align-top uppercase whitespace-nowrap font-bold text-center">{row.vehicleEquipment || '—'}</td>
+              <td className="border border-black px-1 py-1 align-top uppercase">{row.customerSupplier}</td>
               <td className="border border-black px-1 py-1 align-top uppercase">{row.destination}</td>
               <td className="border border-black px-1 py-1 align-top uppercase">{row.purpose}</td>
-              <td className="border border-black px-1 py-1 align-top text-right font-bold whitespace-nowrap">{Number(row.totalExpenses || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+              <td className="border border-black px-1 py-1 align-top text-right font-bold whitespace-nowrap">
+                {index === 0 || rowsToPrint[index - 1].deliveryId !== row.deliveryId ? (
+                  Number(row.totalExpenses || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                ) : (
+                  "—"
+                )}
+              </td>
               <td className="border border-black px-1 py-1 align-top text-right font-bold whitespace-nowrap">{row.deliveryCharge.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
             </tr>
           ))}
           {/* Total Row */}
           <tr className="bg-[#f2f2f2] break-inside-avoid">
-            <td className="border border-black px-1 py-1 font-bold bg-white" colSpan={6}></td>
+            <td className="border border-black px-1 py-1 font-bold bg-white" colSpan={7}></td>
             <td className="border border-black px-1 py-1 font-bold text-center">TOTAL</td>
             <td className="border border-black px-1 py-1 font-bold text-right whitespace-nowrap">{printTotals.totalExpenses.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
             <td className="border border-black px-1 py-1 font-bold text-right whitespace-nowrap">{printTotals.totalCharge.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>

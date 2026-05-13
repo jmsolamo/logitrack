@@ -326,8 +326,7 @@ function VehiclesPage() {
                   </div>
 
                   {/* Footer with Status Badge */}
-                  <div className="mt-1 flex items-center justify-between border-t border-border/40 pt-1.5 text-[8px] text-muted-foreground uppercase">
-                    <span className="font-semibold tracking-tighter opacity-80">VID: {vehicle._id.slice(-8).toUpperCase()}</span>
+                  <div className="mt-1 flex items-center justify-end border-t border-border/40 pt-1.5 text-[8px] text-muted-foreground uppercase">
                     <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[7px] font-bold uppercase tracking-tight border ${statusConfig.color}`}>
                       <span className={`h-1 w-1 rounded-full ${statusConfig.dot}`} />
                       {statusConfig.label}

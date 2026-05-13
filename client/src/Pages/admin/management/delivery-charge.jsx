@@ -244,19 +244,26 @@ function DeliveryChargePage() {
                   <div className="flex flex-1 flex-col gap-0.5 min-w-0">
                     <div className="flex items-center gap-1.5">
                       <h3 className="text-[11px] font-bold text-foreground leading-tight truncate uppercase tracking-tight">
-                        {item.plateNumber}
+                        {(() => {
+                          const v = vehicles.find(veh => veh.plateNumber === item.plateNumber);
+                          return v ? `${item.plateNumber} - ${v.model.toUpperCase()}` : item.plateNumber;
+                        })()}
                       </h3>
                     </div>
                     
                     <div className="flex items-center gap-1 text-[9px] font-medium text-muted-foreground/80 uppercase tracking-widest">
-                      <span className="truncate">{item.destination}</span>
+                      <span className="truncate">
+                        {(() => {
+                          const d = destinations.find(dest => dest.name === item.destination);
+                          return d && d.customerSupplier ? `${d.customerSupplier.toUpperCase()} - ${item.destination.toUpperCase()}` : item.destination.toUpperCase();
+                        })()}
+                      </span>
                     </div>
                   </div>
                 </div>
 
-                {/* Footer with UID and Charge */}
-                <div className="mt-1 flex items-center justify-between border-t border-border/40 pt-1.5 text-[8px] text-muted-foreground uppercase">
-                  <span className="font-semibold tracking-tighter opacity-80">RID: {item._id.slice(-8).toUpperCase()}</span>
+                {/* Footer with Charge */}
+                <div className="mt-1 flex items-center justify-end border-t border-border/40 pt-1.5 text-[8px] text-muted-foreground uppercase">
                   <span className="text-[11px] font-bold text-primary tracking-wider">
                     ₱{Number(item.charge).toLocaleString()}
                   </span>
@@ -301,7 +308,9 @@ function DeliveryChargePage() {
                   >
                     <option value="" disabled>SELECT PLATE NUMBER</option>
                     {vehicles.map(v => (
-                      <option key={v._id} value={v.plateNumber} className="font-bold">{v.plateNumber}</option>
+                      <option key={v._id} value={v.plateNumber} className="font-bold">
+                        {v.plateNumber.toUpperCase()} - {v.model.toUpperCase()}
+                      </option>
                     ))}
                   </select>
                   <div className="pointer-events-none absolute inset-y-0 right-2.5 flex items-center text-muted-foreground">
@@ -322,7 +331,9 @@ function DeliveryChargePage() {
                   >
                     <option value="" disabled>SELECT DESTINATION</option>
                     {destinations.map(d => (
-                      <option key={d._id} value={d.name} className="font-bold">{d.name}</option>
+                      <option key={d._id} value={d.name} className="font-bold">
+                        {d.customerSupplier ? `${d.customerSupplier.toUpperCase()} - ` : ''}{d.name.toUpperCase()}
+                      </option>
                     ))}
                   </select>
                   <div className="pointer-events-none absolute inset-y-0 right-2.5 flex items-center text-muted-foreground">

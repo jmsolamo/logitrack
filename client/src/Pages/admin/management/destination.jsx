@@ -24,7 +24,8 @@ function DestinationPage() {
   const [destinationToDelete, setDestinationToDelete] = useState(null);
 
   const [formData, setFormData] = useState({
-    name: ''
+    name: '',
+    customerSupplier: ''
   });
 
   const toast = useAppToast();
@@ -53,12 +54,14 @@ function DestinationPage() {
   const openModal = (destination = null) => {
     if (destination) {
       setFormData({
-        name: destination.name
+        name: destination.name,
+        customerSupplier: destination.customerSupplier || ''
       });
       setEditingId(destination._id);
     } else {
       setFormData({
-        name: ''
+        name: '',
+        customerSupplier: ''
       });
       setEditingId(null);
     }
@@ -67,7 +70,7 @@ function DestinationPage() {
 
   const closeModal = () => {
     setIsModalOpen(false);
-    setFormData({ name: '' });
+    setFormData({ name: '', customerSupplier: '' });
     setEditingId(null);
   };
 
@@ -121,7 +124,8 @@ function DestinationPage() {
   };
 
   const filteredDestinations = destinations.filter(d =>
-    d.name.toLowerCase().includes(searchQuery.toLowerCase())
+    d.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (d.customerSupplier || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
@@ -211,17 +215,14 @@ function DestinationPage() {
                     <MapPin className="h-5 w-5" />
                   </div>
 
-                  <div className="flex flex-1 flex-col gap-0.5 min-w-0 justify-center">
+                    <div className="flex flex-1 flex-col gap-0.5 min-w-0 justify-center">
                     <h3 className="text-[11px] font-bold text-foreground leading-tight truncate uppercase tracking-tight">
-                      {destination.name.toUpperCase()}
+                      {destination.customerSupplier ? `${destination.customerSupplier.toUpperCase()} - ` : ''}{destination.name.toUpperCase()}
                     </h3>
                   </div>
                 </div>
 
-                {/* Footer with UID */}
-                <div className="mt-1 flex items-center justify-between border-t border-border/40 pt-1.5 text-[8px] text-muted-foreground uppercase">
-                  <span className="font-semibold tracking-tighter opacity-80">DID: {destination._id.slice(-8).toUpperCase()}</span>
-                </div>
+
               </div>
             ))}
           </div>
@@ -252,12 +253,20 @@ function DestinationPage() {
             <form onSubmit={handleSubmit} className="space-y-2">
               <div className="space-y-1">
                 <input
+                  id="customerSupplier"
+                  name="customerSupplier"
+                  value={formData.customerSupplier}
+                  onChange={handleInputChange}
+                  placeholder="CUSTOMER / SUPPLIER"
+                  className="flex h-8 w-full rounded border border-input bg-background px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider shadow-sm transition-all placeholder:text-muted-foreground/50 focus:border-primary focus:ring-1 focus:ring-primary focus-visible:outline-none"
+                />
+                <input
                   id="name"
                   name="name"
                   value={formData.name}
                   onChange={handleInputChange}
                   required
-                  placeholder="LOCATION NAME"
+                  placeholder="DESTINATION"
                   className="flex h-8 w-full rounded border border-input bg-background px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider shadow-sm transition-all placeholder:text-muted-foreground/50 focus:border-primary focus:ring-1 focus:ring-primary focus-visible:outline-none"
                 />
               </div>

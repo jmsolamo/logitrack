@@ -330,10 +330,7 @@ function PersonnelsPage() {
                   </div>
                 </div>
 
-                {/* Footer with UID */}
-                <div className="mt-1 flex items-center justify-between border-t border-border/40 pt-1.5 text-[8px] text-muted-foreground uppercase">
-                  <span className="font-semibold tracking-tighter opacity-80">UID: {personnel._id.slice(-8).toUpperCase()}</span>
-                </div>
+
               </div>
             ))}
           </div>

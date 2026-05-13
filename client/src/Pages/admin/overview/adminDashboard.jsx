@@ -35,9 +35,9 @@ export default function AdminDashboard() {
     yearlyExpenses: 0,
     monthlyExpensesTrend: Array(12).fill(0),
     topJobOrders: [],
-    motorpoolPurchases: 0,
+    logisticsPurchases: 0,
+    plantFacilitiesPurchases: 0,
     maintenancePurchases: 0,
-    vehiclePurchases: 0,
     pendingDeliveries: 0,
     inTransitDeliveries: 0,
     approvedRequests: 0,
@@ -221,9 +221,9 @@ export default function AdminDashboard() {
   }));
 
   const purchasesData = [
-    { name: 'Logistics', value: metrics.vehiclePurchases || 0, color: '#d97706', prefix: '₱', isCurrency: true },
-    { name: 'Motorpool', value: metrics.motorpoolPurchases || 0, color: '#e11d48', prefix: '₱', isCurrency: true },
-    { name: 'Maint.', value: metrics.maintenancePurchases || 0, color: '#ea580c', prefix: '₱', isCurrency: true }
+    { name: 'LOGISTICS', value: metrics.logisticsPurchases || 0, color: '#d97706', prefix: '₱', isCurrency: true },
+    { name: 'PLANT & FACILITIES', value: metrics.plantFacilitiesPurchases || 0, color: '#e11d48', prefix: '₱', isCurrency: true },
+    { name: 'MAINTENANCE', value: metrics.maintenancePurchases || 0, color: '#ea580c', prefix: '₱', isCurrency: true }
   ];
 
   if (isLoading) {
@@ -311,15 +311,15 @@ export default function AdminDashboard() {
 
           <div className="grid grid-cols-3 gap-2 border-t border-border/50 pt-3 relative z-10">
             <div className="min-w-0">
-              <p className="text-[8px] font-bold uppercase tracking-tight text-muted-foreground whitespace-nowrap truncate" title="Logistics">Logistics</p>
-              <p className="text-xs font-bold text-amber-600">₱{(metrics.vehiclePurchases || 0).toLocaleString()}</p>
+              <p className="text-[8px] font-bold uppercase tracking-tight text-muted-foreground whitespace-nowrap truncate" title="LOGISTICS">LOGISTICS</p>
+              <p className="text-xs font-bold text-amber-600">₱{(metrics.logisticsPurchases || 0).toLocaleString()}</p>
             </div>
             <div className="min-w-0">
-              <p className="text-[8px] font-bold uppercase tracking-tight text-muted-foreground whitespace-nowrap truncate" title="Motorpool">Motorpool</p>
-              <p className="text-xs font-bold text-rose-600">₱{(metrics.motorpoolPurchases || 0).toLocaleString()}</p>
+              <p className="text-[8px] font-bold uppercase tracking-tight text-muted-foreground whitespace-nowrap truncate" title="PLANT & FACILITIES">PLANT & FACILITIES</p>
+              <p className="text-xs font-bold text-rose-600">₱{(metrics.plantFacilitiesPurchases || 0).toLocaleString()}</p>
             </div>
             <div className="min-w-0">
-              <p className="text-[8px] font-bold uppercase tracking-tight text-muted-foreground whitespace-nowrap truncate" title="Maintenance">Maintenance</p>
+              <p className="text-[8px] font-bold uppercase tracking-tight text-muted-foreground whitespace-nowrap truncate" title="MAINTENANCE">MAINTENANCE</p>
               <p className="text-xs font-bold text-orange-600">₱{(metrics.maintenancePurchases || 0).toLocaleString()}</p>
             </div>
           </div>
@@ -582,8 +582,8 @@ export default function AdminDashboard() {
             
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-center">
               {/* Distribution Chart */}
-              <div className="lg:col-span-1 w-full relative flex items-center justify-center aspect-square max-h-[220px] lg:max-h-none lg:h-[200px]">
-                <ResponsiveContainer width="100%" height="100%">
+              <div className="lg:col-span-1 w-full relative flex items-center justify-center aspect-square max-h-[220px] lg:max-h-none lg:h-[200px] min-w-0 min-h-0">
+                <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
                   <PieChart>
                     <Pie 
                       data={vehiclesData} 
@@ -654,8 +654,8 @@ export default function AdminDashboard() {
               {/* Monthly Trend Chart */}
               <div className="flex flex-col h-[220px]">
                 <h4 className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground mb-3">Annual Expense Trend</h4>
-                <div className="flex-1 w-full relative min-h-[180px]">
-                  <ResponsiveContainer width="100%" height="100%">
+                <div className="flex-1 w-full relative min-h-[180px] min-w-0">
+                  <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
                     <LineChart data={expensesData} margin={{ top: 10, right: 10, bottom: 10, left: 10 }}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
                       <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#6b7280', fontWeight: 600 }} dy={10} interval={0} />
@@ -670,8 +670,8 @@ export default function AdminDashboard() {
               {/* Top Job Orders Chart */}
               <div className="flex flex-col h-[220px]">
                 <h4 className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground mb-3">Expenses by Job Orders</h4>
-                <div className="flex-1 w-full relative min-h-[180px]">
-                  <ResponsiveContainer width="100%" height="100%">
+                <div className="flex-1 w-full relative min-h-[180px] min-w-0">
+                  <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
                     <BarChart data={topJobOrdersData} margin={{ top: 10, right: 10, bottom: 0, left: 0 }}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
                       <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#6b7280', fontWeight: 600 }} dy={10} />
@@ -697,9 +697,9 @@ export default function AdminDashboard() {
             {/* Trend Chart */}
             <div className="lg:col-span-2 rounded-xl border border-border bg-card p-4 shadow-sm flex flex-col min-h-[300px]">
               <h3 className="text-[11px] font-bold uppercase tracking-widest text-foreground mb-4">Delivery Trends (Last 6 Months)</h3>
-              <div className="flex-1 w-full relative min-h-[250px]">
+              <div className="flex-1 w-full relative min-h-[250px] min-w-0">
                 {chartData.deliveriesTrend.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%">
+                  <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
                     <LineChart data={chartData.deliveriesTrend} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
                       <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#6b7280' }} dy={10} />

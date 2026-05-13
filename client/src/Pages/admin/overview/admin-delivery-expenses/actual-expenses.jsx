@@ -18,7 +18,8 @@ import {
   Plus,
   Minus,
   X,
-  Printer
+  Printer,
+  Download
 } from 'lucide-react';
 import { Input } from '../../../../components/ui/input';
 import { Button } from '../../../../components/ui/button';
@@ -37,6 +38,7 @@ const tableColumns = [
   { key: 'date', label: 'Date', category: 'base' },
   { key: 'driver', label: 'Driver', category: 'base' },
   { key: 'vehicle', label: 'Vehicle', category: 'base' },
+  { key: 'customerSupplier', label: 'Customer / Supplier', category: 'base' },
   { key: 'destination', label: 'Destination', category: 'base' },
   { key: 'jobOrderNo', label: 'Job Order No.', category: 'base' },
   { key: 'totalExpenses', label: 'Total Expenses', category: 'base' },
@@ -82,6 +84,9 @@ export default function ActualExpenses() {
     mealExpenses: [], loadExpenses: [], contingency: []
   });
 
+  // Checkboxes
+  const [selectedIds, setSelectedIds] = useState(new Set());
+
   const toast = useAppToast();
 
   const mainTableRef = useRef(null);
@@ -120,8 +125,23 @@ export default function ActualExpenses() {
     setVehicleFilter('all');
     setDestinationFilter('all');
     setMonthFilter('all');
-    setVisibleColumns(new Set(allColumnKeys));
+    setSelectedIds(new Set());
     toast.success('Filters cleared');
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filteredDeliveries.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredDeliveries.map(d => d._id)));
+    }
+  };
+
+  const toggleSelect = (id) => {
+    const newSet = new Set(selectedIds);
+    if (newSet.has(id)) newSet.delete(id);
+    else newSet.add(id);
+    setSelectedIds(newSet);
   };
 
   const openDetailsModal = (delivery) => {
@@ -427,6 +447,65 @@ export default function ActualExpenses() {
     });
   }, [deliveries, searchQuery, dateFromFilter, dateToFilter, driverFilter, vehicleFilter, destinationFilter, monthFilter]);
 
+  const exportToCSV = () => {
+    const rowsToExport = selectedIds.size > 0 
+      ? deliveries.filter(d => selectedIds.has(d._id))
+      : filteredDeliveries;
+
+    if (rowsToExport.length === 0) return toast.warning('No data to export');
+
+    const headers = [
+      'Reference No.',
+      'Date From',
+      'Date To',
+      'Driver',
+      'Vehicle',
+      'Customer / Supplier',
+      'Destination',
+      'Job Order No.',
+      'Total Expenses',
+      'Fuel Liters',
+      'Fuel Amount',
+      'Toll Fee',
+      'Pier Expenses',
+      'Meals',
+      'Load',
+      'Contingency'
+    ];
+
+    const data = rowsToExport.map(item => [
+      item.referenceNo,
+      formatDate(item.dateFrom),
+      formatDate(item.dateTo),
+      joinNames(item.driver),
+      item.vehicleEquipment || '—',
+      joinArray(item.customerSupplier),
+      joinArray(item.destination),
+      joinArray(item.jobOrderNo),
+      item.totalExpenses,
+      sumField(item.fuel, 'liters'),
+      sumField(item.fuel, 'amount'),
+      sumField(item.tollFee, 'amt'),
+      sumField(item.pierExpenses, 'amt'),
+      sumField(item.mealExpenses, 'amt'),
+      sumField(item.loadExpenses, 'amt'),
+      sumField(item.contingency, 'amt')
+    ]);
+
+    const csvContent = [
+      headers.join(','),
+      ...data.map(row => row.map(field => `"${String(field || '').replace(/"/g, '""')}"`).join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    const dateStr = new Date().toISOString().split('T')[0];
+    link.download = `actual_expenses_${dateStr}.csv`;
+    link.click();
+    toast.success(`${selectedIds.size > 0 ? 'Selected' : 'Filtered'} report exported successfully`);
+  };
+
   // Sync columns lengths between top table and footer exactly
   useLayoutEffect(() => {
     if (!mainTableRef.current || !footerTableRef.current) return;
@@ -506,6 +585,18 @@ export default function ActualExpenses() {
             <p className="text-[10px] text-muted-foreground uppercase tracking-widest">Financial breakdown and expense tracking for all deliveries</p>
           </div>
           <div className="flex items-center gap-3">
+            {selectedIds.size > 0 && (
+              <span className="text-[10px] font-bold text-primary uppercase tracking-wider">{selectedIds.size} selected</span>
+            )}
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={exportToCSV}
+              className="h-8 gap-1.5 text-[10px] uppercase font-bold tracking-wider border-emerald-500/50 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700"
+            >
+              <Download className="h-3.5 w-3.5" />
+              Export CSV
+            </Button>
             <Button size="sm" onClick={() => window.print()} className="h-8 gap-1.5 text-[10px] uppercase font-bold tracking-wider">
               <Printer className="h-3.5 w-3.5" />
               Print Report
@@ -700,10 +791,19 @@ export default function ActualExpenses() {
               <table ref={mainTableRef} className="w-full min-w-[max-content] border-collapse relative">
                 <thead className="sticky top-0 z-10 bg-orange-500 backdrop-blur shadow-sm">
                   <tr className="border-b border-orange-600/20">
+                    <th className="w-[40px] px-3 py-2.5 text-center align-middle">
+                      <input
+                        type="checkbox"
+                        checked={filteredDeliveries.length > 0 && selectedIds.size === filteredDeliveries.length}
+                        onChange={toggleSelectAll}
+                        className="h-3.5 w-3.5 accent-white cursor-pointer"
+                      />
+                    </th>
                     {visibleColumns.has('referenceNo') && <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Reference No.</th>}
                     {visibleColumns.has('date') && <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Date</th>}
                     {visibleColumns.has('driver') && <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Driver</th>}
                     {visibleColumns.has('vehicle') && <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Vehicle</th>}
+                    {visibleColumns.has('customerSupplier') && <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Customer / Supplier</th>}
                     {visibleColumns.has('destination') && <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Destination</th>}
                     {visibleColumns.has('jobOrderNo') && <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-center align-middle">Job Order No.</th>}
                     {visibleColumns.has('totalExpenses') && <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-right align-middle bg-orange-600/40">Total Expenses</th>}
@@ -729,9 +829,17 @@ export default function ActualExpenses() {
                   {filteredDeliveries.map((item, index) => (
                     <tr
                       key={item._id}
-                      className={`border-b border-border/50 hover:bg-muted/30 transition-colors cursor-pointer ${index % 2 === 0 ? 'bg-card/30' : ''}`}
+                      className={`border-b border-border/50 hover:bg-muted/30 transition-colors cursor-pointer ${index % 2 === 0 ? 'bg-card/30' : ''} ${selectedIds.has(item._id) ? 'bg-primary/5' : ''}`}
                       onClick={() => openDetailsModal(item)}
                     >
+                      <td className="w-[40px] px-3 py-2 text-center" onClick={(e) => { e.stopPropagation(); toggleSelect(item._id); }}>
+                        <input
+                          type="checkbox"
+                          readOnly
+                          checked={selectedIds.has(item._id)}
+                          className="h-3.5 w-3.5 accent-primary cursor-pointer pointer-events-none"
+                        />
+                      </td>
                       {visibleColumns.has('referenceNo') && <td className="whitespace-nowrap px-3 py-2 text-[10px] font-bold text-primary tracking-tight">{item.referenceNo}</td>}
                       {visibleColumns.has('date') && (
                         <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-foreground tracking-tight">
@@ -748,9 +856,14 @@ export default function ActualExpenses() {
                           })()}
                         </td>
                       )}
-                      {visibleColumns.has('destination') && (
+                      {visibleColumns.has('customerSupplier') && (
                         <td className="px-3 py-2 text-[10px] font-medium text-foreground uppercase tracking-tight max-w-[200px] truncate" title={joinArray(item.customerSupplier)}>
                           {joinArray(item.customerSupplier)}
+                        </td>
+                      )}
+                      {visibleColumns.has('destination') && (
+                        <td className="px-3 py-2 text-[10px] font-medium text-foreground uppercase tracking-tight max-w-[200px] truncate" title={joinArray(item.destination)}>
+                          {joinArray(item.destination)}
                         </td>
                       )}
                       {visibleColumns.has('jobOrderNo') && <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-foreground tracking-tight text-center">{joinArray(item.jobOrderNo)}</td>}
@@ -855,6 +968,7 @@ export default function ActualExpenses() {
                 <tbody>
 
                   <tr>
+                    <td className="whitespace-nowrap px-3 py-2.5 text-[9px] w-[40px] bg-card border-t border-border"></td>
                     {visibleColumns.has('referenceNo') && (
                       <td className="whitespace-nowrap px-3 py-2.5 text-[9px] font-black uppercase tracking-[0.15em] text-foreground text-right align-middle bg-card border-t border-border"></td>
                     )}
@@ -865,6 +979,9 @@ export default function ActualExpenses() {
                       <td className="whitespace-nowrap px-3 py-2.5 text-[9px] font-black uppercase tracking-[0.15em] text-foreground text-right align-middle bg-card border-t border-border"></td>
                     )}
                     {visibleColumns.has('vehicle') && (
+                      <td className="whitespace-nowrap px-3 py-2.5 text-[9px] font-black uppercase tracking-[0.15em] text-foreground text-right align-middle bg-card border-t border-border"></td>
+                    )}
+                    {visibleColumns.has('customerSupplier') && (
                       <td className="whitespace-nowrap px-3 py-2.5 text-[9px] font-black uppercase tracking-[0.15em] text-foreground text-right align-middle bg-card border-t border-border"></td>
                     )}
                     {visibleColumns.has('destination') && (
@@ -1236,6 +1353,7 @@ export default function ActualExpenses() {
               <th className="border border-black px-1 py-1 font-bold whitespace-nowrap align-middle">DATE</th>
               <th className="border border-black px-1 py-1 font-bold align-middle whitespace-nowrap">DRIVER</th>
               <th className="border border-black px-1 py-1 font-bold align-middle whitespace-nowrap">VEHICLE</th>
+              <th className="border border-black px-1 py-1 font-bold align-middle whitespace-nowrap">CUSTOMER / SUPPLIER</th>
               <th className="border border-black px-1 py-1 font-bold align-middle whitespace-nowrap">DESTINATION</th>
               <th className="border border-black px-1 py-1 font-bold align-middle whitespace-nowrap">JOB ORDER NO.</th>
               <th className="border border-black px-1 py-1 font-bold align-middle text-right whitespace-nowrap">TOTAL EXPENSES</th>
@@ -1258,6 +1376,7 @@ export default function ActualExpenses() {
                 <td className="border border-black px-1 py-1 align-top uppercase whitespace-nowrap font-medium text-center">{formatDriverInitials(item.driver)}</td>
                 <td className="border border-black px-1 py-1 align-top uppercase whitespace-nowrap font-bold text-center">{item.vehicleEquipment || '—'}</td>
                 <td className="border border-black px-1 py-1 align-top uppercase">{joinArray(item.customerSupplier)}</td>
+                <td className="border border-black px-1 py-1 align-top uppercase">{joinArray(item.destination)}</td>
                 <td className="border border-black px-1 py-1 align-top text-center">{joinArray(item.jobOrderNo)}</td>
                 <td className="border border-black px-1 py-1 align-top text-right font-bold whitespace-nowrap">{Number(item.totalExpenses || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                 <td className="border border-black px-1 py-1 align-top text-right whitespace-nowrap">{sumField(item.fuel, 'liters').toLocaleString()}</td>

@@ -89,34 +89,10 @@ function AdminLayout() {
             >
               <Menu className="h-4 w-4" />
             </button>
-            <div className="hidden sm:flex items-center gap-2">
-              <img src={favicon} alt="LogiTrack Logo" className="h-5 w-5 shrink-0 object-contain" />
-              <div className="flex flex-col leading-tight">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-foreground">LogiTrack</span>
-                <span className="text-[9px] text-muted-foreground uppercase tracking-wider">ENERTECH SYSTEMS INDUSTRIES INC.</span>
-              </div>
-            </div>
+
           </div>
 
-          <div className="flex items-center gap-3 sm:gap-4">
-            {/* User Profile */}
-            <button
-              className="flex items-center gap-2.5 hover:opacity-80 transition-opacity"
-              title="Profile"
-            >
-              <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                <UserIcon className="h-3.5 w-3.5" />
-              </div>
-              <div className="hidden sm:flex flex-col items-start text-left">
-                <span className="text-[12px] font-medium leading-none text-foreground">
-                  {user?.username || 'Admin User'}
-                </span>
-                <span className="text-[10px] text-muted-foreground leading-none mt-1 capitalize">
-                  {user?.role === 'admin' ? 'Administrator' : user?.role || 'Admin'}
-                </span>
-              </div>
-            </button>
-          </div>
+
         </header>
 
         {/* Page content */}

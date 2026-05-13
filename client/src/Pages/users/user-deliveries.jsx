@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useOutletContext } from 'react-router-dom';
+import { useOutletContext, useSearchParams } from 'react-router-dom';
 import {
   Loader2,
   ClipboardList,
@@ -36,8 +36,15 @@ import {
   DropdownMenuRadioItem,
 } from '../../components/ui/dropdown-menu';
 
+const joinArray = (arr, separator = ' / ') => {
+  if (!arr || !arr.length || !Array.isArray(arr)) return '—';
+  const filtered = arr.filter(Boolean);
+  return filtered.length > 0 ? filtered.join(separator) : '—';
+};
+
 function UserDeliveries() {
   const { user } = useOutletContext();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   // Helper: compute duration between two dates
   const computeDuration = (from, to) => {
@@ -92,6 +99,16 @@ function UserDeliveries() {
     requestedBy: '',
   };
 
+  const uniqueCustomerSuppliers = useMemo(() => {
+    const set = new Set();
+    destinations.forEach(d => {
+      if (d.customerSupplier) set.add(d.customerSupplier);
+    });
+    return Array.from(set).sort();
+  }, [destinations]);
+
+  const [newDestinations, setNewDestinations] = useState({});
+
   const [formData, setFormData] = useState(initialFormData);
   const [newCustomers, setNewCustomers] = useState({});
 
@@ -116,6 +133,17 @@ function UserDeliveries() {
       setDestinations(destinationsRes.data);
       setPersonnels(personnelsRes.data);
       setActiveSchedules(schedulesRes.data);
+
+      // Auto-open details modal if requestId query param is present
+      const requestId = searchParams.get('requestId');
+      if (requestId && requestsRes.data.length > 0) {
+        const match = requestsRes.data.find((r) => r._id === requestId || r.referenceNo === requestId);
+        if (match) {
+          setDetailsModal({ isOpen: true, request: match });
+          // Clear the query param so refreshing doesn't re-open
+          setSearchParams({}, { replace: true });
+        }
+      }
     } catch (error) {
       console.error('Error fetching data:', error);
       toast.error('Failed to load data');
@@ -207,12 +235,13 @@ function UserDeliveries() {
     setEditingRequestId(null);
     setFormData(initialFormData);
     setNewCustomers({});
+    setNewDestinations({});
   };
 
   // Helper: check if vehicle is booked during selected dates (only for approved requests)
   const isVehicleBooked = (plateNumber) => {
     if (!plateNumber || !formData.dateFrom) return false;
-    if (plateNumber === 'RENT_VEHICLE') return false;
+    if (plateNumber === 'RENT_VEHICLE' || plateNumber === 'UNASSIGNED') return false;
     const startA = new Date(formData.dateFrom).setHours(0,0,0,0);
     const endA = new Date(formData.dateTo || formData.dateFrom).setHours(23,59,59,999);
     
@@ -246,6 +275,9 @@ function UserDeliveries() {
       toast.error('Vehicle / Equipment is required');
       return;
     }
+    if (formData.vehicleEquipment === 'UNASSIGNED') {
+      // Skip booking check — admin will assign vehicle later
+    } else
     if (isVehicleBooked(formData.vehicleEquipment)) {
       toast.error(`The selected vehicle (${formData.vehicleEquipment}) is already booked during these dates.`);
       return;
@@ -278,14 +310,24 @@ function UserDeliveries() {
 
     try {
       const processedCustomerSupplier = [...formData.customerSupplier];
+      const processedDestination = [...formData.destination];
+
       for (let i = 0; i < processedCustomerSupplier.length; i++) {
         if (processedCustomerSupplier[i] === 'NEW_CUSTOMER' && newCustomers[i]) {
-          const newName = newCustomers[i].trim();
-          processedCustomerSupplier[i] = newName;
+          processedCustomerSupplier[i] = newCustomers[i].trim();
+        }
+
+        if (processedDestination[i] === 'NEW_DESTINATION' && newDestinations[i]) {
+          const newDestName = newDestinations[i].trim();
+          processedDestination[i] = newDestName;
+          
           try {
-            await axios.post('/api/destinations', { name: newName });
+            await axios.post('/api/destinations', { 
+              name: newDestName,
+              customerSupplier: processedCustomerSupplier[i]
+            });
           } catch (e) {
-            // Might already exist, ignore error safely
+            // Ignore
           }
         }
       }
@@ -298,7 +340,7 @@ function UserDeliveries() {
         activity: formData.activity.filter((v) => v.trim() !== ''),
         vehicleEquipment: formData.vehicleEquipment,
         tnvsProvider: formData.vehicleEquipment === 'RENT_VEHICLE' ? formData.tnvsProvider : undefined,
-        destination: formData.destination.filter((v) => v.trim() !== ''),
+        destination: processedDestination.filter((v) => v.trim() !== ''),
         jobOrderNo: formData.jobOrderNo.filter((v) => v.trim() !== ''),
         customerSupplier: processedCustomerSupplier.filter((v) => v.trim() !== ''),
         requestedBy: formData.requestedBy.trim(),
@@ -665,9 +707,9 @@ function UserDeliveries() {
                       <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Purpose</th>
                       <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Activity</th>
                       <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Vehicle</th>
+                      <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Customer / Supplier</th>
                       <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Destination</th>
                       <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-center align-middle">Job Order No</th>
-                      <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Customer / Supplier</th>
                       <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Requested By</th>
                     </tr>
                   </thead>
@@ -707,19 +749,20 @@ function UserDeliveries() {
                             {(() => {
                               const plate = req.vehicleEquipment;
                               if (!plate) return '—';
+                              if (plate === 'UNASSIGNED') return <span className="italic text-muted-foreground">UNASSIGNED</span>;
                               if (plate === 'RENT_VEHICLE') return <span>{`Rent Vehicle${req.tnvsProvider ? ` - ${req.tnvsProvider}` : ''}`}</span>;
                               const v = vehicles.find((v) => v.plateNumber === plate);
                               return v ? <span>{`${v.plateNumber} — ${v.model}`}</span> : <span>{plate}</span>;
                             })()}
                           </td>
                           <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-foreground uppercase tracking-tight align-middle">
+                            {(req.customerSupplier || []).filter(Boolean).join(' / ') || '—'}
+                          </td>
+                          <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-foreground uppercase tracking-tight align-middle">
                             {(req.destination || []).filter(Boolean).join(', ') || '—'}
                           </td>
                           <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-foreground tracking-tight text-center align-middle">
                             {(req.jobOrderNo || []).filter(Boolean).join(', ') || '—'}
-                          </td>
-                          <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-foreground uppercase tracking-tight align-middle">
-                            {(req.customerSupplier || []).filter(Boolean).join(' / ') || '—'}
                           </td>
                           <td className="whitespace-nowrap px-3 py-2 text-[10px] font-semibold text-foreground uppercase tracking-tight align-middle">
                             {req.requestedBy || '—'}
@@ -830,7 +873,9 @@ function UserDeliveries() {
                       className={selectClass}
                     >
                       <option value="" disabled>Select Vehicle / Equipment</option>
+                      <option value="UNASSIGNED" className="font-bold">UNASSIGNED</option>
                       <option value="RENT_VEHICLE" className="font-bold">Rent Vehicle</option>
+                      <option value="MOTORCYCLE" className="font-bold text-[#16a34a]">MOTORCYCLE</option>
                       {[...vehicles].sort((a, b) => a.plateNumber.localeCompare(b.plateNumber)).map((v) => {
                         let textColor = 'inherit';
                         let status = (v.status || 'available').toLowerCase();
@@ -937,16 +982,20 @@ function UserDeliveries() {
                                 className={cn(selectClass, "flex items-center justify-between text-left px-2.5 outline-none")}
                               >
                                 <span className="font-bold text-foreground truncate max-w-[calc(100%-1.5rem)]">
-                                  {!cs ? "Select Customer / Supplier" : (cs === 'NEW_CUSTOMER' ? '-- New Customer / Supplier --' : destinations.find(d => d.name === cs)?.name || cs)}
+                                  {!cs ? "Select Customer / Supplier" : (cs === 'NEW_CUSTOMER' ? '-- New Customer / Supplier --' : cs)}
                                 </span>
                                 <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground/70" />
                               </button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent className="z-[200] w-[var(--radix-dropdown-menu-trigger-width)] min-w-[200px] max-h-56 overflow-y-auto" align="start">
-                              <DropdownMenuRadioGroup value={cs} onValueChange={(val) => handleArrayChange('customerSupplier', index, val)}>
-                                {destinations.map((d) => (
-                                  <DropdownMenuRadioItem key={d._id} value={d.name} className="font-bold text-[11px] uppercase tracking-wider py-2 cursor-pointer">
-                                    {d.name}
+                              <DropdownMenuRadioGroup value={cs} onValueChange={(val) => {
+                                handleArrayChange('customerSupplier', index, val);
+                                // Reset destination when CS changes
+                                handleArrayChange('destination', index, '');
+                              }}>
+                                {uniqueCustomerSuppliers.map((csName) => (
+                                  <DropdownMenuRadioItem key={csName} value={csName} className="font-bold text-[11px] uppercase tracking-wider py-2 cursor-pointer">
+                                    {csName}
                                   </DropdownMenuRadioItem>
                                 ))}
                                 <DropdownMenuSeparator />
@@ -1015,28 +1064,64 @@ function UserDeliveries() {
                   <legend className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground px-1 -ml-1 flex items-center gap-2">
                     Destination
                   </legend>
-                  {formData.destination.map((dItem, index) => (
-                    <div key={`dest-${index}`}>
-                      <div className="flex items-center gap-2">
-                        <input
-                          value={dItem}
-                          onChange={(e) => handleArrayChange('destination', index, e.target.value)}
-                          className={`${inputFormClass} flex-1`}
-                          placeholder="Destination"
-                        />
-                        {index === 0 && (
-                          <button type="button" onClick={() => addArrayField('destination')} className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
-                            <Plus className="h-4 w-4" />
-                          </button>
-                        )}
-                        {index > 0 && (
-                          <button type="button" onClick={() => removeArrayField('destination', index)} className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-muted/50 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors">
-                            <Minus className="h-4 w-4" />
-                          </button>
+                  {formData.destination.map((dItem, index) => {
+                    const currentCS = formData.customerSupplier[index];
+                    const filteredDestinations = destinations.filter(d => d.customerSupplier === currentCS);
+                    
+                    return (
+                      <div key={`dest-${index}`}>
+                        <div className="flex items-center gap-2">
+                          <div className="relative flex-1">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <button
+                                  type="button"
+                                  className={cn(selectClass, "flex items-center justify-between text-left px-2.5 outline-none")}
+                                >
+                                  <span className="font-bold text-foreground truncate max-w-[calc(100%-1.5rem)]">
+                                    {!dItem ? "Select Destination" : (dItem === 'NEW_DESTINATION' ? '-- New Destination --' : dItem)}
+                                  </span>
+                                  <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground/70" />
+                                </button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent className="z-[200] w-[var(--radix-dropdown-menu-trigger-width)] min-w-[200px] max-h-56 overflow-y-auto" align="start">
+                                <DropdownMenuRadioGroup value={dItem} onValueChange={(val) => handleArrayChange('destination', index, val)}>
+                                  {filteredDestinations.map((d) => (
+                                    <DropdownMenuRadioItem key={d._id} value={d.name} className="font-bold text-[11px] uppercase tracking-wider py-2 cursor-pointer">
+                                      {d.name}
+                                    </DropdownMenuRadioItem>
+                                  ))}
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuRadioItem value="NEW_DESTINATION" className="font-bold text-primary text-[11px] uppercase tracking-wider py-2 cursor-pointer">
+                                    -- New Destination --
+                                  </DropdownMenuRadioItem>
+                                </DropdownMenuRadioGroup>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                          {index === 0 && (
+                            <button type="button" onClick={() => addArrayField('destination')} className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
+                              <Plus className="h-4 w-4" />
+                            </button>
+                          )}
+                          {index > 0 && (
+                            <button type="button" onClick={() => removeArrayField('destination', index)} className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-muted/50 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors">
+                              <Minus className="h-4 w-4" />
+                            </button>
+                          )}
+                        </div>
+                        {dItem === 'NEW_DESTINATION' && (
+                          <input
+                            type="text"
+                            placeholder="Enter new destination"
+                            value={newDestinations[index] || ''}
+                            onChange={(e) => setNewDestinations({ ...newDestinations, [index]: e.target.value })}
+                            className={`${inputFormClass} mt-2 w-full`}
+                          />
                         )}
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </fieldset>
 
                 {/* Requested By */}
@@ -1075,7 +1160,7 @@ function UserDeliveries() {
       {/* Details Modal */}
       {detailsModal.isOpen && detailsModal.request && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-200">
-          <div className="relative w-full max-w-lg max-h-[85vh] flex flex-col rounded-lg border border-border bg-card shadow-xl">
+          <div className="relative w-full max-w-2xl max-h-[85vh] flex flex-col rounded-lg border border-border bg-card shadow-xl">
             <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-card px-4 py-3 shrink-0">
               <div>
                 <h2 className="text-xs font-bold uppercase tracking-widest text-foreground">Request Details</h2>
@@ -1162,8 +1247,8 @@ function UserDeliveries() {
                     { label: 'Date From', value: formatDate(detailsModal.request.dateFrom) },
                     { label: 'Date To', value: formatDate(detailsModal.request.dateTo) },
                     { label: 'Duration', value: computeDuration(detailsModal.request.dateFrom, detailsModal.request.dateTo) },
-                    { label: 'Destination', value: (detailsModal.request.destination || []).filter(Boolean).join(' / ') },
                     { label: 'Customer / Supplier', value: (detailsModal.request.customerSupplier || []).filter(Boolean).join(' / ') },
+                    { label: 'Destination', value: (detailsModal.request.destination || []).filter(Boolean).join(' / ') },
 
                     { label: 'Requested By', value: detailsModal.request.requestedBy },
                   ].map((field) => field.value && field.value !== '—' && (
@@ -1180,6 +1265,7 @@ function UserDeliveries() {
                     { label: 'Vehicle', value: (() => {
                       const plate = detailsModal.request.vehicleEquipment;
                       if (!plate) return '—';
+                      if (plate === 'UNASSIGNED') return 'UNASSIGNED';
                       if (plate === 'RENT_VEHICLE') return `Rent Vehicle${detailsModal.request.tnvsProvider ? ` - ${detailsModal.request.tnvsProvider}` : ''}`;
                       const v = vehicles.find(v => v.plateNumber === plate);
                       return v ? `${v.plateNumber} — ${v.model}` : plate;

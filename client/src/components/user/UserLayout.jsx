@@ -31,7 +31,7 @@ function UserLayout() {
           headers: { Authorization: `Bearer ${token}` },
         });
 
-        if (data && data.role === 'user') {
+        if (data && data.role === 'requestor') {
           setIsUser(true);
           setUser(data);
         } else {
@@ -60,7 +60,7 @@ function UserLayout() {
 
           if (data && data.length > 0) {
             setAnnouncements(data);
-            
+
             // Show announcement modal only once per login session
             if (!sessionStorage.getItem('announcementShownThisSession')) {
               setShowAnnouncementModal(true);
@@ -101,7 +101,9 @@ function UserLayout() {
     { name: 'Dashboard', path: '/user/dashboard', icon: LayoutDashboard },
     { name: 'Calendar', path: '/user/calendar', icon: CalendarDays },
     { name: 'Deliveries', path: '/user/deliveries', icon: Truck },
-    { name: 'Job Orders', path: '/user/job-orders', icon: ClipboardList },
+    ...(['Operation', 'Production', 'Servicing'].includes(user?.department)
+      ? [{ name: 'Job Orders', path: '/user/job-orders', icon: ClipboardList }]
+      : []),
   ];
 
   return (
@@ -128,11 +130,10 @@ function UserLayout() {
                 <Link
                   key={item.name}
                   to={item.path}
-                  className={`relative flex items-center justify-center h-full gap-1.5 px-0.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider transition-all duration-200 ${
-                    isActive
+                  className={`relative flex items-center justify-center h-full gap-1.5 px-0.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider transition-all duration-200 ${isActive
                       ? 'text-primary'
                       : 'text-muted-foreground hover:text-foreground'
-                  }`}
+                    }`}
                 >
                   <Icon className="h-4 w-4 shrink-0" />
                   <span>{item.name}</span>
@@ -150,9 +151,8 @@ function UserLayout() {
                 <Link
                   key={item.name}
                   to={item.path}
-                  className={`relative flex items-center justify-center h-full gap-1.5 px-0.5 text-[10px] font-bold uppercase tracking-wider transition-all duration-200 ${
-                    isActive ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
-                  }`}
+                  className={`relative flex items-center justify-center h-full gap-1.5 px-0.5 text-[10px] font-bold uppercase tracking-wider transition-all duration-200 ${isActive ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
+                    }`}
                 >
                   <Icon className="h-4 w-4 shrink-0" />
                 </Link>
@@ -185,8 +185,8 @@ function UserLayout() {
           {userMenuOpen && (
             <>
               {/* Invisible backdrop to close dropdown */}
-              <div 
-                className="fixed inset-0 z-40" 
+              <div
+                className="fixed inset-0 z-40"
                 onClick={() => setUserMenuOpen(false)}
               />
               <div className="absolute right-0 top-[calc(100%+0.5rem)] z-50 w-44 rounded-md border border-border bg-popover py-1 shadow-lg animate-in fade-in zoom-in-95">
@@ -225,8 +225,8 @@ function UserLayout() {
       </main>
 
       {/* Announcement Modal */}
-      <AnnouncementModal 
-        isOpen={showAnnouncementModal} 
+      <AnnouncementModal
+        isOpen={showAnnouncementModal}
         announcements={announcements}
         onClose={() => setShowAnnouncementModal(false)}
       />

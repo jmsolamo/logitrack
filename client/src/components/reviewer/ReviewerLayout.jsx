@@ -6,6 +6,7 @@ import {
   CalendarDays,
   Truck,
   ClipboardList,
+  FileText,
   LogOut,
   Settings,
   User as UserIcon,
@@ -17,7 +18,8 @@ const reviewerNavItems = [
   { name: 'Dashboard', path: '/reviewer/dashboard', icon: LayoutDashboard },
   { name: 'Calendar', path: '/reviewer/calendar', icon: CalendarDays },
   { name: 'Deliveries', path: '/reviewer/deliveries', icon: Truck },
-  { name: 'Review', path: '/reviewer/requests', icon: ClipboardList },
+  { name: 'Review Deliveries', path: '/reviewer/requests', icon: ClipboardList },
+  { name: 'Job Orders', path: '/reviewer/job-orders', icon: FileText },
 ];
 
 export default function ReviewerLayout() {
@@ -42,7 +44,7 @@ export default function ReviewerLayout() {
           headers: { Authorization: `Bearer ${token}` },
         });
 
-        if (data && data.role === 'reviewer') {
+        if (data && data.role === 'manager') {
           setUser(data);
         } else {
           navigate('/login');
@@ -70,7 +72,7 @@ export default function ReviewerLayout() {
 
           if (data && data.length > 0) {
             setAnnouncements(data);
-            
+
             // Show announcement modal only once per login session
             if (!sessionStorage.getItem('announcementShownThisSession')) {
               setShowAnnouncementModal(true);
@@ -117,9 +119,8 @@ export default function ReviewerLayout() {
                 <Link
                   key={item.name}
                   to={item.path}
-                  className={`relative flex items-center justify-center h-full gap-1.5 px-0.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider transition-all duration-200 ${
-                    isActive ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
-                  }`}
+                  className={`relative flex items-center justify-center h-full gap-1.5 px-0.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider transition-all duration-200 ${isActive ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
+                    }`}
                 >
                   <Icon className="h-4 w-4 shrink-0" />
                   <span>{item.name}</span>
@@ -136,9 +137,8 @@ export default function ReviewerLayout() {
                 <Link
                   key={item.name}
                   to={item.path}
-                  className={`relative flex items-center justify-center h-full gap-1.5 px-0.5 text-[10px] font-bold uppercase tracking-wider transition-all duration-200 ${
-                    isActive ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
-                  }`}
+                  className={`relative flex items-center justify-center h-full gap-1.5 px-0.5 text-[10px] font-bold uppercase tracking-wider transition-all duration-200 ${isActive ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
+                    }`}
                 >
                   <Icon className="h-4 w-4 shrink-0" />
                 </Link>
@@ -204,8 +204,8 @@ export default function ReviewerLayout() {
       </main>
 
       {/* Announcement Modal */}
-      <AnnouncementModal 
-        isOpen={showAnnouncementModal} 
+      <AnnouncementModal
+        isOpen={showAnnouncementModal}
         announcements={announcements}
         onClose={() => setShowAnnouncementModal(false)}
       />

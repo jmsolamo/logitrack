@@ -27,7 +27,7 @@ function AnnouncementsPage() {
   const [formData, setFormData] = useState({
     title: '',
     content: '',
-    targetRoles: ['user', 'reviewer', 'admin'],
+    targetRoles: ['requestor', 'manager', 'admin'],
     startDate: '',
     endDate: ''
   });
@@ -79,7 +79,7 @@ function AnnouncementsPage() {
       setFormData({
         title: '',
         content: '',
-        targetRoles: ['user', 'reviewer', 'admin'],
+        targetRoles: ['requestor', 'manager', 'admin'],
         startDate: today,
         endDate: today
       });
@@ -93,7 +93,7 @@ function AnnouncementsPage() {
     setFormData({
       title: '',
       content: '',
-      targetRoles: ['user', 'reviewer', 'admin'],
+      targetRoles: ['requestor', 'manager', 'admin'],
       startDate: '',
       endDate: ''
     });
@@ -383,7 +383,7 @@ function AnnouncementsPage() {
                   Visible To *
                 </label>
                 <div className="space-y-2">
-                  {['admin', 'reviewer', 'user'].map(role => (
+                  {['admin', 'manager', 'requestor'].map(role => (
                     <label key={role} className="flex items-center gap-2 cursor-pointer">
                       <input
                         type="checkbox"

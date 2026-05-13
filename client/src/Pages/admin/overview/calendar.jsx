@@ -79,7 +79,7 @@ function getWeekDates(date) {
   return dates;
 }
 
-function Calendar({ userMode = false }) {
+function Calendar({ userMode = false, hideFilters = false }) {
   const [deliveries, setDeliveries] = useState([]);
   const [vehicles, setVehicles] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -87,7 +87,8 @@ function Calendar({ userMode = false }) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [vehicleFilter, setVehicleFilter] = useState('all');
   const [destinationFilter, setDestinationFilter] = useState('all');
-  const [statusFilter, setStatusFilter] = useState(userMode ? 'Pending' : 'all');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [showOnlyFilter, setShowOnlyFilter] = useState('all');
 
   const toast = useAppToast();
 
@@ -123,21 +124,21 @@ function Calendar({ userMode = false }) {
     return deliveries.filter(d => {
       const vehicleMatch = vehicleFilter === 'all' || d.vehicleEquipment === vehicleFilter;
       const destinationMatch = destinationFilter === 'all' || (d.customerSupplier || []).includes(destinationFilter);
-      const statusMatch = userMode 
-        ? (d.status || 'Pending') === 'Pending'
-        : (statusFilter === 'all' || (d.status || 'Pending') === statusFilter);
+      const statusMatch = statusFilter === 'all' || (d.status || 'Pending') === statusFilter;
       return vehicleMatch && destinationMatch && statusMatch;
     });
   }, [deliveries, vehicleFilter, destinationFilter, statusFilter]);
 
   const hasActiveFilters = vehicleFilter !== 'all' || 
     destinationFilter !== 'all' || 
-    statusFilter !== (userMode ? 'Pending' : 'all');
+    statusFilter !== 'all' ||
+    showOnlyFilter !== 'all';
 
   const resetFilters = () => {
     setVehicleFilter('all');
     setDestinationFilter('all');
-    setStatusFilter(userMode ? 'Pending' : 'all');
+    setStatusFilter('all');
+    setShowOnlyFilter('all');
   };
 
   // Build a map of dateKey -> deliveries for that date
@@ -397,6 +398,21 @@ function Calendar({ userMode = false }) {
                     styleProps.width = `${(ev.span / 7) * 100}%`;
                   }
 
+                  const driver = joinArray(ev.delivery.driver);
+                  
+                  let mainText = '';
+                  let subText = '';
+                  if (showOnlyFilter === 'drivers') {
+                    mainText = driver;
+                  } else if (showOnlyFilter === 'vehicles') {
+                    mainText = vehicle;
+                  } else if (showOnlyFilter === 'customers') {
+                    mainText = destination;
+                  } else {
+                    mainText = `${vehicle} — ${destination}`;
+                    subText = `${purpose} ${activity ? ` — ${activity}` : ''}`;
+                  }
+
                   return (
                     <div
                       key={ev.delivery._id + '-' + eIdx}
@@ -405,11 +421,11 @@ function Calendar({ userMode = false }) {
                     >
                       <div className={`w-full h-full flex flex-col justify-center px-1.5 border ${color.bg} ${color.border} ${color.text} shadow-sm overflow-hidden ${roundLeft} ${roundRight}`}>
                         <span className={`text-[8px] font-bold uppercase tracking-tight truncate leading-tight`}>
-                          {ev.isTrueStart || ev.offset === 0 ? `${vehicle} — ${destination}` : ''}
+                          {ev.isTrueStart || ev.offset === 0 ? mainText : ''}
                         </span>
-                        {(ev.isTrueStart || ev.offset === 0) && (
+                        {(ev.isTrueStart || ev.offset === 0) && subText && (
                           <span className="text-[7px] text-muted-foreground uppercase tracking-tight truncate leading-tight">
-                            {purpose} {activity && ` — ${activity}`}
+                            {subText}
                           </span>
                         )}
                       </div>
@@ -560,24 +576,39 @@ function Calendar({ userMode = false }) {
                 styleProps.width = `${(ev.span / 7) * 100}%`;
               }
 
-              return (
-                <div
-                  key={ev.delivery._id + '-' + eIdx}
-                  className={`absolute pointer-events-none ${padLeft} ${padRight}`}
-                  style={styleProps}
-                >
-                  <div className={`w-full h-full flex flex-col justify-center px-1.5 border ${color.bg} ${color.border} ${color.text} shadow-sm overflow-hidden ${roundLeft} ${roundRight}`}>
-                    <span className={`text-[8px] font-bold uppercase tracking-tight truncate leading-tight`}>
-                      {ev.isTrueStart || ev.offset === 0 ? `${vehicle} — ${destination}` : ''}
-                    </span>
-                    {(ev.isTrueStart || ev.offset === 0) && (
-                      <span className="text-[7px] text-muted-foreground uppercase tracking-tight truncate leading-tight">
-                        {purpose} {activity && ` — ${activity}`}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              );
+                  const driver = joinArray(ev.delivery.driver);
+                  
+                  let mainText = '';
+                  let subText = '';
+                  if (showOnlyFilter === 'drivers') {
+                    mainText = driver;
+                  } else if (showOnlyFilter === 'vehicles') {
+                    mainText = vehicle;
+                  } else if (showOnlyFilter === 'customers') {
+                    mainText = destination;
+                  } else {
+                    mainText = `${vehicle} — ${destination}`;
+                    subText = `${purpose} ${activity ? ` — ${activity}` : ''}`;
+                  }
+
+                  return (
+                    <div
+                      key={ev.delivery._id + '-' + eIdx}
+                      className={`absolute pointer-events-none ${padLeft} ${padRight}`}
+                      style={styleProps}
+                    >
+                      <div className={`w-full h-full flex flex-col justify-center px-1.5 border ${color.bg} ${color.border} ${color.text} shadow-sm overflow-hidden ${roundLeft} ${roundRight}`}>
+                        <span className={`text-[8px] font-bold uppercase tracking-tight truncate leading-tight`}>
+                          {ev.isTrueStart || ev.offset === 0 ? mainText : ''}
+                        </span>
+                        {(ev.isTrueStart || ev.offset === 0) && subText && (
+                          <span className="text-[7px] text-muted-foreground uppercase tracking-tight truncate leading-tight">
+                            {subText}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
             })}
 
             {events.length === 0 && (
@@ -632,12 +663,16 @@ function Calendar({ userMode = false }) {
                       <div className="flex items-center gap-2 mb-1">
                         <span className={`h-2 w-2 rounded-full ${statusColor} shrink-0`} />
                         <span className={`text-[11px] font-bold ${color.text} uppercase tracking-tight truncate`}>
-                          {getVehicleDisplay(del.vehicleEquipment)} — {joinArray(del.customerSupplier)}
+                          {showOnlyFilter === 'drivers' ? joinArray(del.driver) :
+                           showOnlyFilter === 'vehicles' ? getVehicleDisplay(del.vehicleEquipment) :
+                           showOnlyFilter === 'customers' ? joinArray(del.customerSupplier) :
+                           `${getVehicleDisplay(del.vehicleEquipment)} — ${joinArray(del.customerSupplier)}`}
                         </span>
                       </div>
                       <div className="text-[10px] text-muted-foreground uppercase tracking-wider pl-4 truncate">
-                        {joinArray(del.purpose)}
-                        {del.activity?.length > 0 && ` — ${joinArray(del.activity)}`}
+                        {showOnlyFilter === 'all' && (
+                          <>{joinArray(del.purpose)}{del.activity?.length > 0 && ` — ${joinArray(del.activity)}`}</>
+                        )}
                       </div>
                     </div>
                     <span className={`text-[8px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full ${statusColor} text-white shrink-0`}>
@@ -715,72 +750,89 @@ function Calendar({ userMode = false }) {
 
         {/* View Toggle + Filters */}
         <div className="flex items-center gap-1.5 flex-wrap">
-          {/* Filters */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="flex items-center gap-1.5 h-8 bg-background">
-                <i className='bx bx-car text-sm'></i>
-                <span className="text-[10px]">Vehicle</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="text-[10px] max-h-[200px] overflow-y-auto">
-              <DropdownMenuLabel className="text-[10px]">Filter by Vehicle</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuCheckboxItem className="text-[10px]" checked={vehicleFilter === 'all'} onCheckedChange={() => setVehicleFilter('all')}>All</DropdownMenuCheckboxItem>
-              {uniqueVehicles.map(v => (
-                <DropdownMenuCheckboxItem key={v} className="text-[10px]" checked={vehicleFilter === v} onCheckedChange={() => setVehicleFilter(v)}>
-                  {getVehicleDisplay(v)}
-                </DropdownMenuCheckboxItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {/* Filters - Hidden in Dashboard Mode */}
+          {!hideFilters && (
+            <>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="flex items-center gap-1.5 h-8 bg-background">
+                    <i className='bx bx-car text-sm'></i>
+                    <span className="text-[10px]">Vehicle</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="text-[10px] max-h-[200px] overflow-y-auto">
+                  <DropdownMenuLabel className="text-[10px]">Filter by Vehicle</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuCheckboxItem className="text-[10px]" checked={vehicleFilter === 'all'} onCheckedChange={() => setVehicleFilter('all')}>All</DropdownMenuCheckboxItem>
+                  {uniqueVehicles.map(v => (
+                    <DropdownMenuCheckboxItem key={v} className="text-[10px]" checked={vehicleFilter === v} onCheckedChange={() => setVehicleFilter(v)}>
+                      {getVehicleDisplay(v)}
+                    </DropdownMenuCheckboxItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="flex items-center gap-1.5 h-8 bg-background">
-                <i className='bx bx-map text-sm'></i>
-                <span className="text-[10px]">Customer/Supplier</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="text-[10px] max-h-[200px] overflow-y-auto">
-              <DropdownMenuLabel className="text-[10px]">Filter by Customer/Supplier</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuCheckboxItem className="text-[10px]" checked={destinationFilter === 'all'} onCheckedChange={() => setDestinationFilter('all')}>All</DropdownMenuCheckboxItem>
-              {uniqueDestinations.map(d => (
-                <DropdownMenuCheckboxItem key={d} className="text-[10px]" checked={destinationFilter === d} onCheckedChange={() => setDestinationFilter(d)}>{d}</DropdownMenuCheckboxItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="flex items-center gap-1.5 h-8 bg-background">
+                    <i className='bx bx-map text-sm'></i>
+                    <span className="text-[10px]">Customer/Supplier</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="text-[10px] max-h-[200px] overflow-y-auto">
+                  <DropdownMenuLabel className="text-[10px]">Filter by Customer/Supplier</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuCheckboxItem className="text-[10px]" checked={destinationFilter === 'all'} onCheckedChange={() => setDestinationFilter('all')}>All</DropdownMenuCheckboxItem>
+                  {uniqueDestinations.map(d => (
+                    <DropdownMenuCheckboxItem key={d} className="text-[10px]" checked={destinationFilter === d} onCheckedChange={() => setDestinationFilter(d)}>{d}</DropdownMenuCheckboxItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
 
-          {!userMode && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="flex items-center gap-1.5 h-8 bg-background">
-                  <i className='bx bx-check-circle text-sm'></i>
-                  <span className="text-[10px]">Status</span>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="flex items-center gap-1.5 h-8 bg-background">
+                    <i className='bx bx-check-circle text-sm'></i>
+                    <span className="text-[10px]">Status</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="text-[10px] max-h-[200px] overflow-y-auto">
+                  <DropdownMenuLabel className="text-[10px]">Filter by Status</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuCheckboxItem className="text-[10px]" checked={statusFilter === 'all'} onCheckedChange={() => setStatusFilter('all')}>All</DropdownMenuCheckboxItem>
+                  <DropdownMenuCheckboxItem className="text-[10px]" checked={statusFilter === 'Pending'} onCheckedChange={() => setStatusFilter('Pending')}>Pending</DropdownMenuCheckboxItem>
+                  <DropdownMenuCheckboxItem className="text-[10px]" checked={statusFilter === 'In Transit'} onCheckedChange={() => setStatusFilter('In Transit')}>In Transit</DropdownMenuCheckboxItem>
+                  <DropdownMenuCheckboxItem className="text-[10px]" checked={statusFilter === 'Completed'} onCheckedChange={() => setStatusFilter('Completed')}>Completed</DropdownMenuCheckboxItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="flex items-center gap-1.5 h-8 bg-background">
+                    <i className='bx bx-filter text-sm'></i>
+                    <span className="text-[10px]">Show Only</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="text-[10px] max-h-[200px] overflow-y-auto">
+                  <DropdownMenuLabel className="text-[10px]">Display Format</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuCheckboxItem className="text-[10px]" checked={showOnlyFilter === 'all'} onCheckedChange={() => setShowOnlyFilter('all')}>All (Default)</DropdownMenuCheckboxItem>
+                  <DropdownMenuCheckboxItem className="text-[10px]" checked={showOnlyFilter === 'drivers'} onCheckedChange={() => setShowOnlyFilter('drivers')}>Drivers</DropdownMenuCheckboxItem>
+                  <DropdownMenuCheckboxItem className="text-[10px]" checked={showOnlyFilter === 'vehicles'} onCheckedChange={() => setShowOnlyFilter('vehicles')}>Vehicles</DropdownMenuCheckboxItem>
+                  <DropdownMenuCheckboxItem className="text-[10px]" checked={showOnlyFilter === 'customers'} onCheckedChange={() => setShowOnlyFilter('customers')}>Customer/Supplier</DropdownMenuCheckboxItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              {hasActiveFilters && (
+                <Button variant="ghost" size="sm" onClick={resetFilters} className="h-8 gap-1.5 text-xs text-muted-foreground">
+                  <RotateCcw className="h-3 w-3" />
+                  Reset
                 </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="text-[10px] max-h-[200px] overflow-y-auto">
-                <DropdownMenuLabel className="text-[10px]">Filter by Status</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuCheckboxItem className="text-[10px]" checked={statusFilter === 'all'} onCheckedChange={() => setStatusFilter('all')}>All</DropdownMenuCheckboxItem>
-                <DropdownMenuCheckboxItem className="text-[10px]" checked={statusFilter === 'Pending'} onCheckedChange={() => setStatusFilter('Pending')}>Pending</DropdownMenuCheckboxItem>
-                <DropdownMenuCheckboxItem className="text-[10px]" checked={statusFilter === 'In Transit'} onCheckedChange={() => setStatusFilter('In Transit')}>In Transit</DropdownMenuCheckboxItem>
-                <DropdownMenuCheckboxItem className="text-[10px]" checked={statusFilter === 'Completed'} onCheckedChange={() => setStatusFilter('Completed')}>Completed</DropdownMenuCheckboxItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+              )}
+
+              <div className="w-px h-6 bg-border mx-1" />
+            </>
           )}
-
-
-
-          {hasActiveFilters && (
-            <Button variant="ghost" size="sm" onClick={resetFilters} className="h-8 gap-1.5 text-xs text-muted-foreground">
-              <RotateCcw className="h-3 w-3" />
-              Reset
-            </Button>
-          )}
-
-          <div className="w-px h-6 bg-border mx-1" />
 
           {/* View Toggle */}
           <div className="flex items-center gap-1 bg-muted/40 p-0.5 rounded-lg border border-border">

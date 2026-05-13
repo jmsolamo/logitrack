@@ -9,7 +9,8 @@ import {
   Calendar,
   CalendarDays,
   Truck,
-  Printer
+  Printer,
+  Download
 } from 'lucide-react';
 import { Input } from '../../../../components/ui/input';
 import { Button } from '../../../../components/ui/button';
@@ -32,6 +33,9 @@ export default function DieselExpenses() {
   const [dateFilter, setDateFilter] = useState('');
   const [monthFilter, setMonthFilter] = useState('all');
   const [vehicleFilter, setVehicleFilter] = useState('all');
+
+  // Checkboxes
+  const [selectedIds, setSelectedIds] = useState(new Set());
 
   const toast = useAppToast();
 
@@ -60,7 +64,23 @@ export default function DieselExpenses() {
     setDateFilter('');
     setMonthFilter('all');
     setVehicleFilter('all');
+    setSelectedIds(new Set());
     toast.success('Filters cleared');
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === flattenedRows.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(flattenedRows.map(r => r._id)));
+    }
+  };
+
+  const toggleSelect = (id) => {
+    const newSet = new Set(selectedIds);
+    if (newSet.has(id)) newSet.delete(id);
+    else newSet.add(id);
+    setSelectedIds(newSet);
   };
 
   // --- Helpers ---
@@ -93,7 +113,8 @@ export default function DieselExpenses() {
             deliveryId: d._id,
             dateFrom: d.dateFrom,
             driver: d.driver,
-            destination: d.customerSupplier,
+            customerSupplier: d.customerSupplier,
+            destination: d.destination,
             jobOrderNo: d.jobOrderNo,
             gasStation: f.gasStation || '—',
             liters: f.liters || 0,
@@ -204,6 +225,53 @@ export default function DieselExpenses() {
     return { totalLiters, totalAmount };
   }, [filteredRows]);
 
+  const exportToCSV = () => {
+    const rowsToExport = selectedIds.size > 0
+      ? flattenedRows.filter(row => selectedIds.has(row._id))
+      : filteredRows;
+
+    if (rowsToExport.length === 0) return toast.warning('No data to export');
+
+    const headers = [
+      'Date',
+      'Driver',
+      'Job Order No.',
+      'Customer / Supplier',
+      'Destination',
+      'Gas Station',
+      'Liters',
+      'Amount',
+      'Invoice No.',
+      'Vehicle'
+    ];
+
+    const data = rowsToExport.map(row => [
+      formatDate(row.dateFrom),
+      joinArray(row.driver),
+      joinArray(row.jobOrderNo),
+      joinArray(row.customerSupplier),
+      joinArray(row.destination),
+      row.gasStation,
+      row.liters,
+      row.amount,
+      row.invoiceNo,
+      row.vehicleEquipment || '—'
+    ]);
+
+    const csvContent = [
+      headers.join(','),
+      ...data.map(row => row.map(field => `"${String(field || '').replace(/"/g, '""')}"`).join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    const dateStr = new Date().toISOString().split('T')[0];
+    link.download = `diesel_expenses_${dateStr}.csv`;
+    link.click();
+    toast.success(`${selectedIds.size > 0 ? 'Selected' : 'Filtered'} report exported successfully`);
+  };
+
   const hasActiveFilters = searchQuery || dateFilter || monthFilter !== 'all' || vehicleFilter !== 'all';
 
   return (
@@ -216,6 +284,18 @@ export default function DieselExpenses() {
           <p className="text-[10px] text-muted-foreground uppercase tracking-widest">Fuel consumption tracking for all completed deliveries</p>
         </div>
         <div className="flex items-center gap-3">
+          {selectedIds.size > 0 && (
+            <span className="text-[10px] font-bold text-primary uppercase tracking-wider">{selectedIds.size} selected</span>
+          )}
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={exportToCSV}
+            className="h-8 gap-1.5 text-[10px] uppercase font-bold tracking-wider border-emerald-500/50 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700"
+          >
+            <Download className="h-3.5 w-3.5" />
+            Export CSV
+          </Button>
           <Button size="sm" onClick={() => window.print()} className="h-8 gap-1.5 text-[10px] uppercase font-bold tracking-wider">
             <Printer className="h-3.5 w-3.5" />
             Print Report
@@ -329,9 +409,18 @@ export default function DieselExpenses() {
             <table className="w-full min-w-[900px] border-collapse relative">
               <thead className="sticky top-0 z-10 bg-orange-500 backdrop-blur shadow-sm">
                 <tr className="border-b border-orange-600/20">
+                  <th className="w-[40px] px-3 py-2.5 text-center align-middle">
+                    <input
+                      type="checkbox"
+                      checked={filteredRows.length > 0 && selectedIds.size === filteredRows.length}
+                      onChange={toggleSelectAll}
+                      className="h-3.5 w-3.5 accent-white cursor-pointer"
+                    />
+                  </th>
                   <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Date</th>
                   <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Driver</th>
-                  <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-center align-middle">Job Order No.</th>
+                  <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Job Order No.</th>
+                  <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Customer / Supplier</th>
                   <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Destination</th>
                   <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Gas Station</th>
                   <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-right align-middle">Liters</th>
@@ -343,11 +432,21 @@ export default function DieselExpenses() {
                 {filteredRows.map((row, index) => (
                   <tr
                     key={row._id}
-                    className={`border-b border-border/50 hover:bg-muted/30 transition-colors ${index % 2 === 0 ? 'bg-card/30' : ''}`}
+                    onClick={() => toggleSelect(row._id)}
+                    className={`cursor-pointer border-b border-border/50 hover:bg-muted/30 transition-colors ${index % 2 === 0 ? 'bg-card/30' : ''} ${selectedIds.has(row._id) ? 'bg-primary/5' : ''}`}
                   >
+                    <td className="w-[40px] px-3 py-2 text-center">
+                      <input
+                        type="checkbox"
+                        readOnly
+                        checked={selectedIds.has(row._id)}
+                        className="h-3.5 w-3.5 accent-primary cursor-pointer pointer-events-none"
+                      />
+                    </td>
                     <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-foreground tracking-tight">{formatDate(row.dateFrom)}</td>
                     <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-foreground uppercase tracking-tight">{joinArray(row.driver)}</td>
-                    <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-foreground tracking-tight text-center">{joinArray(row.jobOrderNo)}</td>
+                    <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-foreground uppercase tracking-tight text-center">{joinArray(row.jobOrderNo)}</td>
+                    <td className="px-3 py-2 text-[10px] font-medium text-foreground uppercase tracking-tight max-w-[200px] truncate" title={joinArray(row.customerSupplier)}>{joinArray(row.customerSupplier)}</td>
                     <td className="px-3 py-2 text-[10px] font-medium text-foreground uppercase tracking-tight max-w-[200px] truncate" title={joinArray(row.destination)}>{joinArray(row.destination)}</td>
                     <td className="whitespace-nowrap px-3 py-2 text-[10px] font-bold text-foreground uppercase tracking-tight">{row.gasStation}</td>
                     <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-muted-foreground text-right tracking-tight">{row.liters.toLocaleString()}</td>
@@ -388,6 +487,7 @@ export default function DieselExpenses() {
             <th className="border border-black px-1 py-1 font-bold whitespace-nowrap align-middle">DATE</th>
             <th className="border border-black px-1 py-1 font-bold align-middle whitespace-nowrap">DRIVER</th>
             <th className="border border-black px-1 py-1 font-bold align-middle whitespace-nowrap">JOB ORDER NO.</th>
+            <th className="border border-black px-1 py-1 font-bold align-middle whitespace-nowrap">CUSTOMER / SUPPLIER</th>
             <th className="border border-black px-1 py-1 font-bold align-middle whitespace-nowrap">DESTINATION</th>
             <th className="border border-black px-1 py-1 font-bold align-middle whitespace-nowrap">VEHICLE</th>
             <th className="border border-black px-1 py-1 font-bold align-middle whitespace-nowrap">GAS STATION</th>
@@ -402,6 +502,7 @@ export default function DieselExpenses() {
               <td className="border border-black px-1 py-1 align-top whitespace-nowrap">{formatDate(row.dateFrom).toUpperCase()}</td>
               <td className="border border-black px-1 py-1 align-top uppercase whitespace-nowrap font-medium text-center">{formatDriverInitials(row.driver)}</td>
               <td className="border border-black px-1 py-1 align-top text-center">{joinArray(row.jobOrderNo)}</td>
+              <td className="border border-black px-1 py-1 align-top uppercase">{joinArray(row.customerSupplier)}</td>
               <td className="border border-black px-1 py-1 align-top uppercase">{joinArray(row.destination)}</td>
               <td className="border border-black px-1 py-1 align-top uppercase whitespace-nowrap font-bold text-center">{row.vehicleEquipment || '—'}</td>
               <td className="border border-black px-1 py-1 align-top uppercase whitespace-nowrap">{row.gasStation}</td>
@@ -412,7 +513,7 @@ export default function DieselExpenses() {
           ))}
           {/* Total Row */}
           <tr className="bg-[#f2f2f2] break-inside-avoid">
-            <td className="border border-black px-1 py-1 font-bold bg-white" colSpan={5}></td>
+            <td className="border border-black px-1 py-1 font-bold bg-white" colSpan={6}></td>
             <td className="border border-black px-1 py-1 font-bold text-center">TOTAL</td>
             <td className="border border-black px-1 py-1 font-bold text-right whitespace-nowrap">{totals.totalLiters.toLocaleString()}</td>
             <td className="border border-black px-1 py-1 font-bold text-right whitespace-nowrap">{totals.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>

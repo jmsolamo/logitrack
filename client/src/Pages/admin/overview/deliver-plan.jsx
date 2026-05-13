@@ -13,7 +13,8 @@ import {
   Eye,
   Printer,
   Pencil,
-  Trash2
+  Trash2,
+  Download
 } from 'lucide-react';
 import axios from 'axios';
 import { useAppToast } from '../../../components/ui/alert-toast-provider';
@@ -41,11 +42,11 @@ const tableColumns = [
   { key: 'purpose', label: 'Purpose' },
   { key: 'activity', label: 'Activity' },
   { key: 'vehicleEquipment', label: 'Vehicle' },
+  { key: 'customerSupplier', label: 'Customer / Supplier' },
   { key: 'destination', label: 'Destination' },
   { key: 'driver', label: 'Driver' },
   { key: 'helper', label: 'Helper' },
   { key: 'jobOrderNo', label: 'Job Order No.' },
-  { key: 'customerSupplier', label: 'Customer / Supplier' },
   { key: 'totalBudget', label: 'Total Budget' },
   { key: 'requestedBy', label: 'Requested By' },
 ];
@@ -60,7 +61,7 @@ function DeliveryPlan() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
-  const [statusFilter, setStatusFilter] = useState('Pending');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [dateFromFilter, setDateFromFilter] = useState('');
   const [dateToFilter, setDateToFilter] = useState('');
   const [purposeFilter, setPurposeFilter] = useState('all');
@@ -101,6 +102,9 @@ function DeliveryPlan() {
     isLoading: false
   });
 
+  // Checkboxes
+  const [selectedIds, setSelectedIds] = useState(new Set());
+
   // Expenses Modal State
   const [expensesModal, setExpensesModal] = useState({
     isOpen: false,
@@ -137,6 +141,15 @@ function DeliveryPlan() {
 
   const [formData, setFormData] = useState(initialFormData);
   const [newCustomers, setNewCustomers] = useState({});
+  const [newDestinations, setNewDestinations] = useState({});
+
+  const uniqueCustomerSuppliers = useMemo(() => {
+    const set = new Set();
+    destinations.forEach(d => {
+      if (d.customerSupplier) set.add(d.customerSupplier);
+    });
+    return Array.from(set).sort();
+  }, [destinations]);
 
   const toast = useAppToast();
 
@@ -208,6 +221,7 @@ function DeliveryPlan() {
     setIsModalOpen(false);
     setFormData(initialFormData);
     setNewCustomers({});
+    setNewDestinations({});
   };
 
   const handleSubmit = async (e) => {
@@ -216,14 +230,25 @@ function DeliveryPlan() {
 
     try {
       const processedCustomerSupplier = [...formData.customerSupplier];
+      const processedDestination = [...formData.destination];
+
       for (let i = 0; i < processedCustomerSupplier.length; i++) {
         if (processedCustomerSupplier[i] === 'NEW_CUSTOMER' && newCustomers[i]) {
-          const newName = newCustomers[i].trim();
-          processedCustomerSupplier[i] = newName;
+          processedCustomerSupplier[i] = newCustomers[i].trim();
+        }
+
+        if (processedDestination[i] === 'NEW_DESTINATION' && newDestinations[i]) {
+          const newDestName = newDestinations[i].trim();
+          processedDestination[i] = newDestName;
+          
+          // Auto-save new destination to the DB
           try {
-            await axios.post('/api/destinations', { name: newName });
+            await axios.post('/api/destinations', { 
+              name: newDestName,
+              customerSupplier: processedCustomerSupplier[i]
+            });
           } catch (e) {
-            // Ignore if already exists
+            // Ignore if already exists or fails
           }
         }
       }
@@ -236,7 +261,7 @@ function DeliveryPlan() {
         activity: formData.activity.filter(v => v.trim() !== ''),
         vehicleEquipment: formData.vehicleEquipment,
         tnvsProvider: formData.vehicleEquipment === 'RENT_VEHICLE' ? formData.tnvsProvider : undefined,
-        destination: formData.destination.filter(v => v.trim() !== ''),
+        destination: processedDestination.filter(v => v.trim() !== ''),
         driver: formData.driver.filter(v => v.trim() !== ''),
         helper: formData.helper.filter(v => v.trim() !== ''),
         jobOrderNo: formData.jobOrderNo.filter(v => v.trim() !== ''),
@@ -261,14 +286,30 @@ function DeliveryPlan() {
   const handleReset = () => {
     setSearchQuery('');
     setTypeFilter('all');
-    setStatusFilter('Pending');
+    setStatusFilter('all');
     setDateFromFilter('');
     setDateToFilter('');
     setPurposeFilter('all');
     setVehicleFilter('all');
     setDestinationFilter('all');
     setPersonnelFilter('all');
+    setSelectedIds(new Set());
     toast.success('Filters cleared');
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filteredDeliveries.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredDeliveries.map(d => d._id)));
+    }
+  };
+
+  const toggleSelect = (id) => {
+    const newSet = new Set(selectedIds);
+    if (newSet.has(id)) newSet.delete(id);
+    else newSet.add(id);
+    setSelectedIds(newSet);
   };
 
   // --- Status Update Logic ---
@@ -276,7 +317,9 @@ function DeliveryPlan() {
     const customerSuppliers = delivery.customerSupplier || [];
     const timeline = delivery.timeline || [];
 
-    if (customerSuppliers.length === 0) return { step: 0, total: 0, isComplete: true };
+    if (customerSuppliers.length === 0) {
+      return { step: 0, total: 0, isComplete: timeline.length > 0 };
+    }
 
     // 1 departure from Enertech + 1 arrival per customer/supplier + 1 departure from last + 1 arrival back to Enertech
     const totalSteps = 1 + customerSuppliers.length + 1 + 1;
@@ -417,7 +460,7 @@ function DeliveryPlan() {
     const supps = delivery.customerSupplier || [];
     const jobs = delivery.jobOrderNo || [];
     const acts = delivery.activity || [];
-    const rows = Math.max(dests.length, supps.length, jobs.length, acts.length, 1);
+    const rows = Math.max(dests.length, supps.length, jobs.length, acts.length, 10);
 
     // Build employee rows — first 4 share rows with guard/driver info, rest are extra
     const rightColInfo = [
@@ -790,7 +833,7 @@ function DeliveryPlan() {
       <th>ETD</th>
       <th>ETA</th>
       <th>Total Km.</th>
-      <th>DE#</th>
+      <th>DR#</th>
     </tr>
   </thead>
   <tbody>
@@ -1146,12 +1189,70 @@ function DeliveryPlan() {
       const personnelMatch = personnelFilter === 'all' ||
         (d.driver || []).includes(personnelFilter) ||
         (d.helper || []).includes(personnelFilter);
-
       return searchMatch && typeMatch && statusMatch && dateFromMatch && dateToMatch &&
         purposeMatch && vehicleMatch && destinationMatch && personnelMatch;
     });
   }, [deliveries, searchQuery, typeFilter, statusFilter, dateFromFilter, dateToFilter,
     purposeFilter, vehicleFilter, destinationFilter, personnelFilter]);
+
+  const exportToCSV = () => {
+    const rowsToExport = selectedIds.size > 0 
+      ? deliveries.filter(d => selectedIds.has(d._id))
+      : filteredDeliveries;
+
+    if (rowsToExport.length === 0) return toast.warning('No data to export');
+
+    const headers = [
+      'Reference No.',
+      'Status',
+      'Delivery Type',
+      'Date From',
+      'Date To',
+      'Duration',
+      'Purpose',
+      'Activity',
+      'Vehicle',
+      'Customer / Supplier',
+      'Destination',
+      'Driver',
+      'Helper',
+      'Job Order No.',
+      'Total Budget',
+      'Requested By'
+    ];
+
+    const data = rowsToExport.map(item => [
+      item.referenceNo,
+      getStatusDisplay(item),
+      item.deliveryType || '—',
+      formatDate(item.dateFrom),
+      formatDate(item.dateTo),
+      computeDuration(item.dateFrom, item.dateTo),
+      (item.purpose || []).join(' / '),
+      (item.activity || []).join(' / '),
+      item.vehicleEquipment || '—',
+      (item.customerSupplier || []).join(' / '),
+      (item.destination || []).join(' / '),
+      (item.driver || []).join(' / '),
+      (item.helper || []).join(' / '),
+      (item.jobOrderNo || []).join(' / '),
+      item.totalBudget || 0,
+      item.requestedBy || '—'
+    ]);
+
+    const csvContent = [
+      headers.join(','),
+      ...data.map(row => row.map(field => `"${String(field || '').replace(/"/g, '""')}"`).join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    const dateStr = new Date().toISOString().split('T')[0];
+    link.download = `delivery_plan_${dateStr}.csv`;
+    link.click();
+    toast.success(`${selectedIds.size > 0 ? 'Selected' : 'Filtered'} report exported successfully`);
+  };
 
   const drivers = personnels.filter(p => p.position === 'Driver');
   const helpers = personnels.filter(p => p.position === 'Helper');
@@ -1178,14 +1279,24 @@ function DeliveryPlan() {
 
     try {
       const processedCustomerSupplier = [...formData.customerSupplier];
+      const processedDestination = [...formData.destination];
+
       for (let i = 0; i < processedCustomerSupplier.length; i++) {
         if (processedCustomerSupplier[i] === 'NEW_CUSTOMER' && newCustomers[i]) {
-          const newName = newCustomers[i].trim();
-          processedCustomerSupplier[i] = newName;
+          processedCustomerSupplier[i] = newCustomers[i].trim();
+        }
+
+        if (processedDestination[i] === 'NEW_DESTINATION' && newDestinations[i]) {
+          const newDestName = newDestinations[i].trim();
+          processedDestination[i] = newDestName;
+          
           try {
-            await axios.post('/api/destinations', { name: newName });
+            await axios.post('/api/destinations', { 
+              name: newDestName,
+              customerSupplier: processedCustomerSupplier[i]
+            });
           } catch (e) {
-            // Ignore safely
+            // Ignore
           }
         }
       }
@@ -1198,7 +1309,7 @@ function DeliveryPlan() {
         activity: formData.activity.filter(v => v.trim() !== ''),
         vehicleEquipment: formData.vehicleEquipment,
         tnvsProvider: formData.vehicleEquipment === 'RENT_VEHICLE' ? formData.tnvsProvider : undefined,
-        destination: formData.destination.filter(v => v.trim() !== ''),
+        destination: processedDestination.filter(v => v.trim() !== ''),
         driver: formData.driver.filter(v => v.trim() !== ''),
         helper: formData.helper.filter(v => v.trim() !== ''),
         jobOrderNo: formData.jobOrderNo.filter(v => v.trim() !== ''),
@@ -1288,6 +1399,7 @@ function DeliveryPlan() {
           >
             <option value="" disabled>Select Vehicle / Equipment</option>
             <option value="RENT_VEHICLE" className="font-bold">Rent Vehicle</option>
+            <option value="MOTORCYCLE" className="font-bold text-[#16a34a]">MOTORCYCLE</option>
             {[...vehicles].sort((a, b) => a.plateNumber.localeCompare(b.plateNumber)).map(v => {
               const status = (v.status || 'Available').toLowerCase();
               let textColor = 'inherit';
@@ -1383,16 +1495,20 @@ function DeliveryPlan() {
                                 className={cn(selectClass, "flex items-center justify-between text-left px-2.5 outline-none")}
                               >
                                 <span className="font-bold text-foreground truncate max-w-[calc(100%-1.5rem)]">
-                                  {!cs ? "Select Customer / Supplier" : (cs === 'NEW_CUSTOMER' ? '-- New Customer / Supplier --' : destinations.find(d => d.name === cs)?.name || cs)}
+                                  {!cs ? "Select Customer / Supplier" : (cs === 'NEW_CUSTOMER' ? '-- New Customer / Supplier --' : cs)}
                                 </span>
                                 <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground/70" />
                               </button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent className="z-[200] w-[var(--radix-dropdown-menu-trigger-width)] min-w-[200px] max-h-56 overflow-y-auto" align="start">
-                              <DropdownMenuRadioGroup value={cs} onValueChange={(val) => handleArrayChange('customerSupplier', index, val)}>
-                                {destinations.map(d => (
-                                  <DropdownMenuRadioItem key={d._id} value={d.name} className="font-bold text-[11px] uppercase tracking-wider py-2 cursor-pointer">
-                                    {d.name}
+                              <DropdownMenuRadioGroup value={cs} onValueChange={(val) => {
+                                handleArrayChange('customerSupplier', index, val);
+                                // Reset destination when CS changes
+                                handleArrayChange('destination', index, '');
+                              }}>
+                                {uniqueCustomerSuppliers.map((csName) => (
+                                  <DropdownMenuRadioItem key={csName} value={csName} className="font-bold text-[11px] uppercase tracking-wider py-2 cursor-pointer">
+                                    {csName}
                                   </DropdownMenuRadioItem>
                                 ))}
                                 <DropdownMenuSeparator />
@@ -1514,7 +1630,10 @@ function DeliveryPlan() {
         </legend>
         {formData.jobOrderNo.map((jo, index) => (
           <div key={`jo-${index}`}>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
+              {selectedIds.size > 0 && (
+                <span className="text-[10px] font-bold text-primary uppercase tracking-wider">{selectedIds.size} selected</span>
+              )}
               <input
                 value={jo}
                 onChange={(e) => handleArrayChange('jobOrderNo', index, e.target.value)}
@@ -1541,28 +1660,64 @@ function DeliveryPlan() {
         <legend className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground px-1 -ml-1 flex items-center gap-2">
           Destination
         </legend>
-        {formData.destination.map((dItem, index) => (
-          <div key={`dest-${index}`}>
-            <div className="flex items-center gap-2">
-              <input
-                value={dItem}
-                onChange={(e) => handleArrayChange('destination', index, e.target.value)}
-                className={`${inputFormClass} flex-1`}
-                placeholder="Destination"
-              />
-              {index === 0 && (
-                <button type="button" onClick={() => addArrayField('destination')} className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
-                  <Plus className="h-4 w-4" />
-                </button>
-              )}
-              {index > 0 && (
-                <button type="button" onClick={() => removeArrayField('destination', index)} className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-muted/50 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors">
-                  <Minus className="h-4 w-4" />
-                </button>
+        {formData.destination.map((dItem, index) => {
+          const currentCS = formData.customerSupplier[index];
+          const filteredDestinations = destinations.filter(d => d.customerSupplier === currentCS);
+
+          return (
+            <div key={`dest-${index}`}>
+              <div className="flex items-center gap-2">
+                <div className="relative flex-1">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        type="button"
+                        className={cn(selectClass, "flex items-center justify-between text-left px-2.5 outline-none")}
+                      >
+                        <span className="font-bold text-foreground truncate max-w-[calc(100%-1.5rem)]">
+                          {!dItem ? "Select Destination" : (dItem === 'NEW_DESTINATION' ? '-- New Destination --' : dItem)}
+                        </span>
+                        <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground/70" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="z-[200] w-[var(--radix-dropdown-menu-trigger-width)] min-w-[200px] max-h-56 overflow-y-auto" align="start">
+                      <DropdownMenuRadioGroup value={dItem} onValueChange={(val) => handleArrayChange('destination', index, val)}>
+                        {filteredDestinations.map((d) => (
+                          <DropdownMenuRadioItem key={d._id} value={d.name} className="font-bold text-[11px] uppercase tracking-wider py-2 cursor-pointer">
+                            {d.name}
+                          </DropdownMenuRadioItem>
+                        ))}
+                        <DropdownMenuSeparator />
+                        <DropdownMenuRadioItem value="NEW_DESTINATION" className="font-bold text-primary text-[11px] uppercase tracking-wider py-2 cursor-pointer">
+                          -- New Destination --
+                        </DropdownMenuRadioItem>
+                      </DropdownMenuRadioGroup>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+                {index === 0 && (
+                  <button type="button" onClick={() => addArrayField('destination')} className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
+                    <Plus className="h-4 w-4" />
+                  </button>
+                )}
+                {index > 0 && (
+                  <button type="button" onClick={() => removeArrayField('destination', index)} className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-muted/50 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors">
+                    <Minus className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+              {dItem === 'NEW_DESTINATION' && (
+                <input
+                  type="text"
+                  placeholder="Enter new destination"
+                  value={newDestinations[index] || ''}
+                  onChange={(e) => setNewDestinations({ ...newDestinations, [index]: e.target.value })}
+                  className={`${inputFormClass} mt-2 w-full`}
+                />
               )}
             </div>
-          </div>
-        ))}
+          );
+        })}
       </fieldset>
 
       {/* Total Budget */}
@@ -1606,6 +1761,21 @@ function DeliveryPlan() {
         <div>
           <h1 className="text-sm font-bold tracking-tight text-foreground md:text-base uppercase">Delivery Plan</h1>
           <p className="text-[10px] text-muted-foreground uppercase tracking-widest">Overview of All Scheduled Deliveries</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={exportToCSV}
+            className="h-8 gap-1.5 text-[10px] uppercase font-bold tracking-wider border-emerald-500/50 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700"
+          >
+            <Download className="h-3.5 w-3.5" />
+            Export CSV
+          </Button>
+          <Button size="sm" onClick={openModal} className="h-8 gap-1.5 text-[10px] uppercase font-bold tracking-wider">
+            <Plus className="h-3.5 w-3.5" />
+            New Delivery
+          </Button>
         </div>
       </div>
 
@@ -1721,6 +1891,8 @@ function DeliveryPlan() {
                 <DropdownMenuLabel className="text-[10px]">Filter by Vehicle</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuCheckboxItem className="text-[10px]" checked={vehicleFilter === 'all'} onCheckedChange={() => setVehicleFilter('all')}>All</DropdownMenuCheckboxItem>
+                <DropdownMenuCheckboxItem className="text-[10px]" checked={vehicleFilter === 'MOTORCYCLE'} onCheckedChange={() => setVehicleFilter('MOTORCYCLE')}>MOTORCYCLE</DropdownMenuCheckboxItem>
+                <DropdownMenuCheckboxItem className="text-[10px]" checked={vehicleFilter === 'RENT_VEHICLE'} onCheckedChange={() => setVehicleFilter('RENT_VEHICLE')}>Rent Vehicle</DropdownMenuCheckboxItem>
                 {vehicles.map((v) => (
                   <DropdownMenuCheckboxItem key={v._id} className="text-[10px]" checked={vehicleFilter === v.plateNumber} onCheckedChange={() => setVehicleFilter(v.plateNumber)}>{v.plateNumber} — {v.model}</DropdownMenuCheckboxItem>
                 ))}
@@ -1820,6 +1992,14 @@ function DeliveryPlan() {
             <table className="w-full min-w-[900px] border-collapse relative">
               <thead className="sticky top-0 z-10 bg-orange-500 backdrop-blur shadow-sm">
                 <tr className="border-b border-orange-600/20">
+                  <th className="w-[40px] px-3 py-2.5 text-center align-middle">
+                    <input
+                      type="checkbox"
+                      checked={filteredDeliveries.length > 0 && selectedIds.size === filteredDeliveries.length}
+                      onChange={toggleSelectAll}
+                      className="h-3.5 w-3.5 accent-white cursor-pointer"
+                    />
+                  </th>
                   {tableColumns.filter(c => visibleColumns.has(c.key)).map((col) => (
                     <th
                       key={col.key}
@@ -1838,9 +2018,17 @@ function DeliveryPlan() {
                 {filteredDeliveries.map((item, index) => (
                   <tr
                     key={item._id}
-                    className={`border-b border-border/50 transition-colors hover:bg-muted/30 cursor-pointer ${index % 2 === 0 ? 'bg-card/30' : ''}`}
+                    className={`border-b border-border/50 hover:bg-muted/30 transition-colors cursor-pointer ${index % 2 === 0 ? 'bg-card/30' : ''} ${selectedIds.has(item._id) ? 'bg-primary/5' : ''}`}
                     onClick={() => openDetailsModal(item)}
                   >
+                    <td className="w-[40px] px-3 py-2 text-center" onClick={(e) => { e.stopPropagation(); toggleSelect(item._id); }}>
+                      <input
+                        type="checkbox"
+                        readOnly
+                        checked={selectedIds.has(item._id)}
+                        className="h-3.5 w-3.5 accent-primary cursor-pointer pointer-events-none"
+                      />
+                    </td>
                     {visibleColumns.has('referenceNo') && (
                       <td className="whitespace-nowrap px-3 py-2 text-[10px] font-bold text-primary tracking-tight">{item.referenceNo}</td>
                     )}
@@ -1889,6 +2077,9 @@ function DeliveryPlan() {
                         })()}
                       </td>
                     )}
+                    {visibleColumns.has('customerSupplier') && (
+                      <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-foreground uppercase tracking-tight">{joinArray(item.customerSupplier)}</td>
+                    )}
                     {visibleColumns.has('destination') && (
                       <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-foreground uppercase tracking-tight">{joinArray(item.destination)}</td>
                     )}
@@ -1900,9 +2091,6 @@ function DeliveryPlan() {
                     )}
                     {visibleColumns.has('jobOrderNo') && (
                       <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-foreground tracking-tight text-center">{joinArray(item.jobOrderNo)}</td>
-                    )}
-                    {visibleColumns.has('customerSupplier') && (
-                      <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-foreground uppercase tracking-tight">{joinArray(item.customerSupplier)}</td>
                     )}
                     {visibleColumns.has('totalBudget') && (
                       <td className="whitespace-nowrap px-3 py-2 text-[10px] font-bold text-primary tracking-wider text-right pr-6">{Number(item.totalBudget || 0).toLocaleString()}</td>
@@ -2137,15 +2325,15 @@ function DeliveryPlan() {
                     </div>
                   </div>
 
-                  {/* Job Order & Destination - Side by Side */}
+                  {/* Destination & Job Order - Side by Side */}
                   <div className="grid grid-cols-2 gap-3">
-                    <div className="p-3 rounded-lg bg-card border border-border">
-                      <p className="text-[9px] text-muted-foreground uppercase tracking-widest mb-1.5">Job Order No.</p>
-                      <p className="text-[11px] font-bold text-foreground leading-relaxed">{joinArray(detailsModal.delivery.jobOrderNo)}</p>
-                    </div>
                     <div className="p-3 rounded-lg bg-card border border-border">
                       <p className="text-[9px] text-muted-foreground uppercase tracking-widest mb-1.5">Destination</p>
                       <p className="text-[11px] font-bold text-foreground uppercase leading-relaxed">{joinArray(detailsModal.delivery.destination)}</p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-card border border-border">
+                      <p className="text-[9px] text-muted-foreground uppercase tracking-widest mb-1.5">Job Order No.</p>
+                      <p className="text-[11px] font-bold text-foreground leading-relaxed">{joinArray(detailsModal.delivery.jobOrderNo)}</p>
                     </div>
                   </div>
 

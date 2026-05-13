@@ -1,14 +1,13 @@
 import express from 'express';
-import Destination from '../models/Destination.js';
+import { getPool } from '../db/pool.js';
+import * as destinationsMysql from '../repositories/destinationsMysql.js';
 
 const router = express.Router();
 
-// @route   GET /api/destinations
-// @desc    Get all destinations
-// @access  Public
 router.get('/', async (req, res) => {
   try {
-    const destinations = await Destination.find({}).sort({ name: 1 });
+    const pool = getPool();
+    const destinations = await destinationsMysql.listDestinations(pool);
     res.json(destinations);
   } catch (error) {
     console.error('Error fetching destinations:', error);
@@ -16,27 +15,18 @@ router.get('/', async (req, res) => {
   }
 });
 
-// @route   POST /api/destinations
-// @desc    Add new destination
-// @access  Public
 router.post('/', async (req, res) => {
   try {
-    const { name } = req.body;
-
+    const { name, customerSupplier } = req.body;
     if (!name) {
       return res.status(400).json({ message: 'Destination name is required' });
     }
-
-    const existingDestination = await Destination.findOne({ name: name.toUpperCase() });
+    const pool = getPool();
+    const existingDestination = await destinationsMysql.findByName(pool, name);
     if (existingDestination) {
       return res.status(400).json({ message: 'Destination already exists' });
     }
-
-    const newDestination = new Destination({
-      name
-    });
-
-    const savedDestination = await newDestination.save();
+    const savedDestination = await destinationsMysql.createDestination(pool, { name, customerSupplier });
     res.status(201).json(savedDestination);
   } catch (error) {
     console.error('Error adding destination:', error);
@@ -44,27 +34,17 @@ router.post('/', async (req, res) => {
   }
 });
 
-// @route   PUT /api/destinations/:id
-// @desc    Update destination
-// @access  Public
 router.put('/:id', async (req, res) => {
   try {
-    const { name } = req.body;
-    
+    const { name, customerSupplier } = req.body;
     if (!name) {
       return res.status(400).json({ message: 'Destination name is required' });
     }
-
-    const updatedDestination = await Destination.findByIdAndUpdate(
-      req.params.id,
-      { name: name.toUpperCase() },
-      { new: true }
-    );
-    
+    const pool = getPool();
+    const updatedDestination = await destinationsMysql.updateDestination(pool, req.params.id, { name, customerSupplier });
     if (!updatedDestination) {
       return res.status(404).json({ message: 'Destination not found' });
     }
-    
     res.json(updatedDestination);
   } catch (error) {
     console.error('Error updating destination:', error);
@@ -72,17 +52,13 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// @route   DELETE /api/destinations/:id
-// @desc    Delete destination
-// @access  Public
 router.delete('/:id', async (req, res) => {
   try {
-    const deletedDestination = await Destination.findByIdAndDelete(req.params.id);
-    
-    if (!deletedDestination) {
+    const pool = getPool();
+    const ok = await destinationsMysql.deleteDestination(pool, req.params.id);
+    if (!ok) {
       return res.status(404).json({ message: 'Destination not found' });
     }
-    
     res.json({ message: 'Destination removed successfully' });
   } catch (error) {
     console.error('Error deleting destination:', error);

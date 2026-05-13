@@ -10,7 +10,11 @@ import {
   ShoppingBag,
   Printer,
   Minus,
-  ChevronDown
+  ChevronDown,
+  Download,
+  ChevronsUpDown,
+  ChevronRight,
+  ChevronDownIcon
 } from 'lucide-react';
 import { Button } from '../../../components/ui/button';
 import axios from 'axios';
@@ -32,6 +36,8 @@ function PurchasesPage() {
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [printType, setPrintType] = useState('purchases');
   const [viewModal, setViewModal] = useState({ isOpen: false, purchase: null });
+  const [expandedRows, setExpandedRows] = useState(new Set());
+  const [allExpanded, setAllExpanded] = useState(false);
 
   const initialFormData = {
     category: '',
@@ -278,6 +284,35 @@ function PurchasesPage() {
 
   const uniqueCategories = [...new Set(purchases.map(p => p.category).filter(Boolean))].sort();
 
+  // Helper: check if a purchase has multiple items (comma-separated)
+  const hasMultipleItems = (purchase) => {
+    const items = String(purchase.items || '').split(',').map(s => s.trim()).filter(Boolean);
+    return items.length > 1;
+  };
+
+  const toggleExpandRow = (id) => {
+    setExpandedRows(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const toggleExpandAll = () => {
+    if (allExpanded) {
+      setExpandedRows(new Set());
+      setAllExpanded(false);
+    } else {
+      const multiIds = filteredPurchases.filter(hasMultipleItems).map(p => p._id);
+      setExpandedRows(new Set(multiIds));
+      setAllExpanded(true);
+    }
+  };
+
   const formatDate = (dateStr) => {
     if (!dateStr) return '—';
     const d = new Date(dateStr);
@@ -337,6 +372,51 @@ function PurchasesPage() {
     return categoryVal.toUpperCase();
   };
 
+  const exportToCSV = () => {
+    const rowsToExport = selectedIds.size > 0
+      ? purchases.filter(p => selectedIds.has(p._id))
+      : filteredPurchases;
+
+    if (rowsToExport.length === 0) return toast.warning('No data to export');
+
+    const headers = [
+      'Date',
+      'Category',
+      'Items',
+      'Qty',
+      'Supplier',
+      'Invoice No.',
+      'Purchased By',
+      'Note',
+      'Amount'
+    ];
+
+    const data = rowsToExport.map(p => [
+      p.date ? String(p.date).split(',')[0].trim() : '—',
+      getCategoryFullName(p.category),
+      p.items,
+      p.qty,
+      p.supplier || '-',
+      p.invoiceNo || '-',
+      p.purchasedBy || '-',
+      p.usedForNote || '-',
+      String(p.amount || '').split(',').reduce((s, v) => s + Number(v.trim() || 0), 0)
+    ]);
+
+    const csvContent = [
+      headers.join(','),
+      ...data.map(row => row.map(field => `"${String(field || '').replace(/"/g, '""')}"`).join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    const dateStr = new Date().toISOString().split('T')[0];
+    link.download = `purchases_${dateStr}.csv`;
+    link.click();
+    toast.success(`${selectedIds.size > 0 ? 'Selected' : 'Filtered'} report exported successfully`);
+  };
+
   return (
     <>
       <div className="flex h-full flex-col bg-background p-[5px] overflow-hidden animate-in fade-in duration-500 print:hidden">
@@ -384,6 +464,16 @@ function PurchasesPage() {
           )}
 
           <div className="ml-auto flex items-center gap-3">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={toggleExpandAll}
+              className="h-8 gap-1.5 text-[10px] uppercase font-bold tracking-wider border-violet-500/50 text-violet-600 hover:bg-violet-50 hover:text-violet-700"
+              title={allExpanded ? 'Collapse all rows' : 'Expand all multi-item rows'}
+            >
+              <ChevronsUpDown className="h-3.5 w-3.5" />
+              {allExpanded ? 'Collapse All' : 'Expand All'}
+            </Button>
             <select
               value={printType}
               onChange={(e) => setPrintType(e.target.value)}
@@ -392,6 +482,15 @@ function PurchasesPage() {
               <option value="purchases">PURCHASES REPORT</option>
               <option value="expenses">EXPENSES REPORT</option>
             </select>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={exportToCSV}
+              className="h-8 gap-1.5 text-[10px] uppercase font-bold tracking-wider border-emerald-500/50 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700"
+            >
+              <Download className="h-3.5 w-3.5" />
+              Export CSV
+            </Button>
             <Button size="sm" onClick={() => window.print()} className="h-8 gap-1.5 text-[10px] uppercase font-bold tracking-wider">
               <Printer className="h-3.5 w-3.5" />
               Print
@@ -447,51 +546,130 @@ function PurchasesPage() {
                   </tr>
                 </thead>
                 <tbody className="[&_tr:last-child]:border-0">
-                  {filteredPurchases.map((purchase) => (
-                    <tr key={purchase._id} onClick={() => setViewModal({ isOpen: true, purchase })} className="cursor-pointer border-b border-border/50 hover:bg-muted/30 transition-colors group">
-                      <td className="px-3 py-2 align-middle text-[10px] w-[36px]" onClick={(e) => { e.stopPropagation(); toggleSelectRow(purchase._id); }}>
-                        <div className="flex items-center justify-center">
-                          <input
-                            type="checkbox"
-                            readOnly
-                            checked={selectedIds.has(purchase._id)}
-                            className="h-3 w-3 rounded border-muted-foreground/30 text-primary focus:ring-primary pointer-events-none"
-                          />
-                        </div>
-                      </td>
-                      <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-foreground tracking-tight">
-                        {String(purchase.date || '').split(',')[0].trim() ? formatDate(String(purchase.date || '').split(',')[0].trim()) : '—'}
-                      </td>
-                      <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-foreground uppercase tracking-tight">{getCategoryFullName(purchase.category)}</td>
-                      <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-foreground uppercase tracking-tight">{purchase.items}</td>
-                      <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-foreground uppercase tracking-tight">{purchase.qty}</td>
-                      <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-foreground uppercase tracking-tight">{purchase.supplier || '-'}</td>
-                      <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-foreground uppercase tracking-tight">{purchase.invoiceNo || '-'}</td>
-                      <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-foreground uppercase tracking-tight">{purchase.purchasedBy || '-'}</td>
-                      <td className="px-3 py-2 text-[10px] font-medium text-muted-foreground uppercase tracking-tight max-w-[200px] truncate" title={purchase.usedForNote}>
-                        {purchase.usedForNote ? purchase.usedForNote.length > 30 ? purchase.usedForNote.substring(0, 30) + '...' : purchase.usedForNote : '-'}
-                      </td>
-                      <td className="whitespace-nowrap px-3 py-2 text-[10px] font-bold text-primary tracking-tight text-right">₱{String(purchase.amount || '').split(',').reduce((s, v) => s + Number(v.trim() || 0), 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                      <td className="whitespace-nowrap px-3 py-1.5 text-center" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex items-center justify-center gap-1 transition-opacity">
-                          <button
-                            onClick={() => openModal(purchase)}
-                            className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
-                            title="Edit"
-                          >
-                            <Edit className="h-3 w-3" />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(purchase._id)}
-                            className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
-                            title="Delete"
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                  {filteredPurchases.flatMap((purchase) => {
+                    const isExpanded = expandedRows.has(purchase._id);
+                    const itemList = String(purchase.items || '').split(',').map(s => s.trim());
+                    const qtyList = String(purchase.qty || '').split(',').map(s => s.trim());
+                    const amountList = String(purchase.amount || '').split(',').map(s => s.trim());
+                    const supplierList = String(purchase.supplier || '').split(',').map(s => s.trim());
+                    const invoiceList = String(purchase.invoiceNo || '').split(',').map(s => s.trim());
+                    const dateList = String(purchase.date || '').split(',').map(s => s.trim());
+                    const multipleItems = itemList.filter(Boolean).length > 1;
+                    const rowCount = isExpanded && multipleItems ? itemList.length : 1;
+
+                    return Array.from({ length: rowCount }, (_, subIdx) => {
+                      const isFirstSubRow = subIdx === 0;
+                      const bgClass = isExpanded && multipleItems && !isFirstSubRow ? 'bg-muted/15' : '';
+
+                      return (
+                        <tr
+                          key={`${purchase._id}-${subIdx}`}
+                          onClick={() => setViewModal({ isOpen: true, purchase })}
+                          className={`cursor-pointer border-b border-border/50 hover:bg-muted/30 transition-colors group ${bgClass} ${isExpanded && multipleItems && !isFirstSubRow ? 'border-border/20' : ''}`}
+                        >
+                          {/* Checkbox */}
+                          <td className="px-3 py-2 align-middle text-[10px] w-[36px]" onClick={(e) => { e.stopPropagation(); if (isFirstSubRow) toggleSelectRow(purchase._id); }}>
+                            <div className="flex items-center justify-center">
+                              {isFirstSubRow ? (
+                                <input
+                                  type="checkbox"
+                                  readOnly
+                                  checked={selectedIds.has(purchase._id)}
+                                  className="h-3 w-3 rounded border-muted-foreground/30 text-primary focus:ring-primary pointer-events-none"
+                                />
+                              ) : null}
+                            </div>
+                          </td>
+
+                          {/* Date */}
+                          <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-foreground tracking-tight">
+                            {isExpanded && multipleItems
+                              ? (dateList[subIdx] ? formatDate(dateList[subIdx]) : '—')
+                              : (dateList[0] ? formatDate(dateList[0]) : '—')
+                            }
+                          </td>
+
+                          {/* Category */}
+                          <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-foreground uppercase tracking-tight">
+                            {getCategoryFullName(purchase.category)}
+                          </td>
+
+                          {/* Items */}
+                          <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-foreground uppercase tracking-tight">
+                            {isExpanded && multipleItems ? (itemList[subIdx] || '') : purchase.items}
+                          </td>
+
+                          {/* Qty */}
+                          <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-foreground uppercase tracking-tight">
+                            {isExpanded && multipleItems ? (qtyList[subIdx] || '') : purchase.qty}
+                          </td>
+
+                          {/* Supplier */}
+                          <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-foreground uppercase tracking-tight">
+                            {isExpanded && multipleItems ? (supplierList[subIdx] || '') : (purchase.supplier || '-')}
+                          </td>
+
+                          {/* Invoice No */}
+                          <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-foreground uppercase tracking-tight">
+                            {isExpanded && multipleItems ? (invoiceList[subIdx] || '') : (purchase.invoiceNo || '-')}
+                          </td>
+
+                          {/* Purchased By */}
+                          <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-foreground uppercase tracking-tight">
+                            {purchase.purchasedBy || '-'}
+                          </td>
+
+                          {/* Note */}
+                          <td className="px-3 py-2 text-[10px] font-medium text-muted-foreground uppercase tracking-tight max-w-[200px] truncate" title={purchase.usedForNote || ''}>
+                            {purchase.usedForNote ? purchase.usedForNote.length > 30 ? purchase.usedForNote.substring(0, 30) + '...' : purchase.usedForNote : '-'}
+                          </td>
+
+                          {/* Amount */}
+                          <td className="whitespace-nowrap px-3 py-2 text-[10px] font-bold text-primary tracking-tight text-right">
+                            {isExpanded && multipleItems
+                              ? (amountList[subIdx] ? `₱${Number(amountList[subIdx]).toLocaleString(undefined, { minimumFractionDigits: 2 })}` : '')
+                              : `₱${amountList.reduce((s, v) => s + Number(v.trim() || 0), 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`
+                            }
+                          </td>
+
+                          {/* Actions */}
+                          <td className="whitespace-nowrap px-3 py-1.5 text-center" onClick={(e) => e.stopPropagation()}>
+                            {isFirstSubRow ? (
+                              <div className="flex items-center justify-center gap-1 transition-opacity">
+                                {multipleItems && (
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); toggleExpandRow(purchase._id); }}
+                                    className={`flex h-6 w-6 items-center justify-center rounded transition-colors ${
+                                      isExpanded
+                                        ? 'bg-violet-100 text-violet-600 hover:bg-violet-200'
+                                        : 'text-muted-foreground hover:bg-violet-50 hover:text-violet-600'
+                                    }`}
+                                    title={isExpanded ? 'Collapse items' : 'Expand items'}
+                                  >
+                                    {isExpanded ? <ChevronDownIcon className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                                  </button>
+                                )}
+                                <button
+                                  onClick={() => openModal(purchase)}
+                                  className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+                                  title="Edit"
+                                >
+                                  <Edit className="h-3 w-3" />
+                                </button>
+                                <button
+                                  onClick={() => handleDelete(purchase._id)}
+                                  className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+                                  title="Delete"
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </button>
+                              </div>
+                            ) : null}
+                          </td>
+                        </tr>
+                      );
+                    });
+                  })}
                 </tbody>
               </table>
           )}
@@ -526,10 +704,10 @@ function PurchasesPage() {
                     <td className="whitespace-nowrap px-3 py-2.5 text-[9px] font-black uppercase tracking-[0.15em] text-foreground text-right align-middle bg-card border-t border-border"></td>
                     <td className="whitespace-nowrap px-3 py-2.5 text-[9px] font-black uppercase tracking-[0.15em] text-foreground text-right align-middle bg-card border-t border-border"></td>
                     <td className="whitespace-nowrap px-3 py-2.5 text-[9px] font-black uppercase tracking-[0.15em] text-foreground text-right align-middle bg-card border-t border-border"></td>
-                    <td className="whitespace-nowrap px-3 py-2.5 text-[9px] font-black uppercase tracking-[0.15em] text-foreground text-right align-middle bg-card border-t border-border"></td>
-                    <td className="whitespace-nowrap px-3 py-2.5 text-[9px] font-black uppercase tracking-[0.15em] text-foreground text-right align-middle bg-card border-t border-border">
+                    <td className="whitespace-nowrap px-3 py-2.5 text-[9px] font-black uppercase tracking-[0.15em] text-foreground text-left align-middle bg-card border-t border-border">
                       Total ({filteredPurchases.length} {filteredPurchases.length === 1 ? 'record' : 'records'})
                     </td>
+                    <td className="whitespace-nowrap px-3 py-2.5 text-[9px] font-black uppercase tracking-[0.15em] text-foreground text-right align-middle bg-card border-t border-border"></td>
                     <td className="whitespace-nowrap px-3 py-2.5 text-[10px] font-black text-primary text-right align-middle bg-muted/30 border-t border-border tracking-wider">
                       ₱ {totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </td>

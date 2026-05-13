@@ -32,6 +32,12 @@ import {
 } from '../../../components/ui/dropdown-menu';
 import { cn } from '../../../lib/utils';
 
+const joinArray = (arr, separator = ' / ') => {
+  if (!arr || !Array.isArray(arr)) return '—';
+  const filtered = arr.filter(Boolean);
+  return filtered.length > 0 ? filtered.join(separator) : '—';
+};
+
 function RequestPage() {
   const { user } = useOutletContext();
   const [requests, setRequests] = useState([]);
@@ -580,9 +586,9 @@ function RequestPage() {
                   <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Purpose</th>
                   <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Activity</th>
                   <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Vehicle</th>
+                  <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Customer / Supplier</th>
                   <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Destination</th>
                   <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-center align-middle">Job Order No</th>
-                  <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Customer / Supplier</th>
                   <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Requested By</th>
                 </tr>
               </thead>
@@ -622,20 +628,15 @@ function RequestPage() {
                         {(() => {
                           const plate = req.vehicleEquipment;
                           if (!plate) return '—';
+                          if (plate === 'UNASSIGNED') return 'UNASSIGNED';
                           if (plate === 'RENT_VEHICLE') return `Rent Vehicle${req.tnvsProvider ? ` - ${req.tnvsProvider}` : ''}`;
                           const v = vehicles.find((v) => v.plateNumber === plate);
                           return v ? `${v.plateNumber} — ${v.model}` : plate;
                         })()}
                       </td>
-                      <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-foreground uppercase tracking-tight align-middle">
-                        {(req.destination || []).filter(Boolean).join(', ') || '—'}
-                      </td>
-                      <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-foreground tracking-tight text-center align-middle">
-                        {(req.jobOrderNo || []).filter(Boolean).join(', ') || '—'}
-                      </td>
-                      <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-foreground uppercase tracking-tight align-middle">
-                        {(req.customerSupplier || []).filter(Boolean).join(' / ') || '—'}
-                      </td>
+                      <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-foreground uppercase tracking-tight align-middle">{joinArray(req.customerSupplier)}</td>
+                      <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-foreground uppercase tracking-tight align-middle">{joinArray(req.destination)}</td>
+                      <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-foreground tracking-tight align-middle text-center">{joinArray(req.jobOrderNo)}</td>
                       <td className="whitespace-nowrap px-3 py-2 text-[10px] font-bold uppercase text-foreground align-middle">{req.requestedBy || '—'}</td>
                     </tr>
                   );
@@ -744,14 +745,15 @@ function RequestPage() {
                 { label: 'Vehicle', value: (() => {
                   const plate = detailsModal.request.vehicleEquipment;
                   if (!plate) return '—';
+                  if (plate === 'UNASSIGNED') return 'UNASSIGNED (Admin will assign vehicle)';
                   if (plate === 'RENT_VEHICLE') return `Rent Vehicle${detailsModal.request.tnvsProvider ? ` - ${detailsModal.request.tnvsProvider}` : ''}`;
                   const v = vehicles.find((v) => v.plateNumber === plate);
                   return v ? `${v.plateNumber} — ${v.model}` : plate;
                 })() },
                 { label: 'Purpose', value: (detailsModal.request.purpose || []).filter(Boolean).join(' / ') },
                 { label: 'Activity', value: (detailsModal.request.activity || []).filter(Boolean).join(' / ') },
-                { label: 'Destination', value: (detailsModal.request.destination || []).filter(Boolean).join(' / ') },
                 { label: 'Customer / Supplier', value: (detailsModal.request.customerSupplier || []).filter(Boolean).join(' / ') },
+                { label: 'Destination', value: (detailsModal.request.destination || []).filter(Boolean).join(' / ') },
                 { label: 'Job Order No.', value: (detailsModal.request.jobOrderNo || []).filter(Boolean).join(' / ') },
                 { label: 'Requested By', value: detailsModal.request.requestedBy },
               ].map((field) => (
@@ -781,29 +783,38 @@ function RequestPage() {
 
             {/* Sticky Action Footer for pending requests */}
             {detailsModal.request.requestStatus === 'Pending' && (
-              <div className="sticky bottom-0 z-10 border-t border-border bg-card p-4 flex items-center gap-2 shrink-0">
-                <button
-                  onClick={() => setConfirmDialog({ isOpen: true, request: detailsModal.request, isLoading: false })}
-                  className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-md bg-emerald-600 px-3 py-2.5 text-[11px] font-bold uppercase tracking-wider text-white hover:bg-emerald-700 transition-colors shadow-sm"
-                >
-                  <CheckCircle2 className="h-3.5 w-3.5" />
-                  Approve
-                </button>
-                <button
-                  onClick={() => setApproveWithChangeModal({ isOpen: true, request: detailsModal.request, selectedVehicle: detailsModal.request.vehicleEquipment || '', isLoading: false })}
-                  className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-md bg-blue-600 px-3 py-2.5 text-[10px] font-bold uppercase tracking-wider text-white hover:bg-blue-700 transition-colors shadow-sm"
-                >
-                  <Truck className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">Approve w/ Change</span>
-                  <span className="sm:hidden">w/ Change</span>
-                </button>
-                <button
-                  onClick={() => setDeclineModal({ isOpen: true, request: detailsModal.request, reason: '', isLoading: false })}
-                  className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-md bg-red-600 px-3 py-2.5 text-[11px] font-bold uppercase tracking-wider text-white hover:bg-red-700 transition-colors shadow-sm"
-                >
-                  <XCircle className="h-3.5 w-3.5" />
-                  Decline
-                </button>
+              <div className="sticky bottom-0 z-10 border-t border-border bg-card p-4 flex flex-col gap-2 shrink-0">
+                {detailsModal.request.vehicleEquipment === 'UNASSIGNED' && (
+                  <div className="flex items-start gap-2 rounded-md bg-amber-50 border border-amber-200 px-3 py-2 mb-1">
+                    <AlertTriangle className="h-3.5 w-3.5 text-amber-500 shrink-0 mt-0.5" />
+                    <p className="text-[10px] font-semibold text-amber-700">This request has no vehicle assigned. You must assign a vehicle using "Approve w/ Change".</p>
+                  </div>
+                )}
+                <div className="flex items-center gap-2">
+                  {detailsModal.request.vehicleEquipment !== 'UNASSIGNED' && (
+                    <button
+                      onClick={() => setConfirmDialog({ isOpen: true, request: detailsModal.request, isLoading: false })}
+                      className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-md bg-emerald-600 px-3 py-2.5 text-[11px] font-bold uppercase tracking-wider text-white hover:bg-emerald-700 transition-colors shadow-sm"
+                    >
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                      Approve
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setApproveWithChangeModal({ isOpen: true, request: detailsModal.request, selectedVehicle: detailsModal.request.vehicleEquipment === 'UNASSIGNED' ? '' : (detailsModal.request.vehicleEquipment || ''), isLoading: false })}
+                    className={`${detailsModal.request.vehicleEquipment === 'UNASSIGNED' ? 'flex-[2]' : 'flex-1'} inline-flex items-center justify-center gap-1.5 rounded-md bg-blue-600 px-3 py-2.5 text-[10px] font-bold uppercase tracking-wider text-white hover:bg-blue-700 transition-colors shadow-sm`}
+                  >
+                    <Truck className="h-3.5 w-3.5" />
+                    {detailsModal.request.vehicleEquipment === 'UNASSIGNED' ? 'Assign Vehicle & Approve' : <><span className="hidden sm:inline">Approve w/ Change</span><span className="sm:hidden">w/ Change</span></>}
+                  </button>
+                  <button
+                    onClick={() => setDeclineModal({ isOpen: true, request: detailsModal.request, reason: '', isLoading: false })}
+                    className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-md bg-red-600 px-3 py-2.5 text-[11px] font-bold uppercase tracking-wider text-white hover:bg-red-700 transition-colors shadow-sm"
+                  >
+                    <XCircle className="h-3.5 w-3.5" />
+                    Decline
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -960,6 +971,8 @@ function RequestPage() {
                 {(() => {
                   const plate = approveWithChangeModal.request.vehicleEquipment;
                   if (!plate) return 'No vehicle selected';
+                  if (plate === 'UNASSIGNED') return 'UNASSIGNED';
+                  if (plate === 'RENT_VEHICLE') return 'Rent Vehicle';
                   const v = vehicles.find((v) => v.plateNumber === plate);
                   return v ? `${v.plateNumber} — ${v.model}` : plate;
                 })()}
@@ -979,6 +992,7 @@ function RequestPage() {
                 >
                   <option value="" disabled>Select Vehicle</option>
                   <option value="RENT_VEHICLE">Rent Vehicle</option>
+                  <option value="MOTORCYCLE" className="text-[#16a34a] font-bold">MOTORCYCLE</option>
                   {vehicles.map((v) => {
                     const status = (v.status || 'Available').toLowerCase();
                     let textColor = 'inherit';

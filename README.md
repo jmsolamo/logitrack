@@ -1,28 +1,18 @@
 # Logistics Monitoring System
 
-MERN Stack Application (MongoDB, Express, React, Node.js)
+## 🚀 Quick Start Guide
 
-## Prerequisites
-- Node.js (v18+)
-- MongoDB (running locally or connection string)
+Follow these simple steps to get the system running on your local machine.
 
-## Setup
+### 1. Install Dependencies
+Double-click the **`install_deps.bat`** file in the root directory. 
+- This will automatically install all necessary packages for both the **Client** and the **Server**.
 
-### Server
-```bash
-cd server
-npm install
-npm run dev
-```
-Server runs on http://localhost:5000
+### 2. Run the System
+Once the installation is complete, double-click the **`run_system.bat`** file.
+- This will clear any active ports (3000/5000) and launch both the frontend and backend in separate windows.
 
-### Client
-```bash
-cd client
-npm install
-npm run dev
-```
-Client runs on http://localhost:3000
+---
 
-## Environment Variables
-Configure `server/.env` with your MongoDB connection string.
+> [!NOTE]
+> Make sure you have your database configuration set up in `server/.env` before running the system.

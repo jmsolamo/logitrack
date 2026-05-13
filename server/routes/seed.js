@@ -1,24 +1,17 @@
 import express from 'express';
-import User from '../models/User.js';
+import { getPool } from '../db/pool.js';
+import * as usersMysql from '../repositories/usersMysql.js';
 
 const router = express.Router();
 
-// Seed admin user endpoint (remove this in production!)
 router.post('/seed-admin', async (req, res) => {
   try {
-    const existingUser = await User.findOne({ username: 'logistic-department' });
+    const pool = getPool();
+    const existingUser = await usersMysql.findUserByUsername(pool, 'logistic-department');
     if (existingUser) {
       return res.json({ message: 'Admin user already exists' });
     }
-
-    const admin = new User({
-      username: 'logistic-department',
-      password: '123456',
-      department: 'logistic',
-      role: 'admin'
-    });
-
-    await admin.save();
+    await usersMysql.seedDefaultAdmin();
     res.json({ message: 'Admin user created successfully', username: 'logistic-department' });
   } catch (error) {
     res.status(500).json({ message: 'Error seeding admin', error: error.message });

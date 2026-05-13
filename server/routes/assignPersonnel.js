@@ -1,43 +1,47 @@
 import express from 'express';
-import Delivery from '../models/Delivery.js';
-import DeliveryRequest from '../models/DeliveryRequest.js';
+import { getPool } from '../db/pool.js';
+import * as deliveriesMysql from '../repositories/deliveriesMysql.js';
+import * as deliveryRequestsMysql from '../repositories/deliveryRequestsMysql.js';
 
 const router = express.Router();
 
-// @route   PUT /api/deliveries/:id/assign-personnel
-// @desc    Assign driver and helper to a delivery
 router.put('/:id/assign-personnel', async (req, res) => {
   try {
+    const pool = getPool();
     const { driver, helper, totalBudget } = req.body;
-    
-    const delivery = await Delivery.findById(req.params.id);
+    const delivery = await deliveriesMysql.findDeliveryByIdParam(pool, req.params.id);
     if (!delivery) {
       return res.status(404).json({ message: 'Delivery not found' });
     }
 
-    // Update driver, helper, and budget
     if (driver) delivery.driver = driver;
     if (helper) delivery.helper = helper;
     if (totalBudget !== undefined) {
-      // Add to existing budget instead of replacing
       delivery.totalBudget = (delivery.totalBudget || 0) + Number(totalBudget);
     }
 
-    await delivery.save();
+    const updatedDelivery = await deliveriesMysql.updateDeliveryFull(pool, req.params.id, delivery);
 
-    // Also update the corresponding delivery request if it exists
-    const request = await DeliveryRequest.findOne({ deliveryReferenceNo: delivery.referenceNo });
-    if (request) {
-      if (driver) request.driver = driver;
-      if (helper) request.helper = helper;
-      if (totalBudget !== undefined) request.totalBudget = (request.totalBudget || 0) + Number(totalBudget);
-      await request.save();
+    let request = null;
+    if (delivery.referenceNo) {
+      const [rows] = await pool.query('SELECT * FROM delivery_requests WHERE delivery_reference_no = ? LIMIT 1', [
+        delivery.referenceNo,
+      ]);
+      if (rows[0]) {
+        const fullReq = await deliveryRequestsMysql.buildFullRequest(pool, rows[0]);
+        if (driver) fullReq.driver = driver;
+        if (helper) fullReq.helper = helper;
+        if (totalBudget !== undefined) {
+          fullReq.totalBudget = (fullReq.totalBudget || 0) + Number(totalBudget);
+        }
+        request = await deliveryRequestsMysql.saveRequest(pool, fullReq);
+      }
     }
 
-    res.json({ 
-      message: 'Personnel assigned successfully', 
-      delivery,
-      request 
+    res.json({
+      message: 'Personnel assigned successfully',
+      delivery: updatedDelivery,
+      request,
     });
   } catch (error) {
     console.error('Error assigning personnel:', error);
