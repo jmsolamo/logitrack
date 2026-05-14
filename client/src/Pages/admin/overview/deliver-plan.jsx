@@ -1543,7 +1543,7 @@ function DeliveryPlan() {
                 className={selectClass}
               >
                 <option value="" disabled>Select Purpose</option>
-                {['Delivery', 'Pick Up', 'Rescue', 'Pull Out', 'Service Manpower', 'Assign to Project', 'Purchase'].map((opt) => (
+                {['Delivery', 'Pick Up', 'Rescue', 'Pull Out', 'Service Manpower', 'Assign to Project', 'Purchase', 'Mobilization', 'Demobilization', 'Travel'].map((opt) => (
                   <option key={opt} value={opt} className="font-bold">{opt.toUpperCase()}</option>
                 ))}
               </select>
@@ -1971,7 +1971,7 @@ function DeliveryPlan() {
                 <DropdownMenuLabel className="text-[10px]">Filter by Purpose</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuCheckboxItem className="text-[10px]" checked={purposeFilter === 'all'} onCheckedChange={() => setPurposeFilter('all')}>All</DropdownMenuCheckboxItem>
-                {['Delivery', 'Pick Up', 'Rescue', 'Pull Out', 'Service Manpower', 'Assign to Project', 'Purchase'].map((purpose) => (
+                {['Delivery', 'Pick Up', 'Rescue', 'Pull Out', 'Service Manpower', 'Assign to Project', 'Purchase', 'Mobilization', 'Demobilization', 'Travel'].map((purpose) => (
                   <DropdownMenuCheckboxItem key={purpose} className="text-[10px]" checked={purposeFilter === purpose} onCheckedChange={() => setPurposeFilter(purpose)}>{purpose}</DropdownMenuCheckboxItem>
                 ))}
               </DropdownMenuContent>

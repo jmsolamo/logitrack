@@ -36,7 +36,7 @@ function LoginPage() {
       if (data.user.role === 'admin') {
         navigate('/admin/dashboard');
       } else if (data.user.role === 'manager') {
-        navigate('/reviewer/requests');
+        navigate('/reviewer/dashboard');
       } else {
         navigate('/user/dashboard');
       }
