@@ -412,7 +412,7 @@ export default function DieselExpenses() {
               <p className="text-[10px] text-muted-foreground uppercase tracking-widest">Adjust filters or add deliveries with fuel entries.</p>
             </div>
           ) : (
-            <table className="w-full min-w-[900px] border-collapse relative">
+            <table className="w-full min-w-[1100px] border-collapse relative table-layout-fixed" style={{ tableLayout: 'fixed' }}>
               <thead className="sticky top-0 z-10 bg-orange-500 backdrop-blur shadow-sm">
                 <tr className="border-b border-orange-600/20">
                   <th className="w-[40px] px-3 py-2.5 text-center align-middle">
@@ -423,16 +423,16 @@ export default function DieselExpenses() {
                       className="h-3.5 w-3.5 accent-white cursor-pointer"
                     />
                   </th>
-                  <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Date</th>
-                  <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Driver</th>
-                  <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Job Order No.</th>
-                  <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Customer / Supplier</th>
-                  <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Destination</th>
-                  <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Gas Station</th>
-                  <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-right align-middle">Liters</th>
-                  <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-right align-middle">Price</th>
-                  <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-right align-middle">Amount</th>
-                  <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Invoice</th>
+                  <th className="w-[80px] whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Date</th>
+                  <th className="w-[120px] whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Driver</th>
+                  <th className="w-[100px] whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Job Order No.</th>
+                  <th className="w-[150px] whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Customer / Supplier</th>
+                  <th className="w-[150px] whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Destination</th>
+                  <th className="w-[120px] whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Gas Station</th>
+                  <th className="w-[70px] whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-right align-middle">Liters</th>
+                  <th className="w-[80px] whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-right align-middle">Price</th>
+                  <th className="w-[100px] whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-right align-middle">Amount</th>
+                  <th className="w-[90px] whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Invoice</th>
                 </tr>
               </thead>
               <tbody>
@@ -490,24 +490,26 @@ export default function DieselExpenses() {
               }
             }}
           >
-            <table ref={footerTableRef} className="w-full min-w-[900px] border-collapse bg-card hidden sm:table">
+            <table ref={footerTableRef} className="w-full min-w-[1100px] border-collapse bg-card hidden sm:table" style={{ tableLayout: 'fixed' }}>
               <tbody>
                 <tr>
-                  <td className="whitespace-nowrap px-3 py-2.5 text-[9px] w-[40px] bg-card border-t border-border"></td>
-                  <td className="whitespace-nowrap px-3 py-2.5 text-[9px] font-black uppercase tracking-[0.15em] text-foreground text-right align-middle bg-card border-t border-border"></td>
-                  <td className="whitespace-nowrap px-3 py-2.5 text-[9px] font-black uppercase tracking-[0.15em] text-foreground text-right align-middle bg-card border-t border-border"></td>
-                  <td className="whitespace-nowrap px-3 py-2.5 text-[9px] font-black uppercase tracking-[0.15em] text-foreground text-right align-middle bg-card border-t border-border"></td>
-                  <td className="whitespace-nowrap px-3 py-2.5 text-[9px] font-black uppercase tracking-[0.15em] text-foreground text-right align-middle bg-card border-t border-border"></td>
-                  <td className="whitespace-nowrap px-3 py-2.5 text-[9px] font-black uppercase tracking-[0.15em] text-foreground text-right align-middle bg-card border-t border-border">
+                  <td className="w-[40px] whitespace-nowrap px-3 py-2.5 text-[9px] bg-card border-t border-border"></td>
+                  <td className="w-[80px] whitespace-nowrap px-3 py-2.5 text-[9px] font-black uppercase tracking-[0.15em] text-foreground text-right align-middle bg-card border-t border-border"></td>
+                  <td className="w-[120px] whitespace-nowrap px-3 py-2.5 text-[9px] font-black uppercase tracking-[0.15em] text-foreground text-right align-middle bg-card border-t border-border"></td>
+                  <td className="w-[100px] whitespace-nowrap px-3 py-2.5 text-[9px] font-black uppercase tracking-[0.15em] text-foreground text-right align-middle bg-card border-t border-border"></td>
+                  <td className="w-[150px] whitespace-nowrap px-3 py-2.5 text-[9px] font-black uppercase tracking-[0.15em] text-foreground text-right align-middle bg-card border-t border-border"></td>
+                  <td className="w-[150px] whitespace-nowrap px-3 py-2.5 text-[9px] font-black uppercase tracking-[0.15em] text-foreground text-right align-middle bg-card border-t border-border">
                     Total ({filteredRows.length} {filteredRows.length === 1 ? 'record' : 'records'})
                   </td>
-                  <td className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-muted-foreground text-center align-middle bg-card border-t border-border"></td>
-                  <td className="whitespace-nowrap px-3 py-2.5 text-[10px] font-bold text-foreground text-right align-middle tracking-tight bg-card border-t border-border"></td>
-                  <td className="whitespace-nowrap px-3 py-2.5 text-[10px] font-bold text-foreground text-right align-middle tracking-tight bg-card border-t border-border"></td>
-                  <td className="whitespace-nowrap px-3 py-2.5 text-[10px] font-black text-primary text-right align-middle bg-muted/30 border-t border-border tracking-wider">
+                  <td className="w-[120px] whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-muted-foreground text-center align-middle bg-card border-t border-border"></td>
+                  <td className="w-[70px] whitespace-nowrap px-3 py-2.5 text-[10px] font-black text-foreground text-right align-middle tracking-tight bg-muted/30 border-t border-border">
+                    {totals.totalLiters.toLocaleString()}
+                  </td>
+                  <td className="w-[80px] whitespace-nowrap px-3 py-2.5 text-[10px] font-bold text-foreground text-right align-middle tracking-tight bg-card border-t border-border"></td>
+                  <td className="w-[100px] whitespace-nowrap px-3 py-2.5 text-[10px] font-black text-primary text-right align-middle bg-muted/30 border-t border-border tracking-wider">
                     ₱ {totals.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </td>
-                  <td className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-muted-foreground text-left align-middle bg-card border-t border-border"></td>
+                  <td className="w-[90px] whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-muted-foreground text-left align-middle bg-card border-t border-border"></td>
                 </tr>
               </tbody>
             </table>
@@ -569,7 +571,7 @@ export default function DieselExpenses() {
           {/* Total Row */}
           <tr className="bg-[#f2f2f2] break-inside-avoid">
             <td className="border border-black px-1 py-1 font-bold bg-white text-right" colSpan={7}>TOTAL</td>
-            <td className="border border-black px-1 py-1 font-bold text-right whitespace-nowrap"></td>
+            <td className="border border-black px-1 py-1 font-bold text-right whitespace-nowrap">{totals.totalLiters.toLocaleString()}</td>
             <td className="border border-black px-1 py-1 font-bold text-right whitespace-nowrap"></td>
             <td className="border border-black px-1 py-1 font-bold text-right whitespace-nowrap">{totals.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
             <td className="border border-black px-1 py-1 font-bold bg-white"></td>

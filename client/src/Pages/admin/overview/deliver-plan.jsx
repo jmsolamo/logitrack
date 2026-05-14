@@ -1048,7 +1048,7 @@ function DeliveryPlan() {
       };
 
       setExpensesFormData({
-        fuel: processArray(delivery.fuel, { amount: 0, liters: 0, gasStation: '', invoiceNo: '', paymentType: '', date: '' }),
+        fuel: processArray(delivery.fuel, { amount: 0, liters: 0, price: 0, gasStation: '', invoiceNo: '', paymentType: '', date: '' }),
         tollFee: processArray(delivery.tollFee, { details: '', amt: 0, date: '' }),
         pierExpenses: processArray(delivery.pierExpenses, { details: '', amt: 0, date: '' }),
         repairAndMaintenance: processArray(delivery.repairAndMaintenance, { details: '', amt: 0, date: '' }),
@@ -1084,10 +1084,19 @@ function DeliveryPlan() {
         finalValue = String(value).toUpperCase();
       }
 
-      arr[index] = {
+      const updatedItem = {
         ...arr[index],
         [field]: finalValue
       };
+
+      // Auto-calculate fuel amount: liters * price
+      if (category === 'fuel' && (field === 'liters' || field === 'price')) {
+        const liters = field === 'liters' ? finalValue : (updatedItem.liters || 0);
+        const price = field === 'price' ? finalValue : (updatedItem.price || 0);
+        updatedItem.amount = Number((liters * price).toFixed(2));
+      }
+
+      arr[index] = updatedItem;
       return { ...prev, [category]: arr };
     });
   };
@@ -1563,16 +1572,37 @@ function DeliveryPlan() {
             </div>
 
             {/* Buttons */}
-            {index === 0 && (
-              <button type="button" onClick={() => addArrayField('purpose')} className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
-                <Plus className="h-4 w-4" />
-              </button>
-            )}
-            {index > 0 && (
-              <button type="button" onClick={() => { removeArrayField('purpose', index); }} className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-muted/50 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors">
-                <Minus className="h-4 w-4" />
-              </button>
-            )}
+            <div className="flex items-center gap-1.5">
+              {index === 0 && formData.purpose.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => removeArrayField('purpose', index)}
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-muted/50 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+                  title="Remove Row"
+                >
+                  <Minus className="h-4 w-4" />
+                </button>
+              )}
+              {index === 0 ? (
+                <button
+                  type="button"
+                  onClick={() => addArrayField('purpose')}
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                  title="Add Row"
+                >
+                  <Plus className="h-4 w-4" />
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => removeArrayField('purpose', index)}
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-muted/50 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+                  title="Remove Row"
+                >
+                  <Minus className="h-4 w-4" />
+                </button>
+              )}
+            </div>
           </div>
         ))}
       </fieldset>
@@ -1617,16 +1647,37 @@ function DeliveryPlan() {
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </div>
-                        {index === 0 && (
-                          <button type="button" onClick={() => addArrayField('customerSupplier')} className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
-                            <Plus className="h-4 w-4" />
-                          </button>
-                        )}
-                        {index > 0 && (
-                          <button type="button" onClick={() => removeArrayField('customerSupplier', index)} className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-muted/50 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors">
-                            <Minus className="h-4 w-4" />
-                          </button>
-                        )}
+                        <div className="flex items-center gap-1.5">
+                          {index === 0 && formData.customerSupplier.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => removeArrayField('customerSupplier', index)}
+                              className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-muted/50 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+                              title="Remove Row"
+                            >
+                              <Minus className="h-4 w-4" />
+                            </button>
+                          )}
+                          {index === 0 ? (
+                            <button
+                              type="button"
+                              onClick={() => addArrayField('customerSupplier')}
+                              className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                              title="Add Row"
+                            >
+                              <Plus className="h-4 w-4" />
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => removeArrayField('customerSupplier', index)}
+                              className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-muted/50 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+                              title="Remove Row"
+                            >
+                              <Minus className="h-4 w-4" />
+                            </button>
+                          )}
+                        </div>
                       </div>
                       {cs === 'NEW_CUSTOMER' && (
                         <input
@@ -1666,16 +1717,37 @@ function DeliveryPlan() {
                   <ChevronDown className="h-3 w-3" />
                 </div>
               </div>
-              {index === 0 && (
-                <button type="button" onClick={() => addArrayField('driver')} className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
-                  <Plus className="h-4 w-4" />
-                </button>
-              )}
-              {index > 0 && (
-                <button type="button" onClick={() => removeArrayField('driver', index)} className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-muted/50 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors">
-                  <Minus className="h-4 w-4" />
-                </button>
-              )}
+              <div className="flex items-center gap-1.5">
+                {index === 0 && formData.driver.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => removeArrayField('driver', index)}
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-muted/50 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+                    title="Remove Row"
+                  >
+                    <Minus className="h-4 w-4" />
+                  </button>
+                )}
+                {index === 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => addArrayField('driver')}
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                    title="Add Row"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => removeArrayField('driver', index)}
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-muted/50 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+                    title="Remove Row"
+                  >
+                    <Minus className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         ))}
@@ -1706,16 +1778,37 @@ function DeliveryPlan() {
                   <ChevronDown className="h-3 w-3" />
                 </div>
               </div>
-              {index === 0 && (
-                <button type="button" onClick={() => addArrayField('helper')} className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
-                  <Plus className="h-4 w-4" />
-                </button>
-              )}
-              {index > 0 && (
-                <button type="button" onClick={() => removeArrayField('helper', index)} className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-muted/50 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors">
-                  <Minus className="h-4 w-4" />
-                </button>
-              )}
+              <div className="flex items-center gap-1.5">
+                {index === 0 && formData.helper.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => removeArrayField('helper', index)}
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-muted/50 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+                    title="Remove Row"
+                  >
+                    <Minus className="h-4 w-4" />
+                  </button>
+                )}
+                {index === 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => addArrayField('helper')}
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                    title="Add Row"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => removeArrayField('helper', index)}
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-muted/50 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+                    title="Remove Row"
+                  >
+                    <Minus className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         ))}
@@ -1738,16 +1831,37 @@ function DeliveryPlan() {
                 className={`${inputFormClass} flex-1`}
                 placeholder="Job Order No."
               />
-              {index === 0 && (
-                <button type="button" onClick={() => addArrayField('jobOrderNo')} className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
-                  <Plus className="h-4 w-4" />
-                </button>
-              )}
-              {index > 0 && (
-                <button type="button" onClick={() => removeArrayField('jobOrderNo', index)} className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-muted/50 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors">
-                  <Minus className="h-4 w-4" />
-                </button>
-              )}
+              <div className="flex items-center gap-1.5">
+                {index === 0 && formData.jobOrderNo.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => removeArrayField('jobOrderNo', index)}
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-muted/50 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+                    title="Remove Row"
+                  >
+                    <Minus className="h-4 w-4" />
+                  </button>
+                )}
+                {index === 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => addArrayField('jobOrderNo')}
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                    title="Add Row"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => removeArrayField('jobOrderNo', index)}
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-muted/50 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+                    title="Remove Row"
+                  >
+                    <Minus className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         ))}
@@ -1793,16 +1907,37 @@ function DeliveryPlan() {
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
-                {index === 0 && (
-                  <button type="button" onClick={() => addArrayField('destination')} className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
-                    <Plus className="h-4 w-4" />
-                  </button>
-                )}
-                {index > 0 && (
-                  <button type="button" onClick={() => removeArrayField('destination', index)} className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-muted/50 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors">
-                    <Minus className="h-4 w-4" />
-                  </button>
-                )}
+                <div className="flex items-center gap-1.5">
+                  {index === 0 && formData.destination.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removeArrayField('destination', index)}
+                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-muted/50 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+                      title="Remove Row"
+                    >
+                      <Minus className="h-4 w-4" />
+                    </button>
+                  )}
+                  {index === 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => addArrayField('destination')}
+                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                      title="Add Row"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => removeArrayField('destination', index)}
+                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-muted/50 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+                      title="Remove Row"
+                    >
+                      <Minus className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
               </div>
               {dItem === 'NEW_DESTINATION' && (
                 <input
