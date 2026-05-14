@@ -30,7 +30,15 @@ router.post('/', async (req, res) => {
     res.status(201).json(savedDestination);
   } catch (error) {
     console.error('Error adding destination:', error);
-    res.status(500).json({ message: 'Server error adding destination' });
+    
+    if (error.code === 'ER_DUP_ENTRY') {
+      return res.status(400).json({ message: 'Destination with this Customer/Supplier already exists' });
+    }
+
+    res.status(500).json({ 
+      message: 'Server error adding destination',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 });
 
