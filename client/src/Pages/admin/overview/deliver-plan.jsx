@@ -513,7 +513,7 @@ function DeliveryPlan() {
     const supps = delivery.customerSupplier || [];
     const jobs = delivery.jobOrderNo || [];
     const acts = delivery.activity || [];
-    const rows = Math.max(dests.length, supps.length, jobs.length, acts.length, 10);
+    const rows = Math.max(dests.length, supps.length, jobs.length, acts.length, 5);
 
     // Build employee rows — first 4 share rows with guard/driver info, rest are extra
     const rightColInfo = [
@@ -654,7 +654,7 @@ function DeliveryPlan() {
       const request = Array.isArray(requestRes.data) ? requestRes.data[0] : requestRes.data;
       const isAdminApproved = request && ['Approved', 'Approved with Changes'].includes(request.requestStatus);
       const isReviewerAccepted = request && request.reviewerStatus === 'Accepted';
-      const dispatcherName = isAdminApproved ? 'JRAZ' : '\u00A0';
+      const dispatcherName = 'JRAZ';
       const departmentHeadName = 'EAD';
 
       // --- Data ---
@@ -1076,7 +1076,7 @@ function DeliveryPlan() {
       let finalValue = value;
       if (value === '') {
         finalValue = field === 'date' ? null : '';
-      } else if (['amount', 'amt', 'liters'].includes(field)) {
+      } else if (['amount', 'amt', 'liters', 'price'].includes(field)) {
         finalValue = Number(value);
       } else if (field === 'date') {
         finalValue = value;
@@ -2796,10 +2796,11 @@ function DeliveryPlan() {
                       </select>
                       <Input placeholder="Gas Station" value={f.gasStation || ''} onChange={(e) => handleExpenseChange('fuel', idx, 'gasStation', e.target.value)} className="flex-1 h-8 text-[11px] font-bold uppercase tracking-wider bg-background" />
                       <Input type="number" placeholder="Liters" value={f.liters || ''} onChange={(e) => handleExpenseChange('fuel', idx, 'liters', e.target.value)} className="w-[80px] h-8 text-[11px] font-bold uppercase tracking-wider bg-background px-2.5" />
+                      <Input type="number" placeholder="Price" value={f.price || ''} onChange={(e) => handleExpenseChange('fuel', idx, 'price', e.target.value)} className="w-[80px] h-8 text-[11px] font-bold uppercase tracking-wider bg-background px-2.5" />
                       <Input type="number" placeholder="Amount" value={f.amount || ''} onChange={(e) => handleExpenseChange('fuel', idx, 'amount', e.target.value)} className="w-[100px] h-8 text-[11px] font-bold uppercase tracking-wider bg-background px-2.5" />
                       <Input placeholder="Invoice No." value={f.invoiceNo || ''} onChange={(e) => handleExpenseChange('fuel', idx, 'invoiceNo', e.target.value)} className="w-[130px] h-8 text-[11px] font-bold uppercase tracking-wider bg-background" />
                       {idx === 0 && (
-                        <button type="button" onClick={() => addExpenseItem('fuel', { amount: 0, liters: 0, gasStation: '', invoiceNo: '', paymentType: '', date: '' })} className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
+                        <button type="button" onClick={() => addExpenseItem('fuel', { amount: 0, liters: 0, price: 0, gasStation: '', invoiceNo: '', paymentType: '', date: '' })} className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
                           <Plus className="h-4 w-4" />
                         </button>
                       )}

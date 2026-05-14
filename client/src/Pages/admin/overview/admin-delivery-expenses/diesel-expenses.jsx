@@ -119,6 +119,7 @@ export default function DieselExpenses() {
             jobOrderNo: d.jobOrderNo,
             gasStation: f.gasStation || '—',
             liters: f.liters || 0,
+            price: f.price || 0,
             amount: f.amount || 0,
             invoiceNo: f.invoiceNo || '—',
             vehicleEquipment: d.vehicleEquipment,
@@ -243,6 +244,7 @@ export default function DieselExpenses() {
       'Destination',
       'Gas Station',
       'Liters',
+      'Price',
       'Amount',
       'Invoice No.',
       'Vehicle'
@@ -256,6 +258,7 @@ export default function DieselExpenses() {
       joinArray(row.destination),
       row.gasStation,
       row.liters,
+      row.price,
       row.amount,
       row.invoiceNo,
       row.vehicleEquipment || '—'
@@ -427,6 +430,7 @@ export default function DieselExpenses() {
                   <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Destination</th>
                   <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Gas Station</th>
                   <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-right align-middle">Liters</th>
+                  <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-right align-middle">Price</th>
                   <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-right align-middle">Amount</th>
                   <th className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white text-left align-middle">Invoice</th>
                 </tr>
@@ -453,6 +457,9 @@ export default function DieselExpenses() {
                     <td className="px-3 py-2 text-[10px] font-medium text-foreground uppercase tracking-tight max-w-[200px] truncate" title={joinArray(row.destination)}>{joinArray(row.destination)}</td>
                     <td className="whitespace-nowrap px-3 py-2 text-[10px] font-bold text-foreground uppercase tracking-tight">{row.gasStation}</td>
                     <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-muted-foreground text-right tracking-tight">{row.liters.toLocaleString()}</td>
+                    <td className="whitespace-nowrap px-3 py-2 text-[10px] font-medium text-muted-foreground text-right tracking-tight">
+                      ₱ {row.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </td>
                     <td className="whitespace-nowrap px-3 py-2 text-[10px] font-bold text-primary text-right">
                       ₱ {row.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </td>
@@ -496,6 +503,7 @@ export default function DieselExpenses() {
                   </td>
                   <td className="whitespace-nowrap px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-muted-foreground text-center align-middle bg-card border-t border-border"></td>
                   <td className="whitespace-nowrap px-3 py-2.5 text-[10px] font-bold text-foreground text-right align-middle tracking-tight bg-card border-t border-border"></td>
+                  <td className="whitespace-nowrap px-3 py-2.5 text-[10px] font-bold text-foreground text-right align-middle tracking-tight bg-card border-t border-border"></td>
                   <td className="whitespace-nowrap px-3 py-2.5 text-[10px] font-black text-primary text-right align-middle bg-muted/30 border-t border-border tracking-wider">
                     ₱ {totals.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </td>
@@ -537,6 +545,7 @@ export default function DieselExpenses() {
             <th className="border border-black px-1 py-1 font-bold align-middle whitespace-nowrap">VEHICLE</th>
             <th className="border border-black px-1 py-1 font-bold align-middle whitespace-nowrap">GAS STATION</th>
             <th className="border border-black px-1 py-1 font-bold align-middle text-right whitespace-nowrap">LITERS</th>
+            <th className="border border-black px-1 py-1 font-bold align-middle text-right whitespace-nowrap">PRICE</th>
             <th className="border border-black px-1 py-1 font-bold align-middle text-right whitespace-nowrap">AMOUNT</th>
             <th className="border border-black px-1 py-1 font-bold align-middle whitespace-nowrap">INVOICE NO.</th>
           </tr>
@@ -552,6 +561,7 @@ export default function DieselExpenses() {
               <td className="border border-black px-1 py-1 align-top uppercase whitespace-nowrap font-bold text-center">{row.vehicleEquipment || '—'}</td>
               <td className="border border-black px-1 py-1 align-top uppercase whitespace-nowrap">{row.gasStation}</td>
               <td className="border border-black px-1 py-1 align-top text-right whitespace-nowrap">{row.liters.toLocaleString()}</td>
+              <td className="border border-black px-1 py-1 align-top text-right whitespace-nowrap">{row.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
               <td className="border border-black px-1 py-1 align-top text-right font-bold whitespace-nowrap">{row.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
               <td className="border border-black px-1 py-1 align-top uppercase whitespace-nowrap">{row.invoiceNo}</td>
             </tr>
@@ -559,6 +569,7 @@ export default function DieselExpenses() {
           {/* Total Row */}
           <tr className="bg-[#f2f2f2] break-inside-avoid">
             <td className="border border-black px-1 py-1 font-bold bg-white text-right" colSpan={7}>TOTAL</td>
+            <td className="border border-black px-1 py-1 font-bold text-right whitespace-nowrap"></td>
             <td className="border border-black px-1 py-1 font-bold text-right whitespace-nowrap"></td>
             <td className="border border-black px-1 py-1 font-bold text-right whitespace-nowrap">{totals.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
             <td className="border border-black px-1 py-1 font-bold bg-white"></td>
