@@ -28,22 +28,42 @@ app.set('trust proxy', true);
 // Build allowed origins from env var + defaults
 const defaultOrigins = [
   'http://localhost:3000',
-  'https://logistic-monitoring-system.vercel.app',
+  'http://localhost:5173',
+  'https://logitrack-ops.vercel.app',
   'https://logitrack-app.vercel.app',
+  'https://logistic-monitoring-system.vercel.app',
 ];
 const envOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(',').map((o) => o.trim())
   : [];
 const allowedOrigins = [...defaultOrigins, ...envOrigins];
 
-app.use(
-  cors({
-    origin: allowedOrigins,
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-  }),
-);
+const corsOptions = {
+  origin: (origin, callback) => {
+    // Allow requests with no origin (e.g. mobile apps, curl, server-to-server)
+    if (!origin) return callback(null, true);
+
+    // Exact match in whitelist
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+
+    // Allow all vercel deployment subdomains and localhost on any port
+    if (
+      /^https:\/\/([a-zA-Z0-9-]+\.)*vercel\.app$/.test(origin) ||
+      /^http:\/\/localhost(:\d+)?$/.test(origin)
+    ) {
+      return callback(null, true);
+    }
+
+    callback(new Error(`Origin ${origin} not allowed by CORS`));
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  optionsSuccessStatus: 204,
+};
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 app.use(express.json());
 
 let supabaseReady = false;
