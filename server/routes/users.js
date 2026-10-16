@@ -1,14 +1,13 @@
-import express from 'express';
-import { getPool } from '../db/pool.js';
-import * as usersMysql from '../repositories/usersMysql.js';
+﻿import express from 'express';
+import * as usersRepo from '../repositories/users.js';
 import { verifyToken } from '../middleware/auth.js';
 
 const router = express.Router();
 
 router.get('/', verifyToken, async (req, res) => {
   try {
-    const pool = getPool();
-    const users = await usersMysql.listUsers(pool);
+    const pool = null;
+    const users = await usersRepo.listUsers(pool);
     res.json(users);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching users', error: error.message });
@@ -21,12 +20,12 @@ router.post('/', verifyToken, async (req, res) => {
     if (!username || !password) {
       return res.status(400).json({ message: 'Username and password are required' });
     }
-    const pool = getPool();
-    const existingUser = await usersMysql.findUserByUsername(pool, username);
+    const pool = null;
+    const existingUser = await usersRepo.findUserByUsername(pool, username);
     if (existingUser) {
       return res.status(409).json({ message: 'Username already exists' });
     }
-    const user = await usersMysql.createUser(pool, { username, password, department, role });
+    const user = await usersRepo.createUser(pool, { username, password, department, role });
     res.status(201).json({ message: 'User created successfully', user: { username: user.username, department: user.department, role: user.role } });
   } catch (error) {
     console.error('Error creating user:', error);
@@ -42,8 +41,8 @@ router.put('/:id', verifyToken, async (req, res) => {
     if (password !== undefined) patch.password = password;
     if (department !== undefined) patch.department = department;
     if (role !== undefined) patch.role = role;
-    const pool = getPool();
-    const user = await usersMysql.updateUserByIdParam(pool, req.params.id, patch);
+    const pool = null;
+    const user = await usersRepo.updateUserByIdParam(pool, req.params.id, patch);
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
@@ -55,8 +54,8 @@ router.put('/:id', verifyToken, async (req, res) => {
 
 router.delete('/:id', verifyToken, async (req, res) => {
   try {
-    const pool = getPool();
-    const ok = await usersMysql.deleteUserByIdParam(pool, req.params.id);
+    const pool = null;
+    const ok = await usersRepo.deleteUserByIdParam(pool, req.params.id);
     if (!ok) {
       return res.status(404).json({ message: 'User not found' });
     }

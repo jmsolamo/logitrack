@@ -1,23 +1,43 @@
-import { getPool } from '../db/pool.js';
+import { getSupabase } from '../db/supabase.js';
 
-export const insertLoginHistory = async (pool, logData) => {
+export const insertLoginHistory = async (_pool, logData) => {
+  const supabase = getSupabase();
   const { username, status, reason, ipAddress } = logData;
-  const [result] = await pool.query(
-    'INSERT INTO login_history (username, status, reason, ip_address) VALUES (?, ?, ?, ?)',
-    [username, status, reason || null, ipAddress || null]
-  );
-  return result;
+  const { data, error } = await supabase.from('login_history').insert({
+    username,
+    status,
+    reason: reason || null,
+    ip_address: ipAddress || null,
+  }).select();
+  if (error) throw error;
+  return data;
 };
 
-export const getLoginHistory = async (pool, limit = 100) => {
-  const [rows] = await pool.query(
-    'SELECT * FROM login_history ORDER BY created_at DESC LIMIT ?',
-    [Number(limit)]
-  );
-  return rows;
+export const getLoginHistory = async (_pool, limit = 100) => {
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from('login_history')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(Number(limit));
+  if (error) throw error;
+  return (data || []).map((item) => {
+    const rawIp = item.ip_address || item.ipAddress || '';
+    const cleanIp =
+      rawIp === '::1' || rawIp === '::ffff:127.0.0.1'
+        ? '127.0.0.1'
+        : (rawIp.replace(/^::ffff:/, '') || '127.0.0.1');
+    return {
+      ...item,
+      ip_address: cleanIp,
+      ipAddress: cleanIp,
+    };
+  });
 };
 
-export const clearLoginHistory = async (pool) => {
-  const [result] = await pool.query('TRUNCATE TABLE login_history');
-  return result;
+export const clearLoginHistory = async (_pool) => {
+  const supabase = getSupabase();
+  const { error } = await supabase.from('login_history').delete().neq('id', 0);
+  if (error) throw error;
+  return true;
 };

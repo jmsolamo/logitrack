@@ -1,9 +1,8 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
-import { getPool } from '../db/pool.js';
-import * as usersMysql from '../repositories/usersMysql.js';
+import * as usersRepo from '../repositories/users.js';
 import { verifyToken } from '../middleware/auth.js';
-import { insertLoginHistory } from '../repositories/historyMysql.js';
+import { insertLoginHistory } from '../repositories/history.js';
 
 const router = express.Router();
 
@@ -33,16 +32,19 @@ router.post('/login', async (req, res) => {
       }
     }
 
-    const clientIp = req.headers['x-forwarded-for']?.split(',')[0] || req.socket.remoteAddress || req.ip;
+    const rawIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket.remoteAddress || req.ip || '';
+    const clientIp = rawIp === '::1' || rawIp === '::ffff:127.0.0.1'
+      ? '127.0.0.1'
+      : (rawIp.replace(/^::ffff:/, '') || '127.0.0.1');
 
-    const pool = getPool();
-    const userRow = await usersMysql.findUserByUsername(pool, username);
+    const pool = null;
+    const userRow = await usersRepo.findUserByUsername(pool, username);
     if (!userRow) {
       await insertLoginHistory(pool, { username, status: 'Failed', reason: 'Invalid username', ipAddress: clientIp });
       return res.status(401).json({ message: 'Invalid username or password' });
     }
 
-    const ok = await usersMysql.comparePassword(password, userRow.password_hash);
+    const ok = await usersRepo.comparePassword(password, userRow.password_hash);
     if (!ok) {
       await insertLoginHistory(pool, { username, status: 'Failed', reason: 'Invalid password', ipAddress: clientIp });
       return res.status(401).json({ message: 'Invalid username or password' });
@@ -78,8 +80,8 @@ router.post('/login', async (req, res) => {
 
 router.get('/profile', verifyToken, async (req, res) => {
   try {
-    const pool = getPool();
-    const raw = await usersMysql.findUserByIdParam(pool, req.user._id);
+    const pool = null;
+    const raw = await usersRepo.findUserByIdParam(pool, req.user._id);
     if (!raw) {
       return res.status(404).json({ message: 'User not found' });
     }
@@ -96,19 +98,19 @@ router.put('/update-profile', verifyToken, async (req, res) => {
       return res.status(400).json({ message: 'Current password is required' });
     }
 
-    const pool = getPool();
-    const raw = await usersMysql.findUserByIdParam(pool, req.user._id);
+    const pool = null;
+    const raw = await usersRepo.findUserByIdParam(pool, req.user._id);
     if (!raw) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    const ok = await usersMysql.comparePassword(currentPassword, raw.password_hash);
+    const ok = await usersRepo.comparePassword(currentPassword, raw.password_hash);
     if (!ok) {
       return res.status(401).json({ message: 'Incorrect current password' });
     }
 
     if (newUsername && newUsername !== raw.username) {
-      const existing = await usersMysql.findUserByUsername(pool, newUsername);
+      const existing = await usersRepo.findUserByUsername(pool, newUsername);
       if (existing) {
         return res.status(400).json({ message: 'Username already taken' });
       }
@@ -118,7 +120,7 @@ router.put('/update-profile', verifyToken, async (req, res) => {
     if (newUsername && newUsername !== raw.username) patch.username = newUsername;
     if (newPassword) patch.password = newPassword;
 
-    const updated = await usersMysql.updateUserByIdParam(pool, req.user._id, patch);
+    const updated = await usersRepo.updateUserByIdParam(pool, req.user._id, patch);
 
     const token = jwt.sign(
       {

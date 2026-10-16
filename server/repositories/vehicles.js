@@ -1,6 +1,5 @@
-import { getPool } from '../db/pool.js';
-import { toApiId } from '../utils/entityId.js';
-import { idLookup } from '../utils/entityId.js';
+import { getSupabase } from '../db/supabase.js';
+import { toApiId, idLookup } from '../utils/entityId.js';
 
 const map = (r) =>
   r
@@ -18,117 +17,146 @@ const map = (r) =>
       }
     : null;
 
-export const listVehicles = async (pool) => {
-  const [rows] = await pool.query(`
-    SELECT v.*, (SELECT COUNT(*) FROM vehicle_maintenance_logs l WHERE l.vehicle_id = v.id) as maintenance_count
-    FROM vehicles v 
-    ORDER BY v.created_at DESC
-  `);
-  return rows.map(map);
+export const listVehicles = async (_pool) => {
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from('vehicles')
+    .select('*, vehicle_maintenance_logs(id)')
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data || []).map((v) =>
+    map({ ...v, maintenance_count: v.vehicle_maintenance_logs?.length || 0 })
+  );
 };
 
-export const findByPlate = async (pool, plate) => {
-  const [rows] = await pool.query('SELECT * FROM vehicles WHERE plate_number = ? LIMIT 1', [String(plate).toUpperCase()]);
-  return rows[0] || null;
+export const findByPlate = async (_pool, plate) => {
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from('vehicles')
+    .select('*')
+    .ilike('plate_number', String(plate).trim())
+    .maybeSingle();
+  if (error) throw error;
+  return data || null;
 };
 
-export const createVehicle = async (pool, body) => {
-  const [r] = await pool.query(`INSERT INTO vehicles (plate_number, model) VALUES (?,?)`, [
-    String(body.plateNumber).toUpperCase(),
-    body.model,
-  ]);
-  const [rows] = await pool.query('SELECT * FROM vehicles WHERE id = ?', [r.insertId]);
-  return map(rows[0]);
+export const createVehicle = async (_pool, body) => {
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from('vehicles')
+    .insert({
+      plate_number: String(body.plateNumber).toUpperCase(),
+      model: body.model,
+    })
+    .select()
+    .single();
+  if (error) throw error;
+  return map(data);
 };
 
-export const updateVehicle = async (pool, param, body) => {
+export const updateVehicle = async (_pool, param, body) => {
   const lk = idLookup(param);
   if (!lk) return null;
-  const [ex] = await pool.query(`SELECT id FROM vehicles WHERE ${lk.clause} LIMIT 1`, lk.params);
-  if (!ex[0]) return null;
-  const id = ex[0].id;
-  const sets = [];
-  const vals = [];
-  if (body.plateNumber !== undefined) {
-    sets.push('plate_number = ?');
-    vals.push(String(body.plateNumber).toUpperCase());
-  }
-  if (body.model !== undefined) {
-    sets.push('model = ?');
-    vals.push(body.model);
-  }
-  if (!sets.length) {
-    const [rows] = await pool.query('SELECT * FROM vehicles WHERE id = ?', [id]);
-    return map(rows[0]);
-  }
-  vals.push(id);
-  await pool.query(`UPDATE vehicles SET ${sets.join(', ')} WHERE id = ?`, vals);
-  const [rows] = await pool.query('SELECT * FROM vehicles WHERE id = ?', [id]);
-  return map(rows[0]);
+  const id = lk.params[0];
+  const supabase = getSupabase();
+  const updates = {};
+  if (body.plateNumber !== undefined) updates.plate_number = String(body.plateNumber).toUpperCase();
+  if (body.model !== undefined) updates.model = body.model;
+  const { data, error } = await supabase.from('vehicles').update(updates).eq('id', id).select().maybeSingle();
+  if (error) throw error;
+  return map(data);
 };
 
-export const deleteVehicle = async (pool, param) => {
+export const deleteVehicle = async (_pool, param) => {
   const lk = idLookup(param);
   if (!lk) return false;
-  const [r] = await pool.query(`DELETE FROM vehicles WHERE ${lk.clause}`, lk.params);
-  return r.affectedRows > 0;
+  const id = lk.params[0];
+  const supabase = getSupabase();
+  const { error } = await supabase.from('vehicles').delete().eq('id', id);
+  if (error) throw error;
+  return true;
 };
 
-export const updateMaintenance = async (pool, param, updateData) => {
+export const updateMaintenance = async (_pool, param, updateData) => {
   const lk = idLookup(param);
   if (!lk) return null;
-  const [ex] = await pool.query(`SELECT id, status FROM vehicles WHERE ${lk.clause} LIMIT 1`, lk.params);
-  if (!ex[0]) return null;
-  const id = ex[0].id;
-  
-  if (updateData.status === 'Maintenance' && ex[0].status !== 'Maintenance') {
-    await pool.query(
-      `INSERT INTO vehicle_maintenance_logs (vehicle_id, reason, start_date, end_date) VALUES (?, ?, ?, ?)`,
-      [id, updateData.maintenanceReason || '', updateData.maintenanceStartDate || null, updateData.maintenanceEndDate || null]
-    );
+  const id = lk.params[0];
+  const supabase = getSupabase();
+  const { data: ex } = await supabase.from('vehicles').select('id, status').eq('id', id).maybeSingle();
+  if (!ex) return null;
+
+  if (updateData.status === 'Maintenance' && ex.status !== 'Maintenance') {
+    await supabase.from('vehicle_maintenance_logs').insert({
+      vehicle_id: id,
+      reason: updateData.maintenanceReason || '',
+      start_date: updateData.maintenanceStartDate || null,
+      end_date: updateData.maintenanceEndDate || null,
+    });
   }
-  await pool.query(
-    `UPDATE vehicles SET status = ?, maintenance_reason = ?, maintenance_start_date = ?, maintenance_end_date = ? WHERE id = ?`,
-    [
-      updateData.status,
-      updateData.maintenanceReason ?? '',
-      updateData.maintenanceStartDate ?? null,
-      updateData.maintenanceEndDate ?? null,
-      id,
-    ],
-  );
-  const [rows] = await pool.query(`
-    SELECT v.*, (SELECT COUNT(*) FROM vehicle_maintenance_logs l WHERE l.vehicle_id = v.id) as maintenance_count
-    FROM vehicles v WHERE v.id = ?
-  `, [id]);
-  return map(rows[0]);
+
+  const { data, error } = await supabase
+    .from('vehicles')
+    .update({
+      status: updateData.status,
+      maintenance_reason: updateData.maintenanceReason ?? '',
+      maintenance_start_date: updateData.maintenanceStartDate ?? null,
+      maintenance_end_date: updateData.maintenanceEndDate ?? null,
+    })
+    .eq('id', id)
+    .select('*, vehicle_maintenance_logs(id)')
+    .single();
+  if (error) throw error;
+  return map({ ...data, maintenance_count: data.vehicle_maintenance_logs?.length || 0 });
 };
 
-export const countVehicles = async (pool, whereSql, params = []) => {
-  const [rows] = await pool.query(`SELECT COUNT(*) AS c FROM vehicles WHERE ${whereSql}`, params);
-  return rows[0].c;
+export const countVehicles = async (_pool, whereSql) => {
+  const supabase = getSupabase();
+  let q = supabase.from('vehicles').select('*', { count: 'exact', head: true });
+  if (whereSql && whereSql.includes("status = 'Available'")) {
+    q = q.eq('status', 'Available');
+  } else if (whereSql && whereSql.includes("status = 'Maintenance'")) {
+    q = q.eq('status', 'Maintenance');
+  } else if (whereSql && whereSql.includes("status IN ('Unavailable','Booked')")) {
+    q = q.in('status', ['Unavailable', 'Booked']);
+  }
+  const { count, error } = await q;
+  if (error) throw error;
+  return count || 0;
 };
 
-export const findVehiclesWhere = async (pool, whereSql, params = []) => {
-  const [rows] = await pool.query(`SELECT * FROM vehicles WHERE ${whereSql} ORDER BY updated_at DESC`, params);
-  return rows.map(map);
+export const findVehiclesWhere = async (_pool, whereSql) => {
+  const supabase = getSupabase();
+  let q = supabase.from('vehicles').select('*').order('updated_at', { ascending: false });
+  if (whereSql && whereSql.includes("status IN ('Maintenance','Unavailable','Booked')")) {
+    q = q.in('status', ['Maintenance', 'Unavailable', 'Booked']);
+  }
+  const { data, error } = await q;
+  if (error) throw error;
+  return (data || []).map(map);
 };
 
-export const selectPlatesModels = async (pool) => {
-  const [rows] = await pool.query('SELECT plate_number AS plateNumber, model FROM vehicles');
-  return rows;
+export const selectPlatesModels = async (_pool) => {
+  const supabase = getSupabase();
+  const { data, error } = await supabase.from('vehicles').select('plate_number, model');
+  if (error) throw error;
+  return (data || []).map((v) => ({ plateNumber: v.plate_number, model: v.model }));
 };
 
-export const getMaintenanceLogsByMonth = async (pool) => {
-  const [rows] = await pool.query(`
-    SELECT 
-      DATE_FORMAT(l.created_at, '%Y-%m') AS month,
-      v.plate_number AS plateNumber,
-      COUNT(*) AS count
-    FROM vehicle_maintenance_logs l
-    JOIN vehicles v ON v.id = l.vehicle_id
-    GROUP BY DATE_FORMAT(l.created_at, '%Y-%m'), v.plate_number
-    ORDER BY month ASC, count DESC
-  `);
-  return rows;
+export const getMaintenanceLogsByMonth = async (_pool) => {
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from('vehicle_maintenance_logs')
+    .select('created_at, vehicles(plate_number)');
+  if (error) throw error;
+  const mapAgg = {};
+  for (const item of data || []) {
+    const month = item.created_at ? item.created_at.substring(0, 7) : 'Unknown';
+    const plate = item.vehicles?.plate_number || 'Unknown';
+    const key = `${month}_${plate}`;
+    if (!mapAgg[key]) {
+      mapAgg[key] = { month, plateNumber: plate, count: 0 };
+    }
+    mapAgg[key].count += 1;
+  }
+  return Object.values(mapAgg).sort((a, b) => a.month.localeCompare(b.month) || b.count - a.count);
 };

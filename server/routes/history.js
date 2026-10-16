@@ -1,6 +1,5 @@
-import express from 'express';
-import { getPool } from '../db/pool.js';
-import { getLoginHistory, clearLoginHistory } from '../repositories/historyMysql.js';
+﻿import express from 'express';
+import { getLoginHistory, clearLoginHistory } from '../repositories/history.js';
 import { verifyToken } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -10,7 +9,7 @@ router.get('/', verifyToken, async (req, res) => {
     if (req.user.role !== 'admin') {
       return res.status(403).json({ message: 'Access denied' });
     }
-    const pool = getPool();
+    const pool = null;
     const history = await getLoginHistory(pool, req.query.limit || 100);
     res.json(history);
   } catch (error) {
@@ -24,7 +23,7 @@ router.delete('/', verifyToken, async (req, res) => {
     if (req.user.role !== 'admin') {
       return res.status(403).json({ message: 'Access denied' });
     }
-    const pool = getPool();
+    const pool = null;
     await clearLoginHistory(pool);
     res.json({ message: 'Logs cleared successfully' });
   } catch (error) {

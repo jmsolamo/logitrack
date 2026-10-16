@@ -43,11 +43,23 @@ function HistoryPage() {
     }
   };
 
-  const filteredLogs = logs.filter(log => 
-    log.username?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    log.reason?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    log.ip_address?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const formatIp = (ip) => {
+    if (!ip || ip === '-') return '-';
+    if (ip === '::1' || ip === '::ffff:127.0.0.1') return '127.0.0.1';
+    if (typeof ip === 'string' && ip.startsWith('::ffff:')) return ip.replace('::ffff:', '');
+    return ip;
+  };
+
+  const filteredLogs = logs.filter(log => {
+    const ip = log.ip_address || log.ipAddress || '';
+    const formattedIp = formatIp(ip);
+    return (
+      log.username?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      log.reason?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      ip.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      formattedIp.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  });
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
@@ -149,7 +161,7 @@ function HistoryPage() {
                     {log.reason || '-'}
                   </td>
                   <td className="px-4 py-3 text-muted-foreground font-medium font-mono text-[10px]">
-                    {log.ip_address || '-'}
+                    {formatIp(log.ip_address || log.ipAddress)}
                   </td>
                 </tr>
               ))
@@ -172,9 +184,11 @@ function HistoryPage() {
         title="Clear Login History"
         description="Are you sure you want to delete all login history logs? This action cannot be undone and will permanently remove all authentication tracking records."
         onConfirm={handleClearLogs}
+        onClose={() => setIsClearDialogOpen(false)}
         onCancel={() => setIsClearDialogOpen(false)}
+        confirmText={isClearing ? "Clearing..." : "Clear Logs"}
         isLoading={isClearing}
-        destructive
+        variant="destructive"
       />
     </div>
   );

@@ -1,6 +1,5 @@
-import { getPool } from '../db/pool.js';
-import { toApiId } from '../utils/entityId.js';
-import { idLookup } from '../utils/entityId.js';
+import { getSupabase } from '../db/supabase.js';
+import { toApiId, idLookup } from '../utils/entityId.js';
 
 const map = (r) =>
   r
@@ -14,45 +13,51 @@ const map = (r) =>
       }
     : null;
 
-export const listPersonnels = async (pool) => {
-  const [rows] = await pool.query('SELECT * FROM personnels ORDER BY created_at DESC');
-  return rows.map(map);
+export const listPersonnels = async (_pool) => {
+  const supabase = getSupabase();
+  const { data, error } = await supabase.from('personnels').select('*').order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data || []).map(map);
 };
 
-export const createPersonnel = async (pool, body) => {
-  const [r] = await pool.query(`INSERT INTO personnels (firstname, lastname, position) VALUES (?,?,?)`, [
-    body.firstname,
-    body.lastname,
-    body.position,
-  ]);
-  const [rows] = await pool.query('SELECT * FROM personnels WHERE id = ?', [r.insertId]);
-  return map(rows[0]);
+export const createPersonnel = async (_pool, body) => {
+  const supabase = getSupabase();
+  const { data, error } = await supabase.from('personnels').insert({
+    firstname: body.firstname,
+    lastname: body.lastname,
+    position: body.position,
+  }).select().single();
+  if (error) throw error;
+  return map(data);
 };
 
-export const updatePersonnel = async (pool, param, body) => {
+export const updatePersonnel = async (_pool, param, body) => {
   const lk = idLookup(param);
   if (!lk) return null;
-  const [ex] = await pool.query(`SELECT id FROM personnels WHERE ${lk.clause} LIMIT 1`, lk.params);
-  if (!ex[0]) return null;
-  const id = ex[0].id;
-  await pool.query(`UPDATE personnels SET firstname = ?, lastname = ?, position = ? WHERE id = ?`, [
-    body.firstname,
-    body.lastname,
-    body.position,
-    id,
-  ]);
-  const [rows] = await pool.query('SELECT * FROM personnels WHERE id = ?', [id]);
-  return map(rows[0]);
+  const id = lk.params[0];
+  const supabase = getSupabase();
+  const { data, error } = await supabase.from('personnels').update({
+    firstname: body.firstname,
+    lastname: body.lastname,
+    position: body.position,
+  }).eq('id', id).select().maybeSingle();
+  if (error) throw error;
+  return map(data);
 };
 
-export const deletePersonnel = async (pool, param) => {
+export const deletePersonnel = async (_pool, param) => {
   const lk = idLookup(param);
   if (!lk) return false;
-  const [r] = await pool.query(`DELETE FROM personnels WHERE ${lk.clause}`, lk.params);
-  return r.affectedRows > 0;
+  const id = lk.params[0];
+  const supabase = getSupabase();
+  const { error } = await supabase.from('personnels').delete().eq('id', id);
+  if (error) throw error;
+  return true;
 };
 
-export const countPersonnels = async (pool) => {
-  const [[r]] = await pool.query('SELECT COUNT(*) AS c FROM personnels');
-  return r.c;
+export const countPersonnels = async (_pool) => {
+  const supabase = getSupabase();
+  const { count, error } = await supabase.from('personnels').select('*', { count: 'exact', head: true });
+  if (error) throw error;
+  return count || 0;
 };

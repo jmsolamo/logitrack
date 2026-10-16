@@ -1,6 +1,5 @@
-import { getPool } from '../db/pool.js';
-import { toApiId } from '../utils/entityId.js';
-import { idLookup } from '../utils/entityId.js';
+import { getSupabase } from '../db/supabase.js';
+import { toApiId, idLookup } from '../utils/entityId.js';
 
 const toDateOrNull = (v) => {
   if (v == null || v === '') return null;
@@ -15,7 +14,8 @@ const asStringArray = (v) => {
   return [v];
 };
 
-const clearRequestChildren = async (conn, requestId) => {
+const clearRequestChildren = async (_conn, requestId) => {
+  const supabase = getSupabase();
   const tables = [
     'delivery_request_purposes',
     'delivery_request_activities',
@@ -25,42 +25,39 @@ const clearRequestChildren = async (conn, requestId) => {
     'delivery_request_drivers',
     'delivery_request_helpers',
   ];
-  for (const t of tables) {
-    await conn.query(`DELETE FROM \`${t}\` WHERE delivery_request_id = ?`, [requestId]);
-  }
+  await Promise.all(tables.map((t) => supabase.from(t).delete().eq('delivery_request_id', requestId)));
 };
 
-const insertRequestChildren = async (conn, requestId, body) => {
+const insertRequestChildren = async (_conn, requestId, body) => {
+  const supabase = getSupabase();
   const ins = async (table, field) => {
-    let i = 0;
-    for (const value of asStringArray(body[field])) {
-      if (String(value).trim() === '') continue;
-      await conn.query(`INSERT INTO \`${table}\` (delivery_request_id, value) VALUES (?,?)`, [
-        requestId,
-        String(value).trim(),
-      ]);
-    }
+    const rows = asStringArray(body[field])
+      .filter((v) => String(v).trim() !== '')
+      .map((v) => ({ delivery_request_id: requestId, value: String(v).trim() }));
+    if (rows.length) await supabase.from(table).insert(rows);
   };
-  await ins('delivery_request_purposes', 'purpose');
-  await ins('delivery_request_activities', 'activity');
-  await ins('delivery_request_destinations', 'destination');
-  await ins('delivery_request_job_orders', 'jobOrderNo');
-  await ins('delivery_request_customer_suppliers', 'customerSupplier');
-  await ins('delivery_request_drivers', 'driver');
-  await ins('delivery_request_helpers', 'helper');
+  await Promise.all([
+    ins('delivery_request_purposes', 'purpose'),
+    ins('delivery_request_activities', 'activity'),
+    ins('delivery_request_destinations', 'destination'),
+    ins('delivery_request_job_orders', 'jobOrderNo'),
+    ins('delivery_request_customer_suppliers', 'customerSupplier'),
+    ins('delivery_request_drivers', 'driver'),
+    ins('delivery_request_helpers', 'helper'),
+  ]);
 };
 
-const loadRequestSubs = async (conn, requestId) => {
-  const results = await Promise.all([
-    conn.query('SELECT value FROM delivery_request_purposes WHERE delivery_request_id = ?', [requestId]),
-    conn.query('SELECT value FROM delivery_request_activities WHERE delivery_request_id = ?', [requestId]),
-    conn.query('SELECT value FROM delivery_request_destinations WHERE delivery_request_id = ?', [requestId]),
-    conn.query('SELECT value FROM delivery_request_job_orders WHERE delivery_request_id = ?', [requestId]),
-    conn.query('SELECT value FROM delivery_request_customer_suppliers WHERE delivery_request_id = ?', [requestId]),
-    conn.query('SELECT value FROM delivery_request_drivers WHERE delivery_request_id = ?', [requestId]),
-    conn.query('SELECT value FROM delivery_request_helpers WHERE delivery_request_id = ?', [requestId]),
+const loadRequestSubs = async (_conn, requestId) => {
+  const supabase = getSupabase();
+  const [purposes, activities, destinations, jobOrders, customers, drivers, helpers] = await Promise.all([
+    supabase.from('delivery_request_purposes').select('value').eq('delivery_request_id', requestId).then((r) => r.data || []),
+    supabase.from('delivery_request_activities').select('value').eq('delivery_request_id', requestId).then((r) => r.data || []),
+    supabase.from('delivery_request_destinations').select('value').eq('delivery_request_id', requestId).then((r) => r.data || []),
+    supabase.from('delivery_request_job_orders').select('value').eq('delivery_request_id', requestId).then((r) => r.data || []),
+    supabase.from('delivery_request_customer_suppliers').select('value').eq('delivery_request_id', requestId).then((r) => r.data || []),
+    supabase.from('delivery_request_drivers').select('value').eq('delivery_request_id', requestId).then((r) => r.data || []),
+    supabase.from('delivery_request_helpers').select('value').eq('delivery_request_id', requestId).then((r) => r.data || []),
   ]);
-  const [purposes, activities, destinations, jobOrders, customers, drivers, helpers] = results.map((r) => r[0]);
   return { purposes, activities, destinations, jobOrders, customers, drivers, helpers };
 };
 
@@ -73,7 +70,7 @@ const mapMain = (r, subs) => ({
   vehicleEquipment: r.vehicle_equipment,
   tnvsProvider: r.tnvs_provider,
   requestedBy: r.requested_by,
-  department: r.user_department || null,
+  department: r.user_department || r.department || null,
   dateSubmitted: r.date_submitted,
   notes: r.notes,
   totalBudget: Number(r.total_budget),
@@ -91,230 +88,198 @@ const mapMain = (r, subs) => ({
   vehicleChangeReason: r.vehicle_change_reason,
   deliveryReferenceNo: r.delivery_reference_no,
   combinedWithDelivery: !!r.combined_with_delivery,
-  purpose: subs.purposes.map((x) => x.value),
-  activity: subs.activities.map((x) => x.value),
-  destination: subs.destinations.map((x) => x.value),
-  jobOrderNo: subs.jobOrders.map((x) => x.value),
-  customerSupplier: subs.customers.map((x) => x.value),
-  driver: subs.drivers.map((x) => x.value),
-  helper: subs.helpers.map((x) => x.value),
+  purpose: (subs.purposes || []).map((x) => x.value),
+  activity: (subs.activities || []).map((x) => x.value),
+  destination: (subs.destinations || []).map((x) => x.value),
+  jobOrderNo: (subs.jobOrders || []).map((x) => x.value),
+  customerSupplier: (subs.customers || []).map((x) => x.value),
+  driver: (subs.drivers || []).map((x) => x.value),
+  helper: (subs.helpers || []).map((x) => x.value),
   createdAt: r.created_at,
   updatedAt: r.updated_at,
 });
 
-export const buildFullRequest = async (pool, row) => {
+export const buildFullRequest = async (_pool, row) => {
   if (!row) return null;
-  const subs = await loadRequestSubs(pool, row.id);
+  const subs = await loadRequestSubs(null, row.id);
   return mapMain(row, subs);
 };
 
-export const findRequestByIdParam = async (pool, param) => {
+export const findRequestByIdParam = async (_pool, param) => {
   const lk = idLookup(param);
   if (!lk) return null;
-  const [rows] = await pool.query(
-    `SELECT dr.*, u.department AS user_department FROM delivery_requests dr LEFT JOIN users u ON dr.requested_by_user_id = CAST(u.id AS CHAR) WHERE dr.${lk.clause} LIMIT 1`,
-    lk.params
-  );
-  if (!rows[0]) return null;
-  return buildFullRequest(pool, rows[0]);
+  const id = lk.params[0];
+  const supabase = getSupabase();
+  const { data: row, error } = await supabase.from('delivery_requests').select('*').eq('id', id).maybeSingle();
+  if (error || !row) return null;
+  let dept = null;
+  if (row.requested_by_user_id) {
+    const { data: u } = await supabase.from('users').select('department').eq('id', row.requested_by_user_id).maybeSingle();
+    dept = u?.department || null;
+  }
+  row.user_department = dept;
+  return buildFullRequest(null, row);
 };
 
-export const latestRequestReferenceNo = async (pool, patternPrefix) => {
-  const like = `${patternPrefix}%`;
-  const [rows] = await pool.query(
-    `SELECT reference_no FROM delivery_requests WHERE reference_no LIKE ? ORDER BY reference_no DESC LIMIT 1`,
-    [like],
-  );
-  return rows[0]?.reference_no ?? null;
+export const latestRequestReferenceNo = async (_pool, patternPrefix) => {
+  const supabase = getSupabase();
+  const { data } = await supabase
+    .from('delivery_requests')
+    .select('reference_no')
+    .ilike('reference_no', `${patternPrefix}%`)
+    .order('reference_no', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return data?.reference_no ?? null;
 };
 
-export const countPending = async (pool) => {
-  const [[r]] = await pool.query(`SELECT COUNT(*) AS c FROM delivery_requests WHERE request_status = 'Pending'`);
-  return r.c;
+export const countPending = async (_pool) => {
+  const supabase = getSupabase();
+  const { count, error } = await supabase
+    .from('delivery_requests')
+    .select('*', { count: 'exact', head: true })
+    .eq('request_status', 'Pending');
+  if (error) throw error;
+  return count || 0;
 };
 
-export const listMyRequests = async (pool, userId) => {
-  const [rows] = await pool.query(
-    `SELECT dr.*, u.department AS user_department 
-     FROM delivery_requests dr 
-     LEFT JOIN users u ON dr.requested_by_user_id = CAST(u.id AS CHAR) 
-     WHERE dr.requested_by_user_id = ? 
-     ORDER BY dr.created_at DESC`,
-    [userId],
-  );
+export const listMyRequests = async (_pool, userId) => {
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from('delivery_requests')
+    .select('*')
+    .eq('requested_by_user_id', String(userId))
+    .order('created_at', { ascending: false });
+  if (error) throw error;
   const out = [];
-  for (const row of rows) {
-    out.push(await buildFullRequest(pool, row));
+  for (const row of data || []) {
+    out.push(await buildFullRequest(null, row));
   }
   return out;
 };
 
-export const listRequestsFiltered = async (pool, filter) => {
-  const clauses = [];
-  const params = [];
+export const listRequestsFiltered = async (_pool, filter) => {
+  const supabase = getSupabase();
+  let q = supabase.from('delivery_requests').select('*').order('created_at', { ascending: false });
   if (filter.requestStatus) {
     if (Array.isArray(filter.requestStatus)) {
-      clauses.push(`dr.request_status IN (${filter.requestStatus.map(() => '?').join(',')})`);
-      params.push(...filter.requestStatus);
+      q = q.in('request_status', filter.requestStatus);
     } else {
-      clauses.push('dr.request_status = ?');
-      params.push(filter.requestStatus);
+      q = q.eq('request_status', filter.requestStatus);
     }
   }
   if (filter.reviewerStatus) {
     if (Array.isArray(filter.reviewerStatus)) {
-      clauses.push(`dr.reviewer_status IN (${filter.reviewerStatus.map(() => '?').join(',')})`);
-      params.push(...filter.reviewerStatus);
+      q = q.in('reviewer_status', filter.reviewerStatus);
     } else {
-      clauses.push('dr.reviewer_status = ?');
-      params.push(filter.reviewerStatus);
+      q = q.eq('reviewer_status', filter.reviewerStatus);
     }
   }
   if (filter.deliveryReferenceNo) {
-    clauses.push('dr.delivery_reference_no = ?');
-    params.push(filter.deliveryReferenceNo);
+    q = q.eq('delivery_reference_no', filter.deliveryReferenceNo);
   }
-  const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
-  const [rows] = await pool.query(
-    `SELECT dr.*, u.department AS user_department 
-     FROM delivery_requests dr 
-     LEFT JOIN users u ON dr.requested_by_user_id = CAST(u.id AS CHAR) 
-     ${where} 
-     ORDER BY dr.created_at DESC`,
-    params
-  );
+  const { data, error } = await q;
+  if (error) throw error;
   const out = [];
-  for (const row of rows) {
-    out.push(await buildFullRequest(pool, row));
+  for (const row of data || []) {
+    out.push(await buildFullRequest(null, row));
   }
   return out;
 };
 
-export const createRequest = async (pool, body, referenceNo) => {
-  const conn = await pool.getConnection();
-  try {
-    await conn.beginTransaction();
-    const [r] = await conn.query(
-      `INSERT INTO delivery_requests (
-        reference_no, delivery_type, date_from, date_to, vehicle_equipment, tnvs_provider, requested_by, date_submitted, notes, total_budget,
-        requested_by_user_id, request_status, decline_reason, reviewed_by, reviewed_at, reviewer_status, reviewer_notes, reviewer_reviewed_by, reviewer_reviewed_at,
-        original_vehicle, vehicle_changed, vehicle_change_reason, delivery_reference_no, combined_with_delivery
-      ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-      [
-        referenceNo,
-        body.deliveryType ?? null,
-        toDateOrNull(body.dateFrom),
-        toDateOrNull(body.dateTo),
-        body.vehicleEquipment ?? null,
-        body.tnvsProvider ?? null,
-        body.requestedBy ?? null,
-        new Date(),
-        body.notes ?? null,
-        Number(body.totalBudget) || 0,
-        body.requestedByUserId ?? null,
-        body.requestStatus || 'Pending',
-        null,
-        null,
-        null,
-        body.reviewerStatus || 'Pending',
-        null,
-        null,
-        null,
-        body.originalVehicle ?? null,
-        body.vehicleChanged ? 1 : 0,
-        body.vehicleChangeReason ?? null,
-        body.deliveryReferenceNo ? String(body.deliveryReferenceNo).trim() : null,
-        body.combinedWithDelivery ? 1 : 0,
-      ],
-    );
-    const id = r.insertId;
-    await insertRequestChildren(conn, id, body);
-    await conn.commit();
-    const [rows] = await pool.query('SELECT * FROM delivery_requests WHERE id = ?', [id]);
-    return buildFullRequest(pool, rows[0]);
-  } catch (e) {
-    await conn.rollback();
-    throw e;
-  } finally {
-    conn.release();
-  }
+export const createRequest = async (_pool, body, referenceNo) => {
+  const supabase = getSupabase();
+  const { data: row, error } = await supabase
+    .from('delivery_requests')
+    .insert({
+      reference_no: referenceNo,
+      delivery_type: body.deliveryType ?? null,
+      date_from: toDateOrNull(body.dateFrom)?.toISOString() ?? null,
+      date_to: toDateOrNull(body.dateTo)?.toISOString() ?? null,
+      vehicle_equipment: body.vehicleEquipment ?? null,
+      tnvs_provider: body.tnvsProvider ?? null,
+      requested_by: body.requestedBy ?? null,
+      date_submitted: new Date().toISOString(),
+      notes: body.notes ?? null,
+      total_budget: Number(body.totalBudget) || 0,
+      requested_by_user_id: body.requestedByUserId ?? null,
+      request_status: body.requestStatus || 'Pending',
+      reviewer_status: body.reviewerStatus || 'Pending',
+      original_vehicle: body.originalVehicle ?? null,
+      vehicle_changed: !!body.vehicleChanged,
+      vehicle_change_reason: body.vehicleChangeReason ?? null,
+      delivery_reference_no: body.deliveryReferenceNo ? String(body.deliveryReferenceNo).trim() : null,
+      combined_with_delivery: !!body.combinedWithDelivery,
+    })
+    .select()
+    .single();
+  if (error) throw error;
+  await insertRequestChildren(null, row.id, body);
+  return buildFullRequest(null, row);
 };
 
-export const saveRequest = async (pool, requestObj) => {
+export const saveRequest = async (_pool, requestObj) => {
   const lk = idLookup(requestObj._id);
   if (!lk) return null;
-  const [ex] = await pool.query(`SELECT id FROM delivery_requests WHERE ${lk.clause} LIMIT 1`, lk.params);
-  if (!ex[0]) return null;
-  const id = ex[0].id;
-  const conn = await pool.getConnection();
-  try {
-    await conn.beginTransaction();
-    await conn.query(
-      `UPDATE delivery_requests SET
-        reference_no = ?, delivery_type = ?, date_from = ?, date_to = ?, vehicle_equipment = ?, tnvs_provider = ?, requested_by = ?, notes = ?, total_budget = ?,
-        requested_by_user_id = ?, request_status = ?, decline_reason = ?, reviewed_by = ?, reviewed_at = ?, reviewer_status = ?, reviewer_notes = ?,
-        reviewer_reviewed_by = ?, reviewer_reviewed_at = ?, original_vehicle = ?, vehicle_changed = ?, vehicle_change_reason = ?, delivery_reference_no = ?, combined_with_delivery = ?
-       WHERE id = ?`,
-      [
-        requestObj.referenceNo,
-        requestObj.deliveryType ?? null,
-        toDateOrNull(requestObj.dateFrom),
-        toDateOrNull(requestObj.dateTo),
-        requestObj.vehicleEquipment ?? null,
-        requestObj.tnvsProvider ?? null,
-        requestObj.requestedBy ?? null,
-        requestObj.notes ?? null,
-        Number(requestObj.totalBudget) || 0,
-        requestObj.requestedByUserId ?? null,
-        requestObj.requestStatus,
-        requestObj.declineReason ?? null,
-        requestObj.reviewedBy ?? null,
-        toDateOrNull(requestObj.reviewedAt),
-        requestObj.reviewerStatus,
-        requestObj.reviewerNotes ?? null,
-        requestObj.reviewerReviewedBy ?? null,
-        toDateOrNull(requestObj.reviewerReviewedAt),
-        requestObj.originalVehicle ?? null,
-        requestObj.vehicleChanged ? 1 : 0,
-        requestObj.vehicleChangeReason ?? null,
-        requestObj.deliveryReferenceNo ? String(requestObj.deliveryReferenceNo).trim() : null,
-        requestObj.combinedWithDelivery ? 1 : 0,
-        id,
-      ],
-    );
-    await clearRequestChildren(conn, id);
-    await insertRequestChildren(conn, id, requestObj);
-    await conn.commit();
-    const [rows] = await pool.query('SELECT * FROM delivery_requests WHERE id = ?', [id]);
-    return buildFullRequest(pool, rows[0]);
-  } catch (e) {
-    await conn.rollback();
-    throw e;
-  } finally {
-    conn.release();
-  }
+  const id = lk.params[0];
+  const supabase = getSupabase();
+  const { error } = await supabase
+    .from('delivery_requests')
+    .update({
+      reference_no: requestObj.referenceNo,
+      delivery_type: requestObj.deliveryType ?? null,
+      date_from: toDateOrNull(requestObj.dateFrom)?.toISOString() ?? null,
+      date_to: toDateOrNull(requestObj.dateTo)?.toISOString() ?? null,
+      vehicle_equipment: requestObj.vehicleEquipment ?? null,
+      tnvs_provider: requestObj.tnvsProvider ?? null,
+      requested_by: requestObj.requestedBy ?? null,
+      notes: requestObj.notes ?? null,
+      total_budget: Number(requestObj.totalBudget) || 0,
+      requested_by_user_id: requestObj.requestedByUserId ?? null,
+      request_status: requestObj.requestStatus,
+      decline_reason: requestObj.declineReason ?? null,
+      reviewed_by: requestObj.reviewedBy ?? null,
+      reviewed_at: toDateOrNull(requestObj.reviewedAt)?.toISOString() ?? null,
+      reviewer_status: requestObj.reviewerStatus,
+      reviewer_notes: requestObj.reviewerNotes ?? null,
+      reviewer_reviewed_by: requestObj.reviewerReviewedBy ?? null,
+      reviewer_reviewed_at: toDateOrNull(requestObj.reviewerReviewedAt)?.toISOString() ?? null,
+      original_vehicle: requestObj.originalVehicle ?? null,
+      vehicle_changed: !!requestObj.vehicleChanged,
+      vehicle_change_reason: requestObj.vehicleChangeReason ?? null,
+      delivery_reference_no: requestObj.deliveryReferenceNo ? String(requestObj.deliveryReferenceNo).trim() : null,
+      combined_with_delivery: !!requestObj.combinedWithDelivery,
+    })
+    .eq('id', id);
+  if (error) throw error;
+  await clearRequestChildren(null, id);
+  await insertRequestChildren(null, id, requestObj);
+  const { data: updated } = await supabase.from('delivery_requests').select('*').eq('id', id).single();
+  return buildFullRequest(null, updated);
 };
 
-export const patchRequestScalars = async (pool, param, patch) => {
-  const req = await findRequestByIdParam(pool, param);
+export const patchRequestScalars = async (_pool, param, patch) => {
+  const req = await findRequestByIdParam(null, param);
   if (!req) return null;
   Object.assign(req, patch);
-  return saveRequest(pool, req);
+  return saveRequest(null, req);
 };
 
-export const deleteRequest = async (pool, param) => {
+export const deleteRequest = async (_pool, param) => {
   const lk = idLookup(param);
   if (!lk) return false;
-  const [r] = await pool.query(`DELETE FROM delivery_requests WHERE ${lk.clause}`, lk.params);
-  return r.affectedRows > 0;
+  const id = lk.params[0];
+  const supabase = getSupabase();
+  const { error } = await supabase.from('delivery_requests').delete().eq('id', id);
+  if (error) throw error;
+  return true;
 };
 
-export const listSchedulesData = async (pool) => {
-  const [pending] = await pool.query(
-    `SELECT id, vehicle_equipment, date_from, date_to, request_status FROM delivery_requests WHERE request_status = 'Pending'`,
-  );
-  const [approved] = await pool.query(
-    `SELECT id, vehicle_equipment, date_from, date_to, request_status, delivery_reference_no FROM delivery_requests WHERE request_status IN ('Approved','Approved with Changes')`,
-  );
-  return { pending, approved };
+export const listSchedulesData = async (_pool) => {
+  const supabase = getSupabase();
+  const [pendingRes, approvedRes] = await Promise.all([
+    supabase.from('delivery_requests').select('id, vehicle_equipment, date_from, date_to, request_status').eq('request_status', 'Pending'),
+    supabase.from('delivery_requests').select('id, vehicle_equipment, date_from, date_to, request_status, delivery_reference_no').in('request_status', ['Approved', 'Approved with Changes']),
+  ]);
+  return { pending: pendingRes.data || [], approved: approvedRes.data || [] };
 };

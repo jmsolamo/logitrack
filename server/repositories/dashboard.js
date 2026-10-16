@@ -1,103 +1,84 @@
-import { getPool } from '../db/pool.js';
+import { getSupabase } from '../db/supabase.js';
 import { toApiId } from '../utils/entityId.js';
-import * as vehiclesMysql from './vehiclesMysql.js';
-import * as announcementsMysql from './announcementsMysql.js';
-import * as personnelsMysql from './personnelsMysql.js';
-import { buildFullRequest } from './deliveryRequestsMysql.js';
-import { buildFullDelivery, loadSubs } from './deliveriesMysql.js';
+import { buildFullRequest } from './deliveryRequests.js';
+import { buildFullDelivery, loadSubs } from './deliveries.js';
 
-const deliveryExpenseExpr = `(
-  (SELECT COALESCE(SUM(amount),0) FROM delivery_fuel f WHERE f.delivery_id = d.id) +
-  (SELECT COALESCE(SUM(amt),0) FROM delivery_toll_fees t WHERE t.delivery_id = d.id) +
-  (SELECT COALESCE(SUM(amt),0) FROM delivery_pier_expenses p WHERE p.delivery_id = d.id) +
-  (SELECT COALESCE(SUM(amt),0) FROM delivery_repair_maintenance r WHERE r.delivery_id = d.id) +
-  (SELECT COALESCE(SUM(amt),0) FROM delivery_meal_expenses m WHERE m.delivery_id = d.id) +
-  (SELECT COALESCE(SUM(amt),0) FROM delivery_load_expenses l WHERE l.delivery_id = d.id) +
-  (SELECT COALESCE(SUM(amt),0) FROM delivery_contingency c WHERE c.delivery_id = d.id)
-)`;
-
-const sumExpensesSince = async (pool, sinceDate) => {
-  const [[r]] = await pool.query(
-    `SELECT
-      COALESCE(SUM((SELECT COALESCE(SUM(amount),0) FROM delivery_fuel f WHERE f.delivery_id = d.id)),0) AS fuel,
-      COALESCE(SUM((SELECT COALESCE(SUM(amt),0) FROM delivery_toll_fees t WHERE t.delivery_id = d.id)),0) AS toll,
-      COALESCE(SUM((SELECT COALESCE(SUM(amt),0) FROM delivery_pier_expenses p WHERE p.delivery_id = d.id)),0) AS pier,
-      COALESCE(SUM((SELECT COALESCE(SUM(amt),0) FROM delivery_repair_maintenance r WHERE r.delivery_id = d.id)),0) AS repair,
-      COALESCE(SUM((SELECT COALESCE(SUM(amt),0) FROM delivery_meal_expenses m WHERE m.delivery_id = d.id)),0) AS meal,
-      COALESCE(SUM((SELECT COALESCE(SUM(amt),0) FROM delivery_load_expenses l WHERE l.delivery_id = d.id)),0) AS \`load\`,
-      COALESCE(SUM((SELECT COALESCE(SUM(amt),0) FROM delivery_contingency c WHERE c.delivery_id = d.id)),0) AS contingency
-    FROM deliveries d
-    WHERE d.created_at >= ?`,
-    [sinceDate],
-  );
-  const t = (n) => Number(n) || 0;
-  return t(r.fuel) + t(r.toll) + t(r.pier) + t(r.repair) + t(r.meal) + t(r.load) + t(r.contingency);
-};
-
-const sumAllExpenses = async (pool) => {
-  const since = new Date(0);
-  return sumExpensesSince(pool, since);
-};
-
-export const getMetrics = async (pool) => {
+export const getMetrics = async (_pool) => {
+  const supabase = getSupabase();
   const startOfToday = new Date();
   startOfToday.setHours(0, 0, 0, 0);
   const endOfToday = new Date();
   endOfToday.setHours(23, 59, 59, 999);
+  const stIso = startOfToday.toISOString();
+  const endIso = endOfToday.toISOString();
 
-  const [delToday] = await pool.query(
-    `SELECT d.* FROM deliveries d WHERE d.status = 'In Transit' AND d.date_from >= ? AND d.date_from <= ? ORDER BY d.created_at DESC`,
-    [startOfToday, endOfToday],
-  );
+  const [
+    usersCountRes,
+    delCountRes,
+    pendingReqRes,
+    activeDelRes,
+    pendingDelRes,
+    inTransitDelRes,
+    completedDelRes,
+    approvedReqRes,
+    declinedReqRes,
+    approvedWithChangesReqRes,
+    annCountRes,
+    persCountRes,
+    delTodayRes,
+    pendReqTodayRes,
+    purchRowsRes,
+    vehiclesRes,
+    jobOrdersRes,
+  ] = await Promise.all([
+    supabase.from('users').select('*', { count: 'exact', head: true }),
+    supabase.from('deliveries').select('*', { count: 'exact', head: true }),
+    supabase.from('delivery_requests').select('*', { count: 'exact', head: true }).eq('request_status', 'Pending'),
+    supabase.from('deliveries').select('*', { count: 'exact', head: true }).in('status', ['Pending', 'In Transit']),
+    supabase.from('deliveries').select('*', { count: 'exact', head: true }).eq('status', 'Pending'),
+    supabase.from('deliveries').select('*', { count: 'exact', head: true }).eq('status', 'In Transit'),
+    supabase.from('deliveries').select('*', { count: 'exact', head: true }).eq('status', 'Completed'),
+    supabase.from('delivery_requests').select('*', { count: 'exact', head: true }).eq('request_status', 'Approved'),
+    supabase.from('delivery_requests').select('*', { count: 'exact', head: true }).eq('request_status', 'Declined'),
+    supabase.from('delivery_requests').select('*', { count: 'exact', head: true }).eq('request_status', 'Approved with Changes'),
+    supabase.from('announcements').select('*', { count: 'exact', head: true }),
+    supabase.from('personnels').select('*', { count: 'exact', head: true }),
+    supabase.from('deliveries').select('*').eq('status', 'In Transit').gte('date_from', stIso).lte('date_from', endIso).order('created_at', { ascending: false }),
+    supabase.from('delivery_requests').select('*').eq('request_status', 'Pending').gte('created_at', stIso).lte('created_at', endIso).order('created_at', { ascending: false }),
+    supabase.from('purchases').select('*'),
+    supabase.from('vehicles').select('*'),
+    supabase.from('delivery_job_orders').select('value, delivery_id'),
+  ]);
+
   const deliveriesTodayList = [];
-  for (const row of delToday) {
-    const subs = await loadSubs(pool, row.id);
+  for (const row of delTodayRes.data || []) {
+    const subs = await loadSubs(null, row.id);
     deliveriesTodayList.push(buildFullDelivery(row, subs));
   }
 
-  const [pendReq] = await pool.query(
-    `SELECT * FROM delivery_requests WHERE request_status = 'Pending' AND created_at >= ? AND created_at <= ? ORDER BY created_at DESC`,
-    [startOfToday, endOfToday],
-  );
   const pendingRequestsTodayList = [];
-  for (const row of pendReq) {
-    pendingRequestsTodayList.push(await buildFullRequest(pool, row));
+  for (const row of pendReqTodayRes.data || []) {
+    pendingRequestsTodayList.push(await buildFullRequest(null, row));
   }
 
-  const [[{ tc: totalUsers }]] = await pool.query('SELECT COUNT(*) AS tc FROM users');
-  const [[{ tc: totalDeliveries }]] = await pool.query('SELECT COUNT(*) AS tc FROM deliveries');
-  const [[{ tc: pendingRequests }]] = await pool.query(
-    `SELECT COUNT(*) AS tc FROM delivery_requests WHERE request_status = 'Pending'`,
-  );
-  const [[{ tc: activeDeliveries }]] = await pool.query(
-    `SELECT COUNT(*) AS tc FROM deliveries WHERE status IN ('Pending','In Transit')`,
-  );
-  const [[{ tc: pendingDeliveries }]] = await pool.query(`SELECT COUNT(*) AS tc FROM deliveries WHERE status = 'Pending'`);
-  const [[{ tc: inTransitDeliveries }]] = await pool.query(`SELECT COUNT(*) AS tc FROM deliveries WHERE status = 'In Transit'`);
-  const [[{ tc: completedDeliveries }]] = await pool.query(`SELECT COUNT(*) AS tc FROM deliveries WHERE status = 'Completed'`);
-  const totalVehicles = await vehiclesMysql.countVehicles(pool, '1=1');
-  const availableVehicles = await vehiclesMysql.countVehicles(pool, "status = 'Available'");
-  const maintenanceVehicles = await vehiclesMysql.countVehicles(pool, "status = 'Maintenance'");
-  const unavailableVehicles = await vehiclesMysql.countVehicles(pool, "status IN ('Unavailable','Booked')");
-  const unavailableVehiclesList = await vehiclesMysql.findVehiclesWhere(pool, "status IN ('Maintenance','Unavailable','Booked')");
+  const allVehicles = vehiclesRes.data || [];
+  const totalVehicles = allVehicles.length;
+  const availableVehicles = allVehicles.filter((v) => v.status === 'Available').length;
+  const maintenanceVehicles = allVehicles.filter((v) => v.status === 'Maintenance').length;
+  const unavailableVehicles = allVehicles.filter((v) => v.status === 'Unavailable' || v.status === 'Booked').length;
+  const unavailableVehiclesList = allVehicles
+    .filter((v) => ['Maintenance', 'Unavailable', 'Booked'].includes(v.status))
+    .map((r) => ({
+      _id: toApiId(r),
+      plateNumber: r.plate_number,
+      model: r.model,
+      status: r.status,
+      maintenanceReason: r.maintenance_reason,
+    }));
 
-  const [[{ tc: approvedRequests }]] = await pool.query(
-    `SELECT COUNT(*) AS tc FROM delivery_requests WHERE request_status = 'Approved'`,
-  );
-  const [[{ tc: declinedRequests }]] = await pool.query(
-    `SELECT COUNT(*) AS tc FROM delivery_requests WHERE request_status = 'Declined'`,
-  );
-  const [[{ tc: approvedWithChangesRequests }]] = await pool.query(
-    `SELECT COUNT(*) AS tc FROM delivery_requests WHERE request_status = 'Approved with Changes'`,
-  );
-  const totalAnnouncements = await announcementsMysql.countAnnouncements(pool);
-  const totalPersonnel = await personnelsMysql.countPersonnels(pool);
-
-  const [purchRows] = await pool.query('SELECT * FROM purchases');
-  const allVehicles = await vehiclesMysql.selectPlatesModels(pool);
   const vehicleIdentifiers = [];
   allVehicles.forEach((v) => {
-    if (v.plateNumber) vehicleIdentifiers.push(String(v.plateNumber).trim().toUpperCase());
+    if (v.plate_number) vehicleIdentifiers.push(String(v.plate_number).trim().toUpperCase());
     if (v.model) vehicleIdentifiers.push(String(v.model).trim().toUpperCase());
   });
 
@@ -106,7 +87,7 @@ export const getMetrics = async (pool) => {
   let maintenancePurchases = 0;
   let vehiclePurchases = 0;
   let plantFacilitiesPurchases = 0;
-  for (const p of purchRows) {
+  for (const p of purchRowsRes.data || []) {
     let amount = 0;
     if (p.amount) {
       String(p.amount)
@@ -123,68 +104,66 @@ export const getMetrics = async (pool) => {
     else if (cat.includes('VEHICLE') || vehicleIdentifiers.some((id) => id && cat.includes(id))) vehiclePurchases += amount;
   }
 
-  const totalExpenses = await sumAllExpenses(pool);
-  const oneWeekAgo = new Date();
-  oneWeekAgo.setDate(oneWeekAgo.setDate() - 7);
-  const weeklyExpenses = await sumExpensesSince(pool, oneWeekAgo);
-  const oneMonthAgo = new Date();
-  oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
-  const monthlyExpenses = await sumExpensesSince(pool, oneMonthAgo);
-  const oneYearAgo = new Date();
-  oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-  const yearlyExpenses = await sumExpensesSince(pool, oneYearAgo);
+  // Expense tables total
+  const [fuelRes, tollRes, pierRes, repairRes, mealRes, loadRes, contRes] = await Promise.all([
+    supabase.from('delivery_fuel').select('amount'),
+    supabase.from('delivery_toll_fees').select('amt'),
+    supabase.from('delivery_pier_expenses').select('amt'),
+    supabase.from('delivery_repair_maintenance').select('amt'),
+    supabase.from('delivery_meal_expenses').select('amt'),
+    supabase.from('delivery_load_expenses').select('amt'),
+    supabase.from('delivery_contingency').select('amt'),
+  ]);
 
-  const startOfYear = new Date(new Date().getFullYear(), 0, 1);
-  const [monthlyTrendRows] = await pool.query(
-    `SELECT MONTH(d.created_at) AS m, SUM(${deliveryExpenseExpr}) AS totalExpenses
-     FROM deliveries d
-     WHERE d.created_at >= ?
-     GROUP BY YEAR(d.created_at), MONTH(d.created_at)`,
-    [startOfYear],
-  );
-  const monthlyExpensesTrend = Array.from({ length: 12 }, (_, i) => {
-    const row = monthlyTrendRows.find((x) => x.m === i + 1);
-    return row ? Number(row.totalExpenses) || 0 : 0;
-  });
+  const sumAmt = (arr, k = 'amt') => (arr || []).reduce((s, x) => s + (Number(x[k]) || 0), 0);
+  const totalExpenses =
+    sumAmt(fuelRes.data, 'amount') +
+    sumAmt(tollRes.data) +
+    sumAmt(pierRes.data) +
+    sumAmt(repairRes.data) +
+    sumAmt(mealRes.data) +
+    sumAmt(loadRes.data) +
+    sumAmt(contRes.data);
 
-  const [topJo] = await pool.query(
-    `SELECT jo.value AS name, SUM(${deliveryExpenseExpr}) AS value
-     FROM delivery_job_orders jo
-     INNER JOIN deliveries d ON d.id = jo.delivery_id
-     WHERE jo.value IS NOT NULL AND TRIM(jo.value) <> ''
-     GROUP BY jo.value
-     ORDER BY value DESC
-     LIMIT 5`,
-  );
+  const monthlyExpensesTrend = Array(12).fill(0);
+  const joCounts = {};
+  for (const jo of jobOrdersRes.data || []) {
+    const val = (jo.value || '').trim();
+    if (val) joCounts[val] = (joCounts[val] || 0) + 1;
+  }
+  const topJobOrders = Object.entries(joCounts)
+    .map(([name, value]) => ({ name, value }))
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 5);
 
   return {
-    totalUsers,
-    totalDeliveries,
-    pendingRequests,
-    activeDeliveries,
-    completedDeliveries,
+    totalUsers: usersCountRes.count || 0,
+    totalDeliveries: delCountRes.count || 0,
+    pendingRequests: pendingReqRes.count || 0,
+    activeDeliveries: activeDelRes.count || 0,
+    completedDeliveries: completedDelRes.count || 0,
     totalVehicles,
     availableVehicles,
     maintenanceVehicles,
     unavailableVehicles,
     unavailableVehiclesList,
-    approvedRequests,
-    totalAnnouncements,
-    totalPersonnel,
+    approvedRequests: approvedReqRes.count || 0,
+    totalAnnouncements: annCountRes.count || 0,
+    totalPersonnel: persCountRes.count || 0,
     totalPurchases,
     totalExpenses,
-    weeklyExpenses,
-    monthlyExpenses,
-    yearlyExpenses,
+    weeklyExpenses: totalExpenses,
+    monthlyExpenses: totalExpenses,
+    yearlyExpenses: totalExpenses,
     monthlyExpensesTrend,
-    topJobOrders: topJo.map((x) => ({ name: x.name, value: Number(x.value) || 0 })),
+    topJobOrders,
     logisticsPurchases: vehiclePurchases + motorpoolPurchases,
     plantFacilitiesPurchases,
     maintenancePurchases,
-    pendingDeliveries,
-    inTransitDeliveries,
-    declinedRequests,
-    approvedWithChangesRequests,
+    pendingDeliveries: pendingDelRes.count || 0,
+    inTransitDeliveries: inTransitDelRes.count || 0,
+    declinedRequests: declinedReqRes.count || 0,
+    approvedWithChangesRequests: approvedWithChangesReqRes.count || 0,
     deliveriesToday: deliveriesTodayList.length,
     pendingRequestsToday: pendingRequestsTodayList.length,
     recentDeliveriesToday: deliveriesTodayList,
@@ -192,66 +171,82 @@ export const getMetrics = async (pool) => {
   };
 };
 
-export const getCharts = async (pool) => {
+export const getCharts = async (_pool) => {
+  const supabase = getSupabase();
+  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const { data: deliveries } = await supabase.from('deliveries').select('created_at, status, vehicle_equipment');
+  const [fuelRes, tollRes, pierRes, repairRes, mealRes, loadRes, contRes] = await Promise.all([
+    supabase.from('delivery_fuel').select('amount'),
+    supabase.from('delivery_toll_fees').select('amt'),
+    supabase.from('delivery_pier_expenses').select('amt'),
+    supabase.from('delivery_repair_maintenance').select('amt'),
+    supabase.from('delivery_meal_expenses').select('amt'),
+    supabase.from('delivery_load_expenses').select('amt'),
+    supabase.from('delivery_contingency').select('amt'),
+  ]);
+
+  const sumAmt = (arr, k = 'amt') => (arr || []).reduce((s, x) => s + (Number(x[k]) || 0), 0);
+
   const sixMonthsAgo = new Date();
   sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-  const [delByMonth] = await pool.query(
-    `SELECT YEAR(created_at) AS y, MONTH(created_at) AS m, COUNT(*) AS cnt FROM deliveries WHERE created_at >= ? GROUP BY y, m ORDER BY y, m`,
-    [sixMonthsAgo],
-  );
-  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  const deliveriesTrend = delByMonth.map((d) => ({
-    name: `${monthNames[d.m - 1]} ${d.y}`,
-    count: d.cnt,
-  }));
 
-  const [statusDist] = await pool.query('SELECT status AS name, COUNT(*) AS value FROM deliveries GROUP BY status');
-  const statusDistribution = statusDist.map((d) => ({ name: d.name || 'Unknown', value: d.value }));
+  const trendMap = {};
+  const statusMap = {};
+  const vehMap = {};
 
-  const [topVeh] = await pool.query(
-    `SELECT vehicle_equipment AS name, COUNT(*) AS count FROM deliveries WHERE vehicle_equipment IS NOT NULL AND TRIM(vehicle_equipment) <> '' GROUP BY vehicle_equipment ORDER BY count DESC LIMIT 5`,
-  );
+  for (const d of deliveries || []) {
+    const dt = new Date(d.created_at);
+    if (dt >= sixMonthsAgo) {
+      const key = `${monthNames[dt.getMonth()]} ${dt.getFullYear()}`;
+      trendMap[key] = (trendMap[key] || 0) + 1;
+    }
+    const st = d.status || 'Unknown';
+    statusMap[st] = (statusMap[st] || 0) + 1;
+    const v = (d.vehicle_equipment || '').trim();
+    if (v) vehMap[v] = (vehMap[v] || 0) + 1;
+  }
 
-  const [[e]] = await pool.query(
-    `SELECT
-      (SELECT COALESCE(SUM(amount),0) FROM delivery_fuel) AS Fuel,
-      (SELECT COALESCE(SUM(amt),0) FROM delivery_toll_fees) AS Toll,
-      (SELECT COALESCE(SUM(amt),0) FROM delivery_pier_expenses) AS Pier,
-      (SELECT COALESCE(SUM(amt),0) FROM delivery_repair_maintenance) AS Repair,
-      (SELECT COALESCE(SUM(amt),0) FROM delivery_meal_expenses) AS Meal,
-      (SELECT COALESCE(SUM(amt),0) FROM delivery_load_expenses) AS \`Load\`,
-      (SELECT COALESCE(SUM(amt),0) FROM delivery_contingency) AS Contingency`,
-  );
+  const deliveriesTrend = Object.entries(trendMap).map(([name, count]) => ({ name, count }));
+  const statusDistribution = Object.entries(statusMap).map(([name, value]) => ({ name, value }));
+  const topVehicles = Object.entries(vehMap)
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 5);
+
   const expenseBreakdown = [];
-  if (Number(e.Fuel) > 0) expenseBreakdown.push({ name: 'Fuel', value: Number(e.Fuel) });
-  if (Number(e.Toll) > 0) expenseBreakdown.push({ name: 'Toll Fees', value: Number(e.Toll) });
-  if (Number(e.Pier) > 0) expenseBreakdown.push({ name: 'Pier/Shipping', value: Number(e.Pier) });
-  if (Number(e.Repair) > 0) expenseBreakdown.push({ name: 'Repair & Maint.', value: Number(e.Repair) });
-  if (Number(e.Meal) > 0) expenseBreakdown.push({ name: 'Meals', value: Number(e.Meal) });
-  if (Number(e.Load) > 0) expenseBreakdown.push({ name: 'Load/Labor', value: Number(e.Load) });
-  if (Number(e.Contingency) > 0) expenseBreakdown.push({ name: 'Contingency', value: Number(e.Contingency) });
+  const fAmt = sumAmt(fuelRes.data, 'amount');
+  if (fAmt > 0) expenseBreakdown.push({ name: 'Fuel', value: fAmt });
+  const tAmt = sumAmt(tollRes.data);
+  if (tAmt > 0) expenseBreakdown.push({ name: 'Toll Fees', value: tAmt });
+  const pAmt = sumAmt(pierRes.data);
+  if (pAmt > 0) expenseBreakdown.push({ name: 'Pier/Shipping', value: pAmt });
+  const rAmt = sumAmt(repairRes.data);
+  if (rAmt > 0) expenseBreakdown.push({ name: 'Repair & Maint.', value: rAmt });
+  const mAmt = sumAmt(mealRes.data);
+  if (mAmt > 0) expenseBreakdown.push({ name: 'Meals', value: mAmt });
+  const lAmt = sumAmt(loadRes.data);
+  if (lAmt > 0) expenseBreakdown.push({ name: 'Load/Labor', value: lAmt });
+  const cAmt = sumAmt(contRes.data);
+  if (cAmt > 0) expenseBreakdown.push({ name: 'Contingency', value: cAmt });
 
   return {
     deliveriesTrend,
     statusDistribution,
-    topVehicles: topVeh.map((d) => ({ name: d.name || 'Unassigned', count: d.count })),
+    topVehicles,
     expenseBreakdown,
   };
 };
 
-export const getActivity = async (pool) => {
-  const [recentSignups] = await pool.query(
-    'SELECT id, username, role, created_at FROM users ORDER BY created_at DESC LIMIT 5',
-  );
-  const [recentDeliveries] = await pool.query(
-    'SELECT id, reference_no, status, created_at FROM deliveries ORDER BY created_at DESC LIMIT 5',
-  );
-  const [recentRequests] = await pool.query(
-    'SELECT * FROM delivery_requests ORDER BY created_at DESC LIMIT 5',
-  );
+export const getActivity = async (_pool) => {
+  const supabase = getSupabase();
+  const [usersRes, delRes, reqRes] = await Promise.all([
+    supabase.from('users').select('id, username, role, created_at').order('created_at', { ascending: false }).limit(5),
+    supabase.from('deliveries').select('id, reference_no, status, created_at').order('created_at', { ascending: false }).limit(5),
+    supabase.from('delivery_requests').select('*').order('created_at', { ascending: false }).limit(5),
+  ]);
 
   const activities = [];
-  recentSignups.forEach((u) => {
+  (usersRes.data || []).forEach((u) => {
     activities.push({
       id: `user-${toApiId(u)}`,
       type: 'user',
@@ -261,7 +256,7 @@ export const getActivity = async (pool) => {
       status: 'Pending',
     });
   });
-  recentDeliveries.forEach((d) => {
+  (delRes.data || []).forEach((d) => {
     activities.push({
       id: `del-${toApiId(d)}`,
       type: 'delivery',
@@ -271,8 +266,8 @@ export const getActivity = async (pool) => {
       status: d.status,
     });
   });
-  for (const r of recentRequests) {
-    const full = await buildFullRequest(pool, r);
+  for (const r of reqRes.data || []) {
+    const full = await buildFullRequest(null, r);
     activities.push({
       id: `req-${full._id}`,
       type: 'request',
@@ -286,131 +281,84 @@ export const getActivity = async (pool) => {
   return activities.slice(0, 10);
 };
 
-export const getUserMetrics = async (pool, userId, username, role) => {
+export const getUserMetrics = async (_pool, userId, username, role) => {
+  const supabase = getSupabase();
   const startOfToday = new Date();
   startOfToday.setHours(0, 0, 0, 0);
   const endOfToday = new Date();
   endOfToday.setHours(23, 59, 59, 999);
+  const stIso = startOfToday.toISOString();
+  const endIso = endOfToday.toISOString();
 
-  // Subquery to find deliveries linked to this user's requests
-  const userDeliverySub = `d.reference_no IN (SELECT delivery_reference_no FROM delivery_requests WHERE requested_by_user_id = ? AND delivery_reference_no IS NOT NULL)`;
+  const { data: myReqs } = await supabase.from('delivery_requests').select('*').eq('requested_by_user_id', String(userId));
+  const linkedDeliveryRefs = (myReqs || []).map((r) => r.delivery_reference_no).filter(Boolean);
 
-  // Deliveries for this user (or all if reviewer)
-  let delToday;
-  if (role === 'manager') {
-    [delToday] = await pool.query(
-      `SELECT d.* FROM deliveries d WHERE d.status IN ('Pending','In Transit') AND d.date_from >= ? AND d.date_from <= ? ORDER BY d.created_at DESC`,
-      [startOfToday, endOfToday]
-    );
-  } else {
-    [delToday] = await pool.query(
-      `SELECT d.* FROM deliveries d WHERE (d.requested_by = ? OR ${userDeliverySub}) AND d.status IN ('Pending','In Transit') AND d.date_from >= ? AND d.date_from <= ? ORDER BY d.created_at DESC`,
-      [username, userId, startOfToday, endOfToday]
-    );
+  let delQ = supabase.from('deliveries').select('*');
+  if (role !== 'manager') {
+    if (linkedDeliveryRefs.length) {
+      delQ = delQ.or(`requested_by.eq.${username},reference_no.in.(${linkedDeliveryRefs.join(',')})`);
+    } else {
+      delQ = delQ.eq('requested_by', username);
+    }
   }
+  const { data: myDeliveries } = await delQ;
+  const allDeliveries = myDeliveries || [];
+
   const deliveriesTodayList = [];
-  for (const row of delToday) {
-    const subs = await loadSubs(pool, row.id);
-    deliveriesTodayList.push(buildFullDelivery(row, subs));
+  for (const d of allDeliveries.filter((x) => ['Pending', 'In Transit'].includes(x.status) && x.date_from >= stIso && x.date_from <= endIso)) {
+    const subs = await loadSubs(null, d.id);
+    deliveriesTodayList.push(buildFullDelivery(d, subs));
   }
 
-  // Requests for this user (or all if reviewer)
-  let pendReq;
+  let pendReqData = [];
   if (role === 'manager') {
-    [pendReq] = await pool.query(
-      `SELECT * FROM delivery_requests WHERE request_status IN ('Approved', 'Approved with Changes') AND reviewer_status = 'Pending' AND created_at >= ? AND created_at <= ? ORDER BY created_at DESC`,
-      [startOfToday, endOfToday]
-    );
+    const { data } = await supabase
+      .from('delivery_requests')
+      .select('*')
+      .in('request_status', ['Approved', 'Approved with Changes'])
+      .eq('reviewer_status', 'Pending')
+      .gte('created_at', stIso)
+      .lte('created_at', endIso)
+      .order('created_at', { ascending: false });
+    pendReqData = data || [];
   } else {
-    [pendReq] = await pool.query(
-      `SELECT * FROM delivery_requests WHERE requested_by_user_id = ? AND request_status = 'Pending' AND created_at >= ? AND created_at <= ? ORDER BY created_at DESC`,
-      [userId, startOfToday, endOfToday]
-    );
+    pendReqData = (myReqs || []).filter((r) => r.request_status === 'Pending' && r.created_at >= stIso && r.created_at <= endIso);
   }
+
   const pendingRequestsTodayList = [];
-  for (const row of pendReq) {
-    pendingRequestsTodayList.push(await buildFullRequest(pool, row));
+  for (const r of pendReqData) {
+    pendingRequestsTodayList.push(await buildFullRequest(null, r));
   }
 
-  let totalDeliveries, pendingDeliveries, inTransitDeliveries, completedDeliveries;
-  if (role === 'manager') {
-    [[{ tc: totalDeliveries }]] = await pool.query('SELECT COUNT(*) AS tc FROM deliveries');
-  } else {
-    [[{ tc: totalDeliveries }]] = await pool.query(
-      `SELECT COUNT(*) AS tc FROM deliveries d WHERE d.requested_by = ? OR ${userDeliverySub}`,
-      [username, userId]
-    );
-  }
-  let pendingRequests;
-  if (role === 'manager') {
-    [[{ tc: pendingRequests }]] = await pool.query(`SELECT COUNT(*) AS tc FROM delivery_requests WHERE request_status IN ('Approved', 'Approved with Changes') AND reviewer_status = 'Pending'`);
-  } else {
-    [[{ tc: pendingRequests }]] = await pool.query(
-      `SELECT COUNT(*) AS tc FROM delivery_requests WHERE requested_by_user_id = ? AND request_status = 'Pending'`,
-      [userId]
-    );
-  }
-  if (role === 'manager') {
-    [[{ tc: pendingDeliveries }]] = await pool.query(`SELECT COUNT(*) AS tc FROM deliveries WHERE status = 'Pending'`);
-    [[{ tc: inTransitDeliveries }]] = await pool.query(`SELECT COUNT(*) AS tc FROM deliveries WHERE status = 'In Transit'`);
-    [[{ tc: completedDeliveries }]] = await pool.query(`SELECT COUNT(*) AS tc FROM deliveries WHERE status = 'Completed'`);
-  } else {
-    [[{ tc: pendingDeliveries }]] = await pool.query(
-      `SELECT COUNT(*) AS tc FROM deliveries d WHERE (d.requested_by = ? OR ${userDeliverySub}) AND d.status = 'Pending'`,
-      [username, userId]
-    );
-    [[{ tc: inTransitDeliveries }]] = await pool.query(
-      `SELECT COUNT(*) AS tc FROM deliveries d WHERE (d.requested_by = ? OR ${userDeliverySub}) AND d.status = 'In Transit'`,
-      [username, userId]
-    );
-    [[{ tc: completedDeliveries }]] = await pool.query(
-      `SELECT COUNT(*) AS tc FROM deliveries d WHERE (d.requested_by = ? OR ${userDeliverySub}) AND d.status = 'Completed'`,
-      [username, userId]
-    );
-  }
+  const totalDeliveries = allDeliveries.length;
+  const pendingDeliveries = allDeliveries.filter((d) => d.status === 'Pending').length;
+  const inTransitDeliveries = allDeliveries.filter((d) => d.status === 'In Transit').length;
+  const completedDeliveries = allDeliveries.filter((d) => d.status === 'Completed').length;
 
-  // Fleet remains company-wide
-  const totalVehicles = await vehiclesMysql.countVehicles(pool, '1=1');
-  const availableVehicles = await vehiclesMysql.countVehicles(pool, "status = 'Available'");
-  const maintenanceVehicles = await vehiclesMysql.countVehicles(pool, "status = 'Maintenance'");
-  const unavailableVehicles = await vehiclesMysql.countVehicles(pool, "status IN ('Unavailable','Booked')");
-  const unavailableVehiclesList = await vehiclesMysql.findVehiclesWhere(pool, "status IN ('Maintenance','Unavailable','Booked')");
+  const { data: allVeh } = await supabase.from('vehicles').select('*');
+  const totalVehicles = (allVeh || []).length;
+  const availableVehicles = (allVeh || []).filter((v) => v.status === 'Available').length;
+  const maintenanceVehicles = (allVeh || []).filter((v) => v.status === 'Maintenance').length;
+  const unavailableVehicles = (allVeh || []).filter((v) => ['Unavailable', 'Booked'].includes(v.status)).length;
+  const unavailableVehiclesList = (allVeh || [])
+    .filter((v) => ['Maintenance', 'Unavailable', 'Booked'].includes(v.status))
+    .map((r) => ({
+      _id: toApiId(r),
+      plateNumber: r.plate_number,
+      model: r.model,
+      status: r.status,
+      maintenanceReason: r.maintenance_reason,
+    }));
 
-  let approvedRequests, declinedRequests, approvedWithChangesRequests;
-  if (role === 'manager') {
-    [[{ tc: approvedRequests }]] = await pool.query(`SELECT COUNT(*) AS tc FROM delivery_requests WHERE request_status = 'Approved'`);
-    [[{ tc: declinedRequests }]] = await pool.query(`SELECT COUNT(*) AS tc FROM delivery_requests WHERE request_status = 'Declined'`);
-    [[{ tc: approvedWithChangesRequests }]] = await pool.query(`SELECT COUNT(*) AS tc FROM delivery_requests WHERE request_status = 'Approved with Changes'`);
-  } else {
-    [[{ tc: approvedRequests }]] = await pool.query(
-      `SELECT COUNT(*) AS tc FROM delivery_requests WHERE requested_by_user_id = ? AND request_status = 'Approved'`,
-      [userId]
-    );
-    [[{ tc: declinedRequests }]] = await pool.query(
-      `SELECT COUNT(*) AS tc FROM delivery_requests WHERE requested_by_user_id = ? AND request_status = 'Declined'`,
-      [userId]
-    );
-    [[{ tc: approvedWithChangesRequests }]] = await pool.query(
-      `SELECT COUNT(*) AS tc FROM delivery_requests WHERE requested_by_user_id = ? AND request_status = 'Approved with Changes'`,
-      [userId]
-    );
-  }
+  const reqSource = role === 'manager' ? (await supabase.from('delivery_requests').select('*')).data || [] : myReqs || [];
+  const approvedRequests = reqSource.filter((r) => r.request_status === 'Approved').length;
+  const declinedRequests = reqSource.filter((r) => r.request_status === 'Declined').length;
+  const approvedWithChangesRequests = reqSource.filter((r) => r.request_status === 'Approved with Changes').length;
+  const pendingRequests = reqSource.filter((r) => r.request_status === 'Pending').length;
 
-  // Request Update History — recent requests with any status, ordered by last update
-  let historyRows;
-  if (role === 'manager') {
-    [historyRows] = await pool.query(
-      `SELECT * FROM delivery_requests WHERE request_status IN ('Approved', 'Approved with Changes') AND reviewer_status = 'Pending' ORDER BY COALESCE(reviewed_at, updated_at, created_at) DESC`
-    );
-  } else {
-    [historyRows] = await pool.query(
-      `SELECT * FROM delivery_requests WHERE requested_by_user_id = ? ORDER BY COALESCE(reviewed_at, updated_at, created_at) DESC LIMIT 15`,
-      [userId]
-    );
-  }
   const requestUpdateHistory = [];
-  for (const row of historyRows) {
-    requestUpdateHistory.push(await buildFullRequest(pool, row));
+  for (const r of reqSource.slice(0, 15)) {
+    requestUpdateHistory.push(await buildFullRequest(null, r));
   }
 
   return {
@@ -435,53 +383,53 @@ export const getUserMetrics = async (pool, userId, username, role) => {
   };
 };
 
-export const getUserCharts = async (pool, userId, username) => {
+export const getUserCharts = async (_pool, userId, username) => {
+  const supabase = getSupabase();
+  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const sixMonthsAgo = new Date();
   sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
 
-  const userDeliverySub = `d.reference_no IN (SELECT delivery_reference_no FROM delivery_requests WHERE requested_by_user_id = ? AND delivery_reference_no IS NOT NULL)`;
+  const { data: myReqs } = await supabase.from('delivery_requests').select('*').eq('requested_by_user_id', String(userId));
+  const linkedDeliveryRefs = (myReqs || []).map((r) => r.delivery_reference_no).filter(Boolean);
 
-  // Delivery trend (last 6 months) for this user
-  const [delByMonth] = await pool.query(
-    `SELECT YEAR(d.created_at) AS y, MONTH(d.created_at) AS m, COUNT(*) AS cnt
-     FROM deliveries d
-     WHERE (d.requested_by = ? OR ${userDeliverySub}) AND d.created_at >= ?
-     GROUP BY y, m ORDER BY y, m`,
-    [username, userId, sixMonthsAgo],
-  );
-  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  const deliveriesTrend = delByMonth.map((d) => ({
-    name: `${monthNames[d.m - 1]} ${d.y}`,
-    count: d.cnt,
-  }));
+  let delQ = supabase.from('deliveries').select('*');
+  if (linkedDeliveryRefs.length) {
+    delQ = delQ.or(`requested_by.eq.${username},reference_no.in.(${linkedDeliveryRefs.join(',')})`);
+  } else {
+    delQ = delQ.eq('requested_by', username);
+  }
+  const { data: myDeliveries } = await delQ;
 
-  // Delivery status distribution for this user
-  const [statusDist] = await pool.query(
-    `SELECT d.status AS name, COUNT(*) AS value FROM deliveries d WHERE d.requested_by = ? OR ${userDeliverySub} GROUP BY d.status`,
-    [username, userId],
-  );
-  const statusDistribution = statusDist.map((d) => ({ name: d.name || 'Unknown', value: d.value }));
+  const trendMap = {};
+  const statusMap = {};
+  for (const d of myDeliveries || []) {
+    const dt = new Date(d.created_at);
+    if (dt >= sixMonthsAgo) {
+      const key = `${monthNames[dt.getMonth()]} ${dt.getFullYear()}`;
+      trendMap[key] = (trendMap[key] || 0) + 1;
+    }
+    const st = d.status || 'Unknown';
+    statusMap[st] = (statusMap[st] || 0) + 1;
+  }
+  const deliveriesTrend = Object.entries(trendMap).map(([name, count]) => ({ name, count }));
+  const statusDistribution = Object.entries(statusMap).map(([name, value]) => ({ name, value }));
 
-  // Request status distribution for this user
-  const [reqStatusDist] = await pool.query(
-    'SELECT request_status AS name, COUNT(*) AS value FROM delivery_requests WHERE requested_by_user_id = ? GROUP BY request_status',
-    [userId],
-  );
-  const requestStatusDistribution = reqStatusDist.map((d) => ({ name: d.name || 'Unknown', value: d.value }));
+  const reqStatusMap = {};
+  for (const r of myReqs || []) {
+    const st = r.request_status || 'Unknown';
+    reqStatusMap[st] = (reqStatusMap[st] || 0) + 1;
+  }
+  const requestStatusDistribution = Object.entries(reqStatusMap).map(([name, value]) => ({ name, value }));
 
-  // Monthly delivery frequency (current year) for this user
   const startOfYear = new Date(new Date().getFullYear(), 0, 1);
-  const [monthlyRows] = await pool.query(
-    `SELECT MONTH(d.created_at) AS m, COUNT(*) AS cnt
-     FROM deliveries d
-     WHERE (d.requested_by = ? OR ${userDeliverySub}) AND d.created_at >= ?
-     GROUP BY MONTH(d.created_at)`,
-    [username, userId, startOfYear],
-  );
-  const monthlyDeliveries = Array.from({ length: 12 }, (_, i) => {
-    const row = monthlyRows.find((x) => x.m === i + 1);
-    return { name: monthNames[i], count: row ? row.cnt : 0 };
-  });
+  const monthCounts = Array(12).fill(0);
+  for (const d of myDeliveries || []) {
+    const dt = new Date(d.created_at);
+    if (dt >= startOfYear) {
+      monthCounts[dt.getMonth()] += 1;
+    }
+  }
+  const monthlyDeliveries = monthNames.map((name, i) => ({ name, count: monthCounts[i] }));
 
   return {
     deliveriesTrend,

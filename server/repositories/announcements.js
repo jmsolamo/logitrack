@@ -1,18 +1,9 @@
-import { getPool } from '../db/pool.js';
-import { toApiId } from '../utils/entityId.js';
-import { idLookup } from '../utils/entityId.js';
+import { getSupabase } from '../db/supabase.js';
+import { toApiId, idLookup } from '../utils/entityId.js';
 
-const loadRoles = async (conn, announcementId) => {
-  const [rows] = await conn.query(
-    'SELECT role_name FROM announcement_target_roles WHERE announcement_id = ?',
-    [announcementId],
-  );
-  return rows.map((r) => r.role_name);
-};
-
-const buildAnnouncement = async (conn, row) => {
+const formatSupabaseAnnouncement = (row) => {
   if (!row) return null;
-  const roles = await loadRoles(conn, row.id);
+  const roles = (row.announcement_target_roles || []).map((r) => r.role_name);
   return {
     _id: toApiId(row),
     title: row.title,
@@ -26,116 +17,107 @@ const buildAnnouncement = async (conn, row) => {
   };
 };
 
-export const findActiveForRole = async (pool, role) => {
-  const now = new Date();
-  const [rows] = await pool.query(
-    `SELECT a.* FROM announcements a
-     INNER JOIN announcement_target_roles r ON r.announcement_id = a.id
-     WHERE a.start_date <= ? AND a.end_date >= ? AND r.role_name = ?
-     ORDER BY a.created_at DESC`,
-    [now, now, role],
-  );
-  const out = [];
-  for (const row of rows) {
-    out.push(await buildAnnouncement(pool, row));
-  }
-  return out;
+export const findActiveForRole = async (_pool, role) => {
+  const supabase = getSupabase();
+  const now = new Date().toISOString();
+  const { data, error } = await supabase
+    .from('announcements')
+    .select('*, announcement_target_roles!inner(role_name)')
+    .lte('start_date', now)
+    .gte('end_date', now)
+    .eq('announcement_target_roles.role_name', role)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data || []).map(formatSupabaseAnnouncement);
 };
 
-export const listAllForAdmin = async (pool) => {
-  const [rows] = await pool.query('SELECT * FROM announcements ORDER BY created_at DESC');
-  const out = [];
-  for (const row of rows) {
-    out.push(await buildAnnouncement(pool, row));
-  }
-  return out;
+export const listAllForAdmin = async (_pool) => {
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from('announcements')
+    .select('*, announcement_target_roles(role_name)')
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data || []).map(formatSupabaseAnnouncement);
 };
 
-export const listForRoleAll = async (pool, role) => {
-  const [rows] = await pool.query(
-    `SELECT DISTINCT a.* FROM announcements a
-     INNER JOIN announcement_target_roles r ON r.announcement_id = a.id
-     WHERE r.role_name = ?
-     ORDER BY a.created_at DESC`,
-    [role],
-  );
-  const out = [];
-  for (const row of rows) {
-    out.push(await buildAnnouncement(pool, row));
-  }
-  return out;
+export const listForRoleAll = async (_pool, role) => {
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from('announcements')
+    .select('*, announcement_target_roles!inner(role_name)')
+    .eq('announcement_target_roles.role_name', role)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data || []).map(formatSupabaseAnnouncement);
 };
 
-export const createAnnouncement = async (pool, body, createdByUsername) => {
-  const conn = await pool.getConnection();
-  try {
-    await conn.beginTransaction();
-    const [r] = await conn.query(
-      `INSERT INTO announcements (title, content, start_date, end_date, created_by) VALUES (?,?,?,?,?)`,
-      [body.title, body.content, new Date(body.startDate), new Date(body.endDate), createdByUsername],
-    );
-    const id = r.insertId;
-    const roles = Array.isArray(body.targetRoles) && body.targetRoles.length ? body.targetRoles : ['requestor', 'manager', 'admin'];
-    for (const role of roles) {
-      await conn.query(`INSERT INTO announcement_target_roles (announcement_id, role_name) VALUES (?,?)`, [id, role]);
-    }
-    await conn.commit();
-    const [rows] = await pool.query('SELECT * FROM announcements WHERE id = ?', [id]);
-    return buildAnnouncement(pool, rows[0]);
-  } catch (e) {
-    await conn.rollback();
-    throw e;
-  } finally {
-    conn.release();
-  }
+export const createAnnouncement = async (_pool, body, createdByUsername) => {
+  const supabase = getSupabase();
+  const { data: ann, error: err1 } = await supabase.from('announcements').insert({
+    title: body.title,
+    content: body.content,
+    start_date: new Date(body.startDate).toISOString(),
+    end_date: new Date(body.endDate).toISOString(),
+    created_by: createdByUsername,
+  }).select().single();
+  if (err1) throw err1;
+
+  const roles = Array.isArray(body.targetRoles) && body.targetRoles.length ? body.targetRoles : ['requestor', 'manager', 'admin'];
+  const roleRows = roles.map((r) => ({ announcement_id: ann.id, role_name: r }));
+  const { error: err2 } = await supabase.from('announcement_target_roles').insert(roleRows);
+  if (err2) throw err2;
+
+  const { data: full } = await supabase
+    .from('announcements')
+    .select('*, announcement_target_roles(role_name)')
+    .eq('id', ann.id)
+    .single();
+  return formatSupabaseAnnouncement(full);
 };
 
-export const updateAnnouncement = async (pool, param, body) => {
+export const updateAnnouncement = async (_pool, param, body) => {
   const lk = idLookup(param);
   if (!lk) return null;
-  const conn = await pool.getConnection();
-  try {
-    const [ex] = await conn.query(`SELECT id FROM announcements WHERE ${lk.clause} LIMIT 1`, lk.params);
-    if (!ex[0]) return null;
-    const id = ex[0].id;
-    await conn.beginTransaction();
-    if (body.title || body.content || body.startDate || body.endDate) {
-      await conn.query(
-        `UPDATE announcements SET title = COALESCE(?, title), content = COALESCE(?, content), start_date = COALESCE(?, start_date), end_date = COALESCE(?, end_date) WHERE id = ?`,
-        [
-          body.title ?? null,
-          body.content ?? null,
-          body.startDate ? new Date(body.startDate) : null,
-          body.endDate ? new Date(body.endDate) : null,
-          id,
-        ],
-      );
-    }
-    if (body.targetRoles) {
-      await conn.query('DELETE FROM announcement_target_roles WHERE announcement_id = ?', [id]);
-      for (const role of body.targetRoles) {
-        await conn.query(`INSERT INTO announcement_target_roles (announcement_id, role_name) VALUES (?,?)`, [id, role]);
-      }
-    }
-    await conn.commit();
-    const [rows] = await pool.query('SELECT * FROM announcements WHERE id = ?', [id]);
-    return buildAnnouncement(pool, rows[0]);
-  } catch (e) {
-    await conn.rollback();
-    throw e;
-  } finally {
-    conn.release();
+  const id = lk.params[0];
+  const supabase = getSupabase();
+  const updates = {};
+  if (body.title !== undefined) updates.title = body.title;
+  if (body.content !== undefined) updates.content = body.content;
+  if (body.startDate) updates.start_date = new Date(body.startDate).toISOString();
+  if (body.endDate) updates.end_date = new Date(body.endDate).toISOString();
+
+  if (Object.keys(updates).length) {
+    await supabase.from('announcements').update(updates).eq('id', id);
   }
+  if (body.targetRoles) {
+    await supabase.from('announcement_target_roles').delete().eq('announcement_id', id);
+    const roleRows = body.targetRoles.map((r) => ({ announcement_id: id, role_name: r }));
+    if (roleRows.length) {
+      await supabase.from('announcement_target_roles').insert(roleRows);
+    }
+  }
+  const { data: full } = await supabase
+    .from('announcements')
+    .select('*, announcement_target_roles(role_name)')
+    .eq('id', id)
+    .single();
+  return formatSupabaseAnnouncement(full);
 };
 
-export const deleteAnnouncement = async (pool, param) => {
+export const deleteAnnouncement = async (_pool, param) => {
   const lk = idLookup(param);
   if (!lk) return false;
-  const [r] = await pool.query(`DELETE FROM announcements WHERE ${lk.clause}`, lk.params);
-  return r.affectedRows > 0;
+  const id = lk.params[0];
+  const supabase = getSupabase();
+  const { error } = await supabase.from('announcements').delete().eq('id', id);
+  if (error) throw error;
+  return true;
 };
 
-export const countAnnouncements = async (pool) => {
-  const [[r]] = await pool.query('SELECT COUNT(*) AS c FROM announcements');
-  return r.c;
+export const countAnnouncements = async (_pool) => {
+  const supabase = getSupabase();
+  const { count, error } = await supabase.from('announcements').select('*', { count: 'exact', head: true });
+  if (error) throw error;
+  return count || 0;
 };

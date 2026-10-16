@@ -1,13 +1,12 @@
-import express from 'express';
-import { getPool } from '../db/pool.js';
-import * as vehiclesMysql from '../repositories/vehiclesMysql.js';
+﻿import express from 'express';
+import * as vehiclesRepo from '../repositories/vehicles.js';
 
 const router = express.Router();
 
 router.get('/', async (req, res) => {
   try {
-    const pool = getPool();
-    const vehicles = await vehiclesMysql.listVehicles(pool);
+    const pool = null;
+    const vehicles = await vehiclesRepo.listVehicles(pool);
     res.json(vehicles);
   } catch (error) {
     console.error('Error fetching vehicles:', error);
@@ -17,8 +16,8 @@ router.get('/', async (req, res) => {
 
 router.get('/maintenance-logs/monthly', async (req, res) => {
   try {
-    const pool = getPool();
-    const logs = await vehiclesMysql.getMaintenanceLogsByMonth(pool);
+    const pool = null;
+    const logs = await vehiclesRepo.getMaintenanceLogsByMonth(pool);
     res.json(logs);
   } catch (error) {
     console.error('Error fetching maintenance logs:', error);
@@ -32,12 +31,12 @@ router.post('/', async (req, res) => {
     if (!plateNumber || !model) {
       return res.status(400).json({ message: 'All fields (plateNumber, model) are required' });
     }
-    const pool = getPool();
-    const existingVehicle = await vehiclesMysql.findByPlate(pool, plateNumber);
+    const pool = null;
+    const existingVehicle = await vehiclesRepo.findByPlate(pool, plateNumber);
     if (existingVehicle) {
       return res.status(400).json({ message: 'Vehicle with this plate number already exists' });
     }
-    const savedVehicle = await vehiclesMysql.createVehicle(pool, { plateNumber, model });
+    const savedVehicle = await vehiclesRepo.createVehicle(pool, { plateNumber, model });
     res.status(201).json(savedVehicle);
   } catch (error) {
     console.error('Error adding vehicle:', error);
@@ -48,8 +47,8 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
   try {
     const { plateNumber, model } = req.body;
-    const pool = getPool();
-    const updatedVehicle = await vehiclesMysql.updateVehicle(pool, req.params.id, { plateNumber, model });
+    const pool = null;
+    const updatedVehicle = await vehiclesRepo.updateVehicle(pool, req.params.id, { plateNumber, model });
     if (!updatedVehicle) {
       return res.status(404).json({ message: 'Vehicle not found' });
     }
@@ -62,8 +61,8 @@ router.put('/:id', async (req, res) => {
 
 router.delete('/:id', async (req, res) => {
   try {
-    const pool = getPool();
-    const ok = await vehiclesMysql.deleteVehicle(pool, req.params.id);
+    const pool = null;
+    const ok = await vehiclesRepo.deleteVehicle(pool, req.params.id);
     if (!ok) {
       return res.status(404).json({ message: 'Vehicle not found' });
     }
@@ -102,8 +101,8 @@ router.put('/:id/maintenance', async (req, res) => {
       updateData.maintenanceStartDate = null;
       updateData.maintenanceEndDate = null;
     }
-    const pool = getPool();
-    const updatedVehicle = await vehiclesMysql.updateMaintenance(pool, req.params.id, updateData);
+    const pool = null;
+    const updatedVehicle = await vehiclesRepo.updateMaintenance(pool, req.params.id, updateData);
     if (!updatedVehicle) {
       return res.status(404).json({ message: 'Vehicle not found' });
     }

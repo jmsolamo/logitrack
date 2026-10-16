@@ -1,15 +1,14 @@
-import express from 'express';
-import { getPool } from '../db/pool.js';
-import * as announcementsMysql from '../repositories/announcementsMysql.js';
+﻿import express from 'express';
+import * as announcementsRepo from '../repositories/announcements.js';
 import { verifyToken } from '../middleware/auth.js';
 
 const router = express.Router();
 
 router.get('/', verifyToken, async (req, res) => {
   try {
-    const pool = getPool();
+    const pool = null;
     const userRole = req.user.role;
-    const announcements = await announcementsMysql.findActiveForRole(pool, userRole);
+    const announcements = await announcementsRepo.findActiveForRole(pool, userRole);
     res.json(announcements);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching announcements', error: error.message });
@@ -18,13 +17,13 @@ router.get('/', verifyToken, async (req, res) => {
 
 router.get('/all', verifyToken, async (req, res) => {
   try {
-    const pool = getPool();
+    const pool = null;
     const userRole = req.user.role;
     if (userRole === 'admin') {
-      const announcements = await announcementsMysql.listAllForAdmin(pool);
+      const announcements = await announcementsRepo.listAllForAdmin(pool);
       return res.json(announcements);
     }
-    const announcements = await announcementsMysql.listForRoleAll(pool, userRole);
+    const announcements = await announcementsRepo.listForRoleAll(pool, userRole);
     res.json(announcements);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching announcements', error: error.message });
@@ -43,8 +42,8 @@ router.post('/', verifyToken, async (req, res) => {
     if (new Date(startDate) > new Date(endDate)) {
       return res.status(400).json({ message: 'Start date must be before end date' });
     }
-    const pool = getPool();
-    const announcement = await announcementsMysql.createAnnouncement(pool, { title, content, targetRoles, startDate, endDate }, req.user.username);
+    const pool = null;
+    const announcement = await announcementsRepo.createAnnouncement(pool, { title, content, targetRoles, startDate, endDate }, req.user.username);
     res.status(201).json({ message: 'Announcement created successfully', announcement });
   } catch (error) {
     console.error('Error creating announcement:', error);
@@ -61,8 +60,8 @@ router.put('/:id', verifyToken, async (req, res) => {
     if (startDate && endDate && new Date(startDate) > new Date(endDate)) {
       return res.status(400).json({ message: 'Start date must be before end date' });
     }
-    const pool = getPool();
-    const announcement = await announcementsMysql.updateAnnouncement(pool, req.params.id, {
+    const pool = null;
+    const announcement = await announcementsRepo.updateAnnouncement(pool, req.params.id, {
       title,
       content,
       targetRoles,
@@ -83,8 +82,8 @@ router.delete('/:id', verifyToken, async (req, res) => {
     if (req.user.role !== 'admin') {
       return res.status(403).json({ message: 'Only admins can delete announcements' });
     }
-    const pool = getPool();
-    const ok = await announcementsMysql.deleteAnnouncement(pool, req.params.id);
+    const pool = null;
+    const ok = await announcementsRepo.deleteAnnouncement(pool, req.params.id);
     if (!ok) {
       return res.status(404).json({ message: 'Announcement not found' });
     }

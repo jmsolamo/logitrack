@@ -1,4 +1,4 @@
-import { getPool } from '../db/pool.js';
+import { getSupabase } from '../db/supabase.js';
 import { toApiId, idLookup } from '../utils/entityId.js';
 
 const mapDepartment = (r) =>
@@ -12,31 +12,36 @@ const mapDepartment = (r) =>
       }
     : null;
 
-export const listDepartments = async (pool) => {
-  const [rows] = await pool.query('SELECT * FROM departments ORDER BY name ASC');
-  return rows.map((r) => mapDepartment(r));
+export const listDepartments = async (_pool) => {
+  const supabase = getSupabase();
+  const { data, error } = await supabase.from('departments').select('*').order('name', { ascending: true });
+  if (error) throw error;
+  return (data || []).map(mapDepartment);
 };
 
-export const createDepartment = async (pool, { name }) => {
-  const [r] = await pool.query('INSERT INTO departments (name) VALUES (?)', [name]);
-  const [rows] = await pool.query('SELECT * FROM departments WHERE id = ?', [r.insertId]);
-  return mapDepartment(rows[0]);
+export const createDepartment = async (_pool, { name }) => {
+  const supabase = getSupabase();
+  const { data, error } = await supabase.from('departments').insert({ name }).select().single();
+  if (error) throw error;
+  return mapDepartment(data);
 };
 
-export const updateDepartmentByIdParam = async (pool, param, { name }) => {
+export const updateDepartmentByIdParam = async (_pool, param, { name }) => {
   const lk = idLookup(param);
   if (!lk) return null;
-  const [existing] = await pool.query(`SELECT id FROM departments WHERE ${lk.clause} LIMIT 1`, lk.params);
-  if (!existing[0]) return null;
-  const id = existing[0].id;
-  await pool.query('UPDATE departments SET name = ? WHERE id = ?', [name, id]);
-  const [rows] = await pool.query('SELECT * FROM departments WHERE id = ?', [id]);
-  return mapDepartment(rows[0]);
+  const id = lk.params[0];
+  const supabase = getSupabase();
+  const { data, error } = await supabase.from('departments').update({ name }).eq('id', id).select().maybeSingle();
+  if (error) throw error;
+  return mapDepartment(data);
 };
 
-export const deleteDepartmentByIdParam = async (pool, param) => {
+export const deleteDepartmentByIdParam = async (_pool, param) => {
   const lk = idLookup(param);
   if (!lk) return false;
-  const [r] = await pool.query(`DELETE FROM departments WHERE ${lk.clause}`, lk.params);
-  return r.affectedRows > 0;
+  const id = lk.params[0];
+  const supabase = getSupabase();
+  const { error } = await supabase.from('departments').delete().eq('id', id);
+  if (error) throw error;
+  return true;
 };

@@ -4,10 +4,10 @@ dotenv.config();
 
 import express from 'express';
 import cors from 'cors';
-import { getPool } from './db/pool.js';
-import seedDefaultAdmin from './utils/seed.js';
+
+import { getSupabase, isSupabaseConfigured } from './db/supabase.js';
+import { seedDefaultAdmin } from './repositories/users.js';
 import authRoutes from './routes/auth.js';
-import seedRoutes from './routes/seed.js';
 import personnelsRoutes from './routes/personnels.js';
 import vehiclesRoutes from './routes/vehicles.js';
 import destinationsRoutes from './routes/destinations.js';
@@ -46,19 +46,22 @@ app.use(
 );
 app.use(express.json());
 
-let dbReady = false;
+let supabaseReady = false;
+
 const connectDb = async () => {
-  if (dbReady) return;
+  if (supabaseReady) return;
   try {
-    const pool = getPool();
-    const conn = await pool.getConnection();
-    await conn.ping();
-    conn.release();
-    dbReady = true;
-    console.log('MySQL connected');
-    await seedDefaultAdmin();
-  } catch (error) {
-    console.error('MySQL connection error:', error);
+    const supabase = getSupabase();
+    const { error } = await supabase.from('users').select('id').limit(1);
+    if (error) {
+      console.warn('[Supabase] Connected to project, but query returned:', error.message);
+    } else {
+      supabaseReady = true;
+      console.log('[Supabase] Connected successfully to Supabase!');
+      await seedDefaultAdmin();
+    }
+  } catch (err) {
+    console.error('[Supabase] Connection error:', err.message);
   }
 };
 
@@ -74,11 +77,17 @@ app.get('/', (req, res) => {
 app.get('/favicon.ico', (req, res) => res.status(204).end());
 
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', message: 'Server is running' });
+  res.json({
+    status: 'ok',
+    message: 'Server is running',
+    database: {
+      supabaseConfigured: isSupabaseConfigured(),
+      supabaseReady,
+    },
+  });
 });
 
 app.use('/api/auth', authRoutes);
-app.use('/api/seed', seedRoutes);
 app.use('/api/personnels', personnelsRoutes);
 app.use('/api/vehicles', vehiclesRoutes);
 app.use('/api/destinations', destinationsRoutes);

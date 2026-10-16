@@ -1,8 +1,7 @@
-import express from 'express';
-import { getPool } from '../db/pool.js';
-import * as deliveriesMysql from '../repositories/deliveriesMysql.js';
-import * as deliveryChargesMysql from '../repositories/deliveryChargesMysql.js';
-import * as deliveryRequestsMysql from '../repositories/deliveryRequestsMysql.js';
+﻿import express from 'express';
+import * as deliveriesRepo from '../repositories/deliveries.js';
+import * as deliveryChargesRepo from '../repositories/deliveryCharges.js';
+import * as deliveryRequestsRepo from '../repositories/deliveryRequests.js';
 
 const router = express.Router();
 
@@ -14,7 +13,7 @@ const generateRequestReferenceNo = async (pool) => {
   const dd = String(now.getDate()).padStart(2, '0');
   const dateStr = `${yyyy}${mm}${dd}`;
   const pattern = `${prefix}-${dateStr}-`;
-  const latest = await deliveryRequestsMysql.latestRequestReferenceNo(pool, pattern);
+  const latest = await deliveryRequestsRepo.latestRequestReferenceNo(pool, pattern);
   let seq = 1;
   if (latest) {
     const parts = latest.split('-');
@@ -26,7 +25,7 @@ const generateRequestReferenceNo = async (pool) => {
 };
 
 const calculateDeliveryCharge = async (pool, plateNumber, destinations) =>
-  deliveryChargesMysql.calculateDeliveryCharge(pool, plateNumber, destinations);
+  deliveryChargesRepo.calculateDeliveryCharge(pool, plateNumber, destinations);
 
 const generateReferenceNo = async (pool, deliveryType) => {
   const prefix = deliveryType === 'Itinerary' ? 'ITN' : 'FT';
@@ -36,7 +35,7 @@ const generateReferenceNo = async (pool, deliveryType) => {
   const dd = String(now.getDate()).padStart(2, '0');
   const dateStr = `${yyyy}${mm}${dd}`;
   const pattern = `${prefix}-${dateStr}-`;
-  const latest = await deliveriesMysql.latestReferenceNo(pool, pattern);
+  const latest = await deliveriesRepo.latestReferenceNo(pool, pattern);
   let seq = 1;
   if (latest) {
     const lastSeq = parseInt(latest.split('-').pop(), 10);
@@ -47,13 +46,13 @@ const generateReferenceNo = async (pool, deliveryType) => {
 
 router.get('/user-stats', async (req, res) => {
   try {
-    const pool = getPool();
+    const pool = null;
     const [totalCount, pendingCount, inTransitCount, completedCount, recentDeliveries] = await Promise.all([
-      deliveriesMysql.countDeliveries(pool),
-      deliveriesMysql.countDeliveries(pool, 'Pending'),
-      deliveriesMysql.countDeliveries(pool, 'In Transit'),
-      deliveriesMysql.countDeliveries(pool, 'Completed'),
-      deliveriesMysql.listDeliveriesSummary(pool, 5),
+      deliveriesRepo.countDeliveries(pool),
+      deliveriesRepo.countDeliveries(pool, 'Pending'),
+      deliveriesRepo.countDeliveries(pool, 'In Transit'),
+      deliveriesRepo.countDeliveries(pool, 'Completed'),
+      deliveriesRepo.listDeliveriesSummary(pool, 5),
     ]);
     res.json({
       total: totalCount,
@@ -70,9 +69,9 @@ router.get('/user-stats', async (req, res) => {
 
 router.get('/', async (req, res) => {
   try {
-    const pool = getPool();
-    await deliveriesMysql.runAutoStatusUpdates(pool);
-    const deliveries = await deliveriesMysql.listAllDeliveries(pool);
+    const pool = null;
+    await deliveriesRepo.runAutoStatusUpdates(pool);
+    const deliveries = await deliveriesRepo.listAllDeliveries(pool);
     res.json(deliveries);
   } catch (error) {
     console.error('Error fetching deliveries:', error);
@@ -82,8 +81,8 @@ router.get('/', async (req, res) => {
 
 router.get('/:id', async (req, res) => {
   try {
-    const pool = getPool();
-    const delivery = await deliveriesMysql.findDeliveryByIdParam(pool, req.params.id);
+    const pool = null;
+    const delivery = await deliveriesRepo.findDeliveryByIdParam(pool, req.params.id);
     if (!delivery) {
       return res.status(404).json({ message: 'Delivery not found' });
     }
@@ -96,7 +95,7 @@ router.get('/:id', async (req, res) => {
 
 router.post('/', async (req, res) => {
   try {
-    const pool = getPool();
+    const pool = null;
     const { deliveryType } = req.body;
     if (!deliveryType) {
       return res.status(400).json({ message: 'Delivery Type is required' });
@@ -106,12 +105,12 @@ router.post('/', async (req, res) => {
     if (req.body.vehicleEquipment && req.body.destination) {
       finalDeliveryCharge = await calculateDeliveryCharge(pool, req.body.vehicleEquipment, req.body.destination);
     }
-    const saved = await deliveriesMysql.insertDelivery(pool, { ...req.body, status: req.body.status || 'Pending' }, referenceNo, finalDeliveryCharge);
+    const saved = await deliveriesRepo.insertDelivery(pool, { ...req.body, status: req.body.status || 'Pending' }, referenceNo, finalDeliveryCharge);
     
     // Automatically create a companion request for Manager (Reviewer) visibility
     try {
       const requestRefNo = await generateRequestReferenceNo(pool);
-      await deliveryRequestsMysql.createRequest(pool, {
+      await deliveryRequestsRepo.createRequest(pool, {
         ...req.body,
         deliveryReferenceNo: referenceNo, 
         requestStatus: 'Approved', 
@@ -150,9 +149,9 @@ const cleanExpenseItem = (item) => {
 
 router.put('/:id', async (req, res) => {
   try {
-    const pool = getPool();
+    const pool = null;
     const { referenceNo, ...updateData } = req.body;
-    const current = await deliveriesMysql.findDeliveryByIdParam(pool, req.params.id);
+    const current = await deliveriesRepo.findDeliveryByIdParam(pool, req.params.id);
     if (!current) {
       return res.status(404).json({ message: 'Delivery not found' });
     }
@@ -171,7 +170,7 @@ router.put('/:id', async (req, res) => {
     }
 
     const merged = { ...current, ...updateData, referenceNo: current.referenceNo };
-    const updatedDelivery = await deliveriesMysql.updateDeliveryFull(pool, req.params.id, merged);
+    const updatedDelivery = await deliveriesRepo.updateDeliveryFull(pool, req.params.id, merged);
     res.json(updatedDelivery);
   } catch (error) {
     console.error('Error updating delivery:', error);
@@ -181,8 +180,8 @@ router.put('/:id', async (req, res) => {
 
 router.delete('/:id', async (req, res) => {
   try {
-    const pool = getPool();
-    const ok = await deliveriesMysql.deleteDeliveryByParam(pool, req.params.id);
+    const pool = null;
+    const ok = await deliveriesRepo.deleteDeliveryByParam(pool, req.params.id);
     if (!ok) {
       return res.status(404).json({ message: 'Delivery not found' });
     }

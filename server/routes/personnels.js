@@ -1,13 +1,12 @@
-import express from 'express';
-import { getPool } from '../db/pool.js';
-import * as personnelsMysql from '../repositories/personnelsMysql.js';
+﻿import express from 'express';
+import * as personnelsRepo from '../repositories/personnels.js';
 
 const router = express.Router();
 
 router.get('/', async (req, res) => {
   try {
-    const pool = getPool();
-    const personnels = await personnelsMysql.listPersonnels(pool);
+    const pool = null;
+    const personnels = await personnelsRepo.listPersonnels(pool);
     res.json(personnels);
   } catch (error) {
     console.error('Error fetching personnels:', error);
@@ -21,8 +20,8 @@ router.post('/', async (req, res) => {
     if (!firstname || !lastname || !position) {
       return res.status(400).json({ message: 'All fields (firstname, lastname, position) are required' });
     }
-    const pool = getPool();
-    const savedPersonnel = await personnelsMysql.createPersonnel(pool, { firstname, lastname, position });
+    const pool = null;
+    const savedPersonnel = await personnelsRepo.createPersonnel(pool, { firstname, lastname, position });
     res.status(201).json(savedPersonnel);
   } catch (error) {
     console.error('Error adding personnel:', error);
@@ -33,8 +32,8 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
   try {
     const { firstname, lastname, position } = req.body;
-    const pool = getPool();
-    const updatedPersonnel = await personnelsMysql.updatePersonnel(pool, req.params.id, { firstname, lastname, position });
+    const pool = null;
+    const updatedPersonnel = await personnelsRepo.updatePersonnel(pool, req.params.id, { firstname, lastname, position });
     if (!updatedPersonnel) {
       return res.status(404).json({ message: 'Personnel not found' });
     }
@@ -47,8 +46,8 @@ router.put('/:id', async (req, res) => {
 
 router.delete('/:id', async (req, res) => {
   try {
-    const pool = getPool();
-    const ok = await personnelsMysql.deletePersonnel(pool, req.params.id);
+    const pool = null;
+    const ok = await personnelsRepo.deletePersonnel(pool, req.params.id);
     if (!ok) {
       return res.status(404).json({ message: 'Personnel not found' });
     }

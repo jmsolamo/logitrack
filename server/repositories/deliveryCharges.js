@@ -1,6 +1,5 @@
-import { getPool } from '../db/pool.js';
-import { toApiId } from '../utils/entityId.js';
-import { idLookup } from '../utils/entityId.js';
+import { getSupabase } from '../db/supabase.js';
+import { toApiId, idLookup } from '../utils/entityId.js';
 
 const map = (r) =>
   r
@@ -14,57 +13,64 @@ const map = (r) =>
       }
     : null;
 
-export const listCharges = async (pool) => {
-  const [rows] = await pool.query('SELECT * FROM delivery_charges ORDER BY created_at DESC');
-  return rows.map(map);
+export const listCharges = async (_pool) => {
+  const supabase = getSupabase();
+  const { data, error } = await supabase.from('delivery_charges').select('*').order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data || []).map(map);
 };
 
-export const calculateDeliveryCharge = async (pool, plateNumber, destinations) => {
+export const calculateDeliveryCharge = async (_pool, plateNumber, destinations) => {
   if (!plateNumber || !destinations || !destinations.length) return 0;
   const plate = String(plateNumber).toUpperCase();
   const upper = destinations.map((d) => String(d).toUpperCase());
-  const placeholders = upper.map(() => '?').join(',');
-  const [rows] = await pool.query(
-    `SELECT destination, charge FROM delivery_charges WHERE plate_number = ? AND destination IN (${placeholders})`,
-    [plate, ...upper],
-  );
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from('delivery_charges')
+    .select('destination, charge')
+    .eq('plate_number', plate)
+    .in('destination', upper);
+  if (error) throw error;
   let total = 0;
   for (const dest of destinations) {
     const u = String(dest).toUpperCase();
-    const m = rows.find((c) => c.destination === u);
+    const m = (data || []).find((c) => c.destination === u);
     if (m) total += Number(m.charge);
   }
   return total;
 };
 
-export const createCharge = async (pool, body) => {
-  const [r] = await pool.query(
-    `INSERT INTO delivery_charges (plate_number, destination, charge) VALUES (?,?,?)`,
-    [String(body.plateNumber).toUpperCase(), String(body.destination).toUpperCase(), Number(body.charge)],
-  );
-  const [rows] = await pool.query('SELECT * FROM delivery_charges WHERE id = ?', [r.insertId]);
-  return map(rows[0]);
+export const createCharge = async (_pool, body) => {
+  const supabase = getSupabase();
+  const { data, error } = await supabase.from('delivery_charges').insert({
+    plate_number: String(body.plateNumber).toUpperCase(),
+    destination: String(body.destination).toUpperCase(),
+    charge: Number(body.charge),
+  }).select().single();
+  if (error) throw error;
+  return map(data);
 };
 
-export const updateCharge = async (pool, param, body) => {
+export const updateCharge = async (_pool, param, body) => {
   const lk = idLookup(param);
   if (!lk) return null;
-  const [rows] = await pool.query(`SELECT id FROM delivery_charges WHERE ${lk.clause} LIMIT 1`, lk.params);
-  if (!rows[0]) return null;
-  const id = rows[0].id;
-  await pool.query(`UPDATE delivery_charges SET plate_number = ?, destination = ?, charge = ? WHERE id = ?`, [
-    String(body.plateNumber).toUpperCase(),
-    String(body.destination).toUpperCase(),
-    Number(body.charge),
-    id,
-  ]);
-  const [out] = await pool.query('SELECT * FROM delivery_charges WHERE id = ?', [id]);
-  return map(out[0]);
+  const id = lk.params[0];
+  const supabase = getSupabase();
+  const updates = {};
+  if (body.plateNumber !== undefined) updates.plate_number = String(body.plateNumber).toUpperCase();
+  if (body.destination !== undefined) updates.destination = String(body.destination).toUpperCase();
+  if (body.charge !== undefined) updates.charge = Number(body.charge);
+  const { data, error } = await supabase.from('delivery_charges').update(updates).eq('id', id).select().maybeSingle();
+  if (error) throw error;
+  return map(data);
 };
 
-export const deleteCharge = async (pool, param) => {
+export const deleteCharge = async (_pool, param) => {
   const lk = idLookup(param);
   if (!lk) return false;
-  const [r] = await pool.query(`DELETE FROM delivery_charges WHERE ${lk.clause}`, lk.params);
-  return r.affectedRows > 0;
+  const id = lk.params[0];
+  const supabase = getSupabase();
+  const { error } = await supabase.from('delivery_charges').delete().eq('id', id);
+  if (error) throw error;
+  return true;
 };

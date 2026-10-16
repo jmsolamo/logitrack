@@ -1,14 +1,13 @@
-import express from 'express';
-import { getPool } from '../db/pool.js';
-import * as departmentsMysql from '../repositories/departmentsMysql.js';
+﻿import express from 'express';
+import * as departmentsRepo from '../repositories/departments.js';
 import { verifyToken } from '../middleware/auth.js';
 
 const router = express.Router();
 
 router.get('/', verifyToken, async (req, res) => {
   try {
-    const pool = getPool();
-    const departments = await departmentsMysql.listDepartments(pool);
+    const pool = null;
+    const departments = await departmentsRepo.listDepartments(pool);
     res.json(departments);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching departments', error: error.message });
@@ -21,8 +20,8 @@ router.post('/', verifyToken, async (req, res) => {
     if (!name) {
       return res.status(400).json({ message: 'Department name is required' });
     }
-    const pool = getPool();
-    const department = await departmentsMysql.createDepartment(pool, { name });
+    const pool = null;
+    const department = await departmentsRepo.createDepartment(pool, { name });
     res.status(201).json({ message: 'Department created successfully', department });
   } catch (error) {
     if (error.code === 'ER_DUP_ENTRY') {
@@ -38,8 +37,8 @@ router.put('/:id', verifyToken, async (req, res) => {
     if (!name) {
       return res.status(400).json({ message: 'Department name is required' });
     }
-    const pool = getPool();
-    const department = await departmentsMysql.updateDepartmentByIdParam(pool, req.params.id, { name });
+    const pool = null;
+    const department = await departmentsRepo.updateDepartmentByIdParam(pool, req.params.id, { name });
     if (!department) {
       return res.status(404).json({ message: 'Department not found' });
     }
@@ -54,8 +53,8 @@ router.put('/:id', verifyToken, async (req, res) => {
 
 router.delete('/:id', verifyToken, async (req, res) => {
   try {
-    const pool = getPool();
-    const ok = await departmentsMysql.deleteDepartmentByIdParam(pool, req.params.id);
+    const pool = null;
+    const ok = await departmentsRepo.deleteDepartmentByIdParam(pool, req.params.id);
     if (!ok) {
       return res.status(404).json({ message: 'Department not found' });
     }

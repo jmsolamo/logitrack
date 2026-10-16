@@ -1,7 +1,6 @@
 import bcrypt from 'bcryptjs';
-import { getPool } from '../db/pool.js';
-import { toApiId } from '../utils/entityId.js';
-import { idLookup } from '../utils/entityId.js';
+import { getSupabase } from '../db/supabase.js';
+import { toApiId, idLookup } from '../utils/entityId.js';
 
 const mapUser = (r) =>
   r
@@ -17,91 +16,90 @@ const mapUser = (r) =>
       }
     : null;
 
-export const findUserByUsername = async (pool, username) => {
-  const [rows] = await pool.query('SELECT * FROM users WHERE username = ? LIMIT 1', [username]);
-  return rows[0] || null;
+export const findUserByUsername = async (_pool, username) => {
+  const supabase = getSupabase();
+  const { data, error } = await supabase.from('users').select('*').eq('username', username).maybeSingle();
+  if (error) throw error;
+  return data || null;
 };
 
-export const findUserByIdParam = async (pool, param) => {
+export const findUserByIdParam = async (_pool, param) => {
   const lk = idLookup(param);
   if (!lk) return null;
-  const [rows] = await pool.query(`SELECT * FROM users WHERE ${lk.clause} LIMIT 1`, lk.params);
-  return rows[0] || null;
+  const id = lk.params[0];
+  const supabase = getSupabase();
+  const { data, error } = await supabase.from('users').select('*').eq('id', id).maybeSingle();
+  if (error) throw error;
+  return data || null;
 };
 
 export const comparePassword = async (plain, passwordHash) => bcrypt.compare(plain, passwordHash);
 
 export const hashPassword = async (plain) => bcrypt.hash(plain, 10);
 
-export const listUsers = async (pool) => {
-  const [rows] = await pool.query(
-    'SELECT id, username, plain_password, department, role, created_at, updated_at FROM users ORDER BY created_at DESC'
-  );
-  return rows.map((r) => mapUser(r));
+export const listUsers = async (_pool) => {
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from('users')
+    .select('id, username, plain_password, department, role, created_at, updated_at')
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data || []).map(mapUser);
 };
 
-export const createUser = async (pool, { username, password, department, role }) => {
+export const createUser = async (_pool, { username, password, department, role }) => {
   const hash = await hashPassword(password);
-  const [r] = await pool.query(
-    `INSERT INTO users (username, password_hash, plain_password, department, role) VALUES (?,?,?,?,?)`,
-    [username, hash, password, department || '', role || 'requestor'],
-  );
-  const [rows] = await pool.query('SELECT id, username, plain_password, department, role, created_at, updated_at FROM users WHERE id = ?', [
-    r.insertId,
-  ]);
-  return mapUser(rows[0]);
+  const supabase = getSupabase();
+  const { data, error } = await supabase.from('users').insert({
+    username,
+    password_hash: hash,
+    plain_password: password,
+    department: department || '',
+    role: role || 'requestor',
+  }).select().single();
+  if (error) throw error;
+  return mapUser(data);
 };
 
-export const updateUserByIdParam = async (pool, param, { username, password, department, role }) => {
+export const updateUserByIdParam = async (_pool, param, { username, password, department, role }) => {
   const lk = idLookup(param);
   if (!lk) return null;
-  const [existing] = await pool.query(`SELECT id FROM users WHERE ${lk.clause} LIMIT 1`, lk.params);
-  if (!existing[0]) return null;
-  const id = existing[0].id;
-  const sets = [];
-  const vals = [];
-  if (username !== undefined) {
-    sets.push('username = ?');
-    vals.push(username);
-  }
+  const id = lk.params[0];
+  const supabase = getSupabase();
+  const updates = {};
+  if (username !== undefined) updates.username = username;
   if (password !== undefined) {
-    sets.push('password_hash = ?');
-    vals.push(await hashPassword(password));
-    sets.push('plain_password = ?');
-    vals.push(password);
+    updates.password_hash = await hashPassword(password);
+    updates.plain_password = password;
   }
-  if (department !== undefined) {
-    sets.push('department = ?');
-    vals.push(department);
-  }
-  if (role !== undefined) {
-    sets.push('role = ?');
-    vals.push(role);
-  }
-  if (!sets.length) {
-    const [rows] = await pool.query('SELECT * FROM users WHERE id = ?', [id]);
-    return mapUser(rows[0]);
-  }
-  vals.push(id);
-  await pool.query(`UPDATE users SET ${sets.join(', ')} WHERE id = ?`, vals);
-  const [rows] = await pool.query('SELECT * FROM users WHERE id = ?', [id]);
-  return mapUser(rows[0]);
+  if (department !== undefined) updates.department = department;
+  if (role !== undefined) updates.role = role;
+
+  const { data, error } = await supabase.from('users').update(updates).eq('id', id).select().maybeSingle();
+  if (error) throw error;
+  return mapUser(data);
 };
 
-export const deleteUserByIdParam = async (pool, param) => {
+export const deleteUserByIdParam = async (_pool, param) => {
   const lk = idLookup(param);
   if (!lk) return false;
-  const [r] = await pool.query(`DELETE FROM users WHERE ${lk.clause}`, lk.params);
-  return r.affectedRows > 0;
+  const id = lk.params[0];
+  const supabase = getSupabase();
+  const { error } = await supabase.from('users').delete().eq('id', id);
+  if (error) throw error;
+  return true;
 };
 
 export const seedDefaultAdmin = async () => {
-  const pool = getPool();
-  const existing = await findUserByUsername(pool, 'logistic-department');
-  if (existing) return;
+  const supabase = getSupabase();
+  const { data } = await supabase.from('users').select('id').eq('username', 'logistic-department').maybeSingle();
+  if (data) return;
   const hash = await hashPassword('123456');
-  await pool.query(
-    `INSERT INTO users (username, password_hash, plain_password, department, role) VALUES (?,?,?,?,?)`,
-    ['logistic-department', hash, '123456', 'logistic', 'admin'],
-  );
+  await supabase.from('users').insert({
+    username: 'logistic-department',
+    password_hash: hash,
+    plain_password: '123456',
+    department: 'logistic',
+    role: 'admin',
+  });
 };

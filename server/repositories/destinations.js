@@ -1,6 +1,5 @@
-import { getPool } from '../db/pool.js';
-import { toApiId } from '../utils/entityId.js';
-import { idLookup } from '../utils/entityId.js';
+import { getSupabase } from '../db/supabase.js';
+import { toApiId, idLookup } from '../utils/entityId.js';
 
 const map = (r) =>
   r
@@ -13,51 +12,75 @@ const map = (r) =>
       }
     : null;
 
-export const listDestinations = async (pool) => {
-  const [rows] = await pool.query('SELECT * FROM destinations ORDER BY destination ASC');
-  return rows.map(map);
+export const listDestinations = async (_pool) => {
+  const supabase = getSupabase();
+  const { data, error } = await supabase.from('destinations').select('*').order('destination', { ascending: true });
+  if (error) throw error;
+  return (data || []).map(map);
 };
 
-export const findByName = async (pool, name) => {
-  const [rows] = await pool.query('SELECT * FROM destinations WHERE destination = ? LIMIT 1', [String(name).toUpperCase()]);
-  return rows[0] || null;
+export const findByName = async (_pool, name) => {
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from('destinations')
+    .select('*')
+    .ilike('destination', String(name).trim())
+    .maybeSingle();
+  if (error) throw error;
+  return data || null;
 };
 
-export const findByCombination = async (pool, name, customerSupplier) => {
-  const [rows] = await pool.query(
-    'SELECT * FROM destinations WHERE destination = ? AND customer_supplier <=> ? LIMIT 1',
-    [String(name).toUpperCase(), customerSupplier || null]
-  );
-  return map(rows[0]);
+export const findByCombination = async (_pool, name, customerSupplier) => {
+  const supabase = getSupabase();
+  let q = supabase.from('destinations').select('*').ilike('destination', String(name).trim());
+  if (customerSupplier) {
+    q = q.eq('customer_supplier', customerSupplier);
+  } else {
+    q = q.is('customer_supplier', null);
+  }
+  const { data, error } = await q.maybeSingle();
+  if (error) throw error;
+  return map(data);
 };
 
-export const createDestination = async (pool, body) => {
-  const [r] = await pool.query(`INSERT INTO destinations (destination, customer_supplier) VALUES (?, ?)`, [
-    String(body.name).toUpperCase(),
-    body.customerSupplier || null
-  ]);
-  const [rows] = await pool.query('SELECT * FROM destinations WHERE id = ?', [r.insertId]);
-  return map(rows[0]);
+export const createDestination = async (_pool, body) => {
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from('destinations')
+    .insert({
+      destination: String(body.name).toUpperCase(),
+      customer_supplier: body.customerSupplier || null,
+    })
+    .select()
+    .single();
+  if (error) throw error;
+  return map(data);
 };
 
-export const updateDestination = async (pool, param, body) => {
+export const updateDestination = async (_pool, param, body) => {
   const lk = idLookup(param);
   if (!lk) return null;
-  const [ex] = await pool.query(`SELECT id FROM destinations WHERE ${lk.clause} LIMIT 1`, lk.params);
-  if (!ex[0]) return null;
-  const id = ex[0].id;
-  await pool.query(`UPDATE destinations SET destination = ?, customer_supplier = ? WHERE id = ?`, [
-    String(body.name).toUpperCase(),
-    body.customerSupplier || null,
-    id
-  ]);
-  const [rows] = await pool.query('SELECT * FROM destinations WHERE id = ?', [id]);
-  return map(rows[0]);
+  const id = lk.params[0];
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from('destinations')
+    .update({
+      destination: String(body.name).toUpperCase(),
+      customer_supplier: body.customerSupplier || null,
+    })
+    .eq('id', id)
+    .select()
+    .maybeSingle();
+  if (error) throw error;
+  return map(data);
 };
 
-export const deleteDestination = async (pool, param) => {
+export const deleteDestination = async (_pool, param) => {
   const lk = idLookup(param);
   if (!lk) return false;
-  const [r] = await pool.query(`DELETE FROM destinations WHERE ${lk.clause}`, lk.params);
-  return r.affectedRows > 0;
+  const id = lk.params[0];
+  const supabase = getSupabase();
+  const { error } = await supabase.from('destinations').delete().eq('id', id);
+  if (error) throw error;
+  return true;
 };

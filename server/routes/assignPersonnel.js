@@ -1,15 +1,14 @@
-import express from 'express';
-import { getPool } from '../db/pool.js';
-import * as deliveriesMysql from '../repositories/deliveriesMysql.js';
-import * as deliveryRequestsMysql from '../repositories/deliveryRequestsMysql.js';
+﻿import express from 'express';
+import * as deliveriesRepo from '../repositories/deliveries.js';
+import * as deliveryRequestsRepo from '../repositories/deliveryRequests.js';
 
 const router = express.Router();
 
 router.put('/:id/assign-personnel', async (req, res) => {
   try {
-    const pool = getPool();
+    const pool = null;
     const { driver, helper, totalBudget } = req.body;
-    const delivery = await deliveriesMysql.findDeliveryByIdParam(pool, req.params.id);
+    const delivery = await deliveriesRepo.findDeliveryByIdParam(pool, req.params.id);
     if (!delivery) {
       return res.status(404).json({ message: 'Delivery not found' });
     }
@@ -20,7 +19,7 @@ router.put('/:id/assign-personnel', async (req, res) => {
       delivery.totalBudget = (delivery.totalBudget || 0) + Number(totalBudget);
     }
 
-    const updatedDelivery = await deliveriesMysql.updateDeliveryFull(pool, req.params.id, delivery);
+    const updatedDelivery = await deliveriesRepo.updateDeliveryFull(pool, req.params.id, delivery);
 
     let request = null;
     if (delivery.referenceNo) {
@@ -28,13 +27,13 @@ router.put('/:id/assign-personnel', async (req, res) => {
         delivery.referenceNo,
       ]);
       if (rows[0]) {
-        const fullReq = await deliveryRequestsMysql.buildFullRequest(pool, rows[0]);
+        const fullReq = await deliveryRequestsRepo.buildFullRequest(pool, rows[0]);
         if (driver) fullReq.driver = driver;
         if (helper) fullReq.helper = helper;
         if (totalBudget !== undefined) {
           fullReq.totalBudget = (fullReq.totalBudget || 0) + Number(totalBudget);
         }
-        request = await deliveryRequestsMysql.saveRequest(pool, fullReq);
+        request = await deliveryRequestsRepo.saveRequest(pool, fullReq);
       }
     }
 

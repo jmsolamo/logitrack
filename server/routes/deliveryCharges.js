@@ -1,13 +1,12 @@
-import express from 'express';
-import { getPool } from '../db/pool.js';
-import * as deliveryChargesMysql from '../repositories/deliveryChargesMysql.js';
+﻿import express from 'express';
+import * as deliveryChargesRepo from '../repositories/deliveryCharges.js';
 
 const router = express.Router();
 
 router.get('/', async (req, res) => {
   try {
-    const pool = getPool();
-    const charges = await deliveryChargesMysql.listCharges(pool);
+    const pool = null;
+    const charges = await deliveryChargesRepo.listCharges(pool);
     res.json(charges);
   } catch (error) {
     console.error('Error fetching delivery charges:', error);
@@ -23,8 +22,8 @@ router.post('/', async (req, res) => {
     if (charge === undefined || charge === null || charge === '') {
       return res.status(400).json({ message: 'Delivery Charge is required' });
     }
-    const pool = getPool();
-    const savedCharge = await deliveryChargesMysql.createCharge(pool, { plateNumber, destination, charge });
+    const pool = null;
+    const savedCharge = await deliveryChargesRepo.createCharge(pool, { plateNumber, destination, charge });
     res.status(201).json(savedCharge);
   } catch (error) {
     if (error.code === 'ER_DUP_ENTRY') {
@@ -43,8 +42,8 @@ router.put('/:id', async (req, res) => {
     if (charge === undefined || charge === null || charge === '') {
       return res.status(400).json({ message: 'Delivery Charge is required' });
     }
-    const pool = getPool();
-    const updatedCharge = await deliveryChargesMysql.updateCharge(pool, req.params.id, { plateNumber, destination, charge });
+    const pool = null;
+    const updatedCharge = await deliveryChargesRepo.updateCharge(pool, req.params.id, { plateNumber, destination, charge });
     if (!updatedCharge) {
       return res.status(404).json({ message: 'Delivery charge entry not found' });
     }
@@ -60,8 +59,8 @@ router.put('/:id', async (req, res) => {
 
 router.delete('/:id', async (req, res) => {
   try {
-    const pool = getPool();
-    const ok = await deliveryChargesMysql.deleteCharge(pool, req.params.id);
+    const pool = null;
+    const ok = await deliveryChargesRepo.deleteCharge(pool, req.params.id);
     if (!ok) {
       return res.status(404).json({ message: 'Delivery charge entry not found' });
     }

@@ -1,13 +1,12 @@
-import express from 'express';
-import { getPool } from '../db/pool.js';
-import * as dashboardMysql from '../repositories/dashboardMysql.js';
+﻿import express from 'express';
+import * as dashboardRepo from '../repositories/dashboard.js';
 
 const router = express.Router();
 
 router.get('/metrics', async (req, res) => {
   try {
-    const pool = getPool();
-    const data = await dashboardMysql.getMetrics(pool);
+    const pool = null;
+    const data = await dashboardRepo.getMetrics(pool);
     res.json(data);
   } catch (error) {
     console.error('Error fetching dashboard metrics:', error);
@@ -17,8 +16,8 @@ router.get('/metrics', async (req, res) => {
 
 router.get('/charts', async (req, res) => {
   try {
-    const pool = getPool();
-    const data = await dashboardMysql.getCharts(pool);
+    const pool = null;
+    const data = await dashboardRepo.getCharts(pool);
     res.json(data);
   } catch (error) {
     console.error('Error fetching chart data:', error);
@@ -28,8 +27,8 @@ router.get('/charts', async (req, res) => {
 
 router.get('/activity', async (req, res) => {
   try {
-    const pool = getPool();
-    const data = await dashboardMysql.getActivity(pool);
+    const pool = null;
+    const data = await dashboardRepo.getActivity(pool);
     res.json(data);
   } catch (error) {
     console.error('Error fetching activity feed:', error);
@@ -43,8 +42,8 @@ router.get('/user-metrics', async (req, res) => {
     if (!userId || !username) {
       return res.status(400).json({ message: 'userId and username are required' });
     }
-    const pool = getPool();
-    const data = await dashboardMysql.getUserMetrics(pool, userId, username, role);
+    const pool = null;
+    const data = await dashboardRepo.getUserMetrics(pool, userId, username, role);
     res.json(data);
   } catch (error) {
     console.error('Error fetching user metrics:', error);
@@ -58,8 +57,8 @@ router.get('/user-charts', async (req, res) => {
     if (!userId || !username) {
       return res.status(400).json({ message: 'userId and username are required' });
     }
-    const pool = getPool();
-    const data = await dashboardMysql.getUserCharts(pool, userId, username);
+    const pool = null;
+    const data = await dashboardRepo.getUserCharts(pool, userId, username);
     res.json(data);
   } catch (error) {
     console.error('Error fetching user chart data:', error);

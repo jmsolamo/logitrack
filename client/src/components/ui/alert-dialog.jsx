@@ -1,24 +1,38 @@
 import React from 'react';
-import { X } from 'lucide-react';
+import { X, Loader2 } from 'lucide-react';
 
 const AlertDialog = ({ 
   isOpen, 
-  onClose, 
+  onClose,
+  onCancel,
   onConfirm, 
   title = "Are you sure?", 
   description = "This action cannot be undone.",
   confirmText = "Confirm",
   cancelText = "Cancel",
-  variant = "destructive" 
+  variant = "destructive",
+  destructive = false,
+  isLoading = false
 }) => {
   if (!isOpen) return null;
+
+  const handleClose = () => {
+    if (isLoading) return;
+    if (typeof onClose === 'function') {
+      onClose();
+    } else if (typeof onCancel === 'function') {
+      onCancel();
+    }
+  };
+
+  const isDestructive = destructive || variant === 'destructive';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
       {/* Backdrop */}
       <div 
         className="fixed inset-0 bg-background/80 backdrop-blur-sm transition-opacity" 
-        onClick={onClose}
+        onClick={handleClose}
       />
       
       {/* Dialog Content */}
@@ -35,18 +49,24 @@ const AlertDialog = ({
           {/* Actions */}
           <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <button
-              onClick={onClose}
-              className="inline-flex h-8 min-w-[80px] items-center justify-center rounded-xl border border-border bg-background px-3 text-[11px] font-semibold text-foreground transition-all hover:bg-muted active:scale-95"
+              type="button"
+              onClick={handleClose}
+              disabled={isLoading}
+              className="inline-flex h-8 min-w-[80px] items-center justify-center rounded-xl border border-border bg-background px-3 text-[11px] font-semibold text-foreground transition-all hover:bg-muted active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {cancelText}
             </button>
             <button
-              onClick={() => {
-                onConfirm();
-                onClose();
+              type="button"
+              disabled={isLoading}
+              onClick={async () => {
+                if (typeof onConfirm === 'function') {
+                  await onConfirm();
+                }
               }}
-              className={`inline-flex h-8 min-w-[80px] items-center justify-center rounded-xl px-3 text-[11px] font-bold text-white shadow-sm transition-all active:scale-95 ${variant === 'destructive' ? 'bg-destructive hover:bg-destructive/90' : 'bg-primary hover:bg-primary/90'}`}
+              className={`inline-flex h-8 min-w-[80px] items-center justify-center gap-1.5 rounded-xl px-3 text-[11px] font-bold text-white shadow-sm transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${isDestructive ? 'bg-destructive hover:bg-destructive/90' : 'bg-primary hover:bg-primary/90'}`}
             >
+              {isLoading && <Loader2 className="h-3 w-3 animate-spin" />}
               {confirmText}
             </button>
           </div>
@@ -54,7 +74,9 @@ const AlertDialog = ({
 
         {/* Close button (top right) */}
         <button
-          onClick={onClose}
+          type="button"
+          onClick={handleClose}
+          disabled={isLoading}
           className="absolute right-3 top-3 rounded-sm opacity-50 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-1 focus:ring-ring focus:ring-offset-1 disabled:pointer-events-none"
         >
           <X className="h-3.5 w-3.5" />

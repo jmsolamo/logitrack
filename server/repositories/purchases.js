@@ -1,6 +1,5 @@
-import { getPool } from '../db/pool.js';
-import { toApiId } from '../utils/entityId.js';
-import { idLookup } from '../utils/entityId.js';
+import { getSupabase } from '../db/supabase.js';
+import { toApiId, idLookup } from '../utils/entityId.js';
 
 const map = (r) =>
   r
@@ -23,55 +22,44 @@ const map = (r) =>
       }
     : null;
 
-export const listPurchases = async (pool) => {
-  const [rows] = await pool.query('SELECT * FROM purchases ORDER BY date DESC, created_at DESC');
-  return rows.map(map);
+export const listPurchases = async (_pool) => {
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from('purchases')
+    .select('*')
+    .order('date', { ascending: false })
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data || []).map(map);
 };
 
-export const createPurchase = async (pool, body) => {
-  const [r] = await pool.query(
-    `INSERT INTO purchases (date, category, items, qty, amount, item_dates, item_amounts, supplier, invoice_no, purchased_by, budget, used_for_note)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
-    [
-      body.date,
-      body.category,
-      body.items,
-      body.qty,
-      body.amount,
-      body.itemDates ?? null,
-      body.itemAmounts ?? null,
-      body.supplier ?? null,
-      body.invoiceNo ?? null,
-      body.purchasedBy ?? null,
-      body.budget != null && body.budget !== '' ? Number(body.budget) : null,
-      body.usedForNote ?? null,
-    ],
-  );
-  const [rows] = await pool.query('SELECT * FROM purchases WHERE id = ?', [r.insertId]);
-  return map(rows[0]);
+export const createPurchase = async (_pool, body) => {
+  const supabase = getSupabase();
+  const { data, error } = await supabase.from('purchases').insert({
+    date: body.date,
+    category: body.category,
+    items: body.items,
+    qty: body.qty,
+    amount: body.amount,
+    item_dates: body.itemDates ?? null,
+    item_amounts: body.itemAmounts ?? null,
+    supplier: body.supplier ?? null,
+    invoice_no: body.invoiceNo ?? null,
+    purchased_by: body.purchasedBy ?? null,
+    budget: body.budget != null && body.budget !== '' ? Number(body.budget) : null,
+    used_for_note: body.usedForNote ?? null,
+  }).select().single();
+  if (error) throw error;
+  return map(data);
 };
 
-export const updatePurchase = async (pool, param, body) => {
+export const updatePurchase = async (_pool, param, body) => {
   const lk = idLookup(param);
   if (!lk) return null;
-  const [ex] = await pool.query(`SELECT id FROM purchases WHERE ${lk.clause} LIMIT 1`, lk.params);
-  if (!ex[0]) return null;
-  const id = ex[0].id;
-  const fields = [
-    'date',
-    'category',
-    'items',
-    'qty',
-    'amount',
-    'itemDates',
-    'itemAmounts',
-    'supplier',
-    'invoiceNo',
-    'purchasedBy',
-    'budget',
-    'usedForNote',
-  ];
-  const colMap = {
+  const id = lk.params[0];
+  const supabase = getSupabase();
+  const updates = {};
+  const stringFields = {
     date: 'date',
     category: 'category',
     items: 'items',
@@ -82,28 +70,25 @@ export const updatePurchase = async (pool, param, body) => {
     supplier: 'supplier',
     invoiceNo: 'invoice_no',
     purchasedBy: 'purchased_by',
-    budget: 'budget',
     usedForNote: 'used_for_note',
   };
-  const sets = [];
-  const vals = [];
-  for (const k of fields) {
-    if (body[k] !== undefined) {
-      sets.push(`${colMap[k]} = ?`);
-      vals.push(k === 'budget' && body[k] !== '' && body[k] != null ? Number(body[k]) : body[k] ?? null);
-    }
+  for (const [k, col] of Object.entries(stringFields)) {
+    if (body[k] !== undefined) updates[col] = body[k] ?? null;
   }
-  if (sets.length) {
-    vals.push(id);
-    await pool.query(`UPDATE purchases SET ${sets.join(', ')} WHERE id = ?`, vals);
+  if (body.budget !== undefined) {
+    updates.budget = body.budget != null && body.budget !== '' ? Number(body.budget) : null;
   }
-  const [rows] = await pool.query('SELECT * FROM purchases WHERE id = ?', [id]);
-  return map(rows[0]);
+  const { data, error } = await supabase.from('purchases').update(updates).eq('id', id).select().maybeSingle();
+  if (error) throw error;
+  return map(data);
 };
 
-export const deletePurchase = async (pool, param) => {
+export const deletePurchase = async (_pool, param) => {
   const lk = idLookup(param);
   if (!lk) return false;
-  const [r] = await pool.query(`DELETE FROM purchases WHERE ${lk.clause}`, lk.params);
-  return r.affectedRows > 0;
+  const id = lk.params[0];
+  const supabase = getSupabase();
+  const { error } = await supabase.from('purchases').delete().eq('id', id);
+  if (error) throw error;
+  return true;
 };

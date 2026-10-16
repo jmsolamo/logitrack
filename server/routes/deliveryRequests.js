@@ -1,13 +1,12 @@
-import express from 'express';
-import { getPool } from '../db/pool.js';
-import * as deliveryRequestsMysql from '../repositories/deliveryRequestsMysql.js';
-import * as deliveriesMysql from '../repositories/deliveriesMysql.js';
-import * as deliveryChargesMysql from '../repositories/deliveryChargesMysql.js';
+﻿import express from 'express';
+import * as deliveryRequestsRepo from '../repositories/deliveryRequests.js';
+import * as deliveriesRepo from '../repositories/deliveries.js';
+import * as deliveryChargesRepo from '../repositories/deliveryCharges.js';
 
 const router = express.Router();
 
 const calculateDeliveryCharge = async (pool, plateNumber, destinations) =>
-  deliveryChargesMysql.calculateDeliveryCharge(pool, plateNumber, destinations);
+  deliveryChargesRepo.calculateDeliveryCharge(pool, plateNumber, destinations);
 
 const generateReferenceNo = async (pool, deliveryType) => {
   const prefix = deliveryType === 'Itinerary' ? 'ITN' : 'FT';
@@ -17,7 +16,7 @@ const generateReferenceNo = async (pool, deliveryType) => {
   const dd = String(now.getDate()).padStart(2, '0');
   const dateStr = `${yyyy}${mm}${dd}`;
   const pattern = `${prefix}-${dateStr}-`;
-  const latest = await deliveriesMysql.latestReferenceNo(pool, pattern);
+  const latest = await deliveriesRepo.latestReferenceNo(pool, pattern);
   let seq = 1;
   if (latest) {
     const lastSeq = parseInt(latest.split('-').pop(), 10);
@@ -34,7 +33,7 @@ const generateRequestReferenceNo = async (pool) => {
   const dd = String(now.getDate()).padStart(2, '0');
   const dateStr = `${yyyy}${mm}${dd}`;
   const pattern = `${prefix}-${dateStr}-`;
-  const latest = await deliveryRequestsMysql.latestRequestReferenceNo(pool, pattern);
+  const latest = await deliveryRequestsRepo.latestRequestReferenceNo(pool, pattern);
   let seq = 1;
   if (latest) {
     const parts = latest.split('-');
@@ -46,7 +45,7 @@ const generateRequestReferenceNo = async (pool) => {
 
 router.get('/schedules', async (req, res) => {
   try {
-    const pool = getPool();
+    const pool = null;
     
     // Fetch Active Deliveries from deliveries table only
     const [activeDeliveries] = await pool.query(
@@ -70,8 +69,8 @@ router.get('/schedules', async (req, res) => {
 
 router.get('/pending-count', async (req, res) => {
   try {
-    const pool = getPool();
-    const count = await deliveryRequestsMysql.countPending(pool);
+    const pool = null;
+    const count = await deliveryRequestsRepo.countPending(pool);
     res.json({ count });
   } catch (error) {
     console.error('Error fetching pending count:', error);
@@ -85,8 +84,8 @@ router.get('/my-requests', async (req, res) => {
     if (!userId) {
       return res.status(400).json({ message: 'userId query param is required' });
     }
-    const pool = getPool();
-    const requests = await deliveryRequestsMysql.listMyRequests(pool, userId);
+    const pool = null;
+    const requests = await deliveryRequestsRepo.listMyRequests(pool, userId);
     res.json(requests);
   } catch (error) {
     console.error('Error fetching user requests:', error);
@@ -96,7 +95,7 @@ router.get('/my-requests', async (req, res) => {
 
 router.get('/', async (req, res) => {
   try {
-    const pool = getPool();
+    const pool = null;
     const filter = {};
     if (req.query.status && req.query.status !== 'all') {
       filter.requestStatus = req.query.status;
@@ -112,7 +111,7 @@ router.get('/', async (req, res) => {
       const statuses = req.query.requestStatus.split(',').map((s) => s.trim()).filter(Boolean);
       filter.requestStatus = statuses.length > 1 ? statuses : statuses[0];
     }
-    const requests = await deliveryRequestsMysql.listRequestsFiltered(pool, filter);
+    const requests = await deliveryRequestsRepo.listRequestsFiltered(pool, filter);
     res.json(requests);
   } catch (error) {
     console.error('Error fetching delivery requests:', error);
@@ -122,8 +121,8 @@ router.get('/', async (req, res) => {
 
 router.put('/:id/reviewer-accept', async (req, res) => {
   try {
-    const pool = getPool();
-    const request = await deliveryRequestsMysql.findRequestByIdParam(pool, req.params.id);
+    const pool = null;
+    const request = await deliveryRequestsRepo.findRequestByIdParam(pool, req.params.id);
     if (!request) {
       return res.status(404).json({ message: 'Request not found' });
     }
@@ -140,7 +139,7 @@ router.put('/:id/reviewer-accept', async (req, res) => {
     if (request.requestStatus === 'For Review') {
       request.requestStatus = 'Approved';
     }
-    const saved = await deliveryRequestsMysql.saveRequest(pool, request);
+    const saved = await deliveryRequestsRepo.saveRequest(pool, request);
     res.json({ message: 'Request accepted by reviewer', request: saved });
   } catch (error) {
     console.error('Error accepting request as reviewer:', error);
@@ -150,8 +149,8 @@ router.put('/:id/reviewer-accept', async (req, res) => {
 
 router.get('/:id', async (req, res) => {
   try {
-    const pool = getPool();
-    const request = await deliveryRequestsMysql.findRequestByIdParam(pool, req.params.id);
+    const pool = null;
+    const request = await deliveryRequestsRepo.findRequestByIdParam(pool, req.params.id);
     if (!request) {
       return res.status(404).json({ message: 'Request not found' });
     }
@@ -164,13 +163,13 @@ router.get('/:id', async (req, res) => {
 
 router.post('/', async (req, res) => {
   try {
-    const pool = getPool();
+    const pool = null;
     const { deliveryType } = req.body;
     if (!deliveryType) {
       return res.status(400).json({ message: 'Delivery Type is required' });
     }
     const referenceNo = await generateRequestReferenceNo(pool);
-    const saved = await deliveryRequestsMysql.createRequest(pool, req.body, referenceNo);
+    const saved = await deliveryRequestsRepo.createRequest(pool, req.body, referenceNo);
     res.status(201).json(saved);
   } catch (error) {
     console.error('Error creating delivery request:', error);
@@ -180,8 +179,8 @@ router.post('/', async (req, res) => {
 
 router.put('/:id/approve', async (req, res) => {
   try {
-    const pool = getPool();
-    const request = await deliveryRequestsMysql.findRequestByIdParam(pool, req.params.id);
+    const pool = null;
+    const request = await deliveryRequestsRepo.findRequestByIdParam(pool, req.params.id);
     if (!request) {
       return res.status(404).json({ message: 'Request not found' });
     }
@@ -200,7 +199,7 @@ router.put('/:id/approve', async (req, res) => {
       const requestDateTo = request.dateTo ? new Date(request.dateTo) : new Date(request.dateFrom);
       requestDateTo.setHours(23, 59, 59, 999);
 
-      const existingDeliveries = await deliveriesMysql.findOverlappingPendingDeliveries(pool, finalVehicle, requestDateFrom, requestDateTo);
+      const existingDeliveries = await deliveriesRepo.findOverlappingPendingDeliveries(pool, finalVehicle, requestDateFrom, requestDateTo);
 
       if (existingDeliveries.length > 0 && !req.body.combineWithExisting && !req.body.createSeparate) {
         return res.json({
@@ -229,7 +228,7 @@ router.put('/:id/approve', async (req, res) => {
       }
 
       if (req.body.combineWithExisting && req.body.existingDeliveryId) {
-        const existingDelivery = await deliveriesMysql.findDeliveryByIdParam(pool, req.body.existingDeliveryId);
+        const existingDelivery = await deliveriesRepo.findDeliveryByIdParam(pool, req.body.existingDeliveryId);
         if (!existingDelivery) {
           return res.status(404).json({ message: 'Existing delivery not found' });
         }
@@ -240,18 +239,18 @@ router.put('/:id/approve', async (req, res) => {
           additionalCharge = await calculateDeliveryCharge(pool, finalVehicle, newDestinations);
         }
 
-        existingDelivery.purpose = deliveriesMysql.mergeArraysPreserve(existingDelivery.purpose, request.purpose);
-        existingDelivery.activity = deliveriesMysql.mergeArraysPreserve(existingDelivery.activity, request.activity);
-        existingDelivery.destination = deliveriesMysql.mergeArraysPreserve(existingDelivery.destination, request.destination);
-        existingDelivery.jobOrderNo = deliveriesMysql.mergeArraysPreserve(existingDelivery.jobOrderNo, request.jobOrderNo);
-        existingDelivery.customerSupplier = deliveriesMysql.mergeArraysPreserve(
+        existingDelivery.purpose = deliveriesRepo.mergeArraysPreserve(existingDelivery.purpose, request.purpose);
+        existingDelivery.activity = deliveriesRepo.mergeArraysPreserve(existingDelivery.activity, request.activity);
+        existingDelivery.destination = deliveriesRepo.mergeArraysPreserve(existingDelivery.destination, request.destination);
+        existingDelivery.jobOrderNo = deliveriesRepo.mergeArraysPreserve(existingDelivery.jobOrderNo, request.jobOrderNo);
+        existingDelivery.customerSupplier = deliveriesRepo.mergeArraysPreserve(
           existingDelivery.customerSupplier,
           request.customerSupplier,
         );
         existingDelivery.deliveryCharge = (existingDelivery.deliveryCharge || 0) + additionalCharge;
         existingDelivery.totalBudget = (existingDelivery.totalBudget || 0) + additionalCharge;
 
-        const mergedExisting = await deliveriesMysql.updateDeliveryFull(pool, existingDelivery._id, existingDelivery);
+        const mergedExisting = await deliveriesRepo.updateDeliveryFull(pool, existingDelivery._id, existingDelivery);
 
         request.deliveryReferenceNo = mergedExisting.referenceNo;
         request.combinedWithDelivery = true;
@@ -265,7 +264,7 @@ router.put('/:id/approve', async (req, res) => {
           request.vehicleChanged = true;
           request.vehicleChangeReason = 'Vehicle changed by admin during approval';
         }
-        const savedReq = await deliveryRequestsMysql.saveRequest(pool, request);
+        const savedReq = await deliveryRequestsRepo.saveRequest(pool, request);
 
         return res.json({
           request: savedReq,
@@ -299,7 +298,7 @@ router.put('/:id/approve', async (req, res) => {
       status: 'Pending',
     };
 
-    const savedDelivery = await deliveriesMysql.insertDelivery(pool, newDeliveryBody, referenceNo, finalDeliveryCharge);
+    const savedDelivery = await deliveriesRepo.insertDelivery(pool, newDeliveryBody, referenceNo, finalDeliveryCharge);
 
     request.deliveryReferenceNo = savedDelivery.referenceNo;
     request.combinedWithDelivery = false;
@@ -313,7 +312,7 @@ router.put('/:id/approve', async (req, res) => {
       request.vehicleChanged = true;
       request.vehicleChangeReason = 'Vehicle changed by admin during approval';
     }
-    const savedReq = await deliveryRequestsMysql.saveRequest(pool, request);
+    const savedReq = await deliveryRequestsRepo.saveRequest(pool, request);
 
     res.json({
       request: savedReq,
@@ -332,8 +331,8 @@ router.put('/:id/approve', async (req, res) => {
 
 router.put('/:id/decline', async (req, res) => {
   try {
-    const pool = getPool();
-    const request = await deliveryRequestsMysql.findRequestByIdParam(pool, req.params.id);
+    const pool = null;
+    const request = await deliveryRequestsRepo.findRequestByIdParam(pool, req.params.id);
     if (!request) {
       return res.status(404).json({ message: 'Request not found' });
     }
@@ -348,7 +347,7 @@ router.put('/:id/decline', async (req, res) => {
     request.declineReason = declineReason;
     request.reviewedBy = reviewedBy || '';
     request.reviewedAt = new Date();
-    const saved = await deliveryRequestsMysql.saveRequest(pool, request);
+    const saved = await deliveryRequestsRepo.saveRequest(pool, request);
     res.json(saved);
   } catch (error) {
     console.error('Error declining delivery request:', error);
@@ -358,14 +357,14 @@ router.put('/:id/decline', async (req, res) => {
 
 router.put('/:id', async (req, res) => {
   try {
-    const pool = getPool();
-    const request = await deliveryRequestsMysql.findRequestByIdParam(pool, req.params.id);
+    const pool = null;
+    const request = await deliveryRequestsRepo.findRequestByIdParam(pool, req.params.id);
     if (!request) {
       return res.status(404).json({ message: 'Request not found' });
     }
     const { dateSubmitted, ...updateData } = req.body;
     Object.assign(request, updateData);
-    const updated = await deliveryRequestsMysql.saveRequest(pool, request);
+    const updated = await deliveryRequestsRepo.saveRequest(pool, request);
     res.json(updated);
   } catch (error) {
     console.error('Error updating delivery request:', error);
@@ -375,8 +374,8 @@ router.put('/:id', async (req, res) => {
 
 router.delete('/:id', async (req, res) => {
   try {
-    const pool = getPool();
-    const ok = await deliveryRequestsMysql.deleteRequest(pool, req.params.id);
+    const pool = null;
+    const ok = await deliveryRequestsRepo.deleteRequest(pool, req.params.id);
     if (!ok) {
       return res.status(404).json({ message: 'Request not found' });
     }

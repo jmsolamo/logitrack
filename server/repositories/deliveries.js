@@ -1,4 +1,4 @@
-import { getPool } from '../db/pool.js';
+import { getSupabase } from '../db/supabase.js';
 import { toApiId, idLookup } from '../utils/entityId.js';
 
 const toDateOrNull = (v) => {
@@ -37,20 +37,20 @@ const sumArray = (arr, key) => (arr || []).reduce((s, x) => s + (Number(x?.[key]
 
 export const buildFullDelivery = (main, subs) => {
   const d = { ...mapMainRowToDeliveryBase(main) };
-  d.purpose = subs.purposes.map((x) => x.value);
-  d.activity = subs.activities.map((x) => x.value);
-  d.destination = subs.destinations.map((x) => x.value);
-  d.driver = subs.drivers.map((x) => x.value);
-  d.helper = subs.helpers.map((x) => x.value);
-  d.jobOrderNo = subs.jobOrders.map((x) => x.value);
-  d.customerSupplier = subs.customers.map((x) => x.value);
-  d.timeline = subs.timeline.map((t) => ({
+  d.purpose = (subs.purposes || []).map((x) => x.value);
+  d.activity = (subs.activities || []).map((x) => x.value);
+  d.destination = (subs.destinations || []).map((x) => x.value);
+  d.driver = (subs.drivers || []).map((x) => x.value);
+  d.helper = (subs.helpers || []).map((x) => x.value);
+  d.jobOrderNo = (subs.jobOrders || []).map((x) => x.value);
+  d.customerSupplier = (subs.customers || []).map((x) => x.value);
+  d.timeline = (subs.timeline || []).map((t) => ({
     type: t.event_type,
     destination: t.destination,
     timestamp: t.event_time,
     destinationIndex: t.destination_index,
   }));
-  d.fuel = subs.fuel.map((f) => ({
+  d.fuel = (subs.fuel || []).map((f) => ({
     liters: Number(f.liters),
     price: Number(f.price || 0),
     amount: Number(f.amount),
@@ -60,7 +60,7 @@ export const buildFullDelivery = (main, subs) => {
     date: f.expense_date,
   }));
   const mapExpense = (rows) =>
-    rows.map((x) => ({
+    (rows || []).map((x) => ({
       details: x.details,
       amt: Number(x.amt),
       date: x.expense_date,
@@ -92,349 +92,298 @@ export const buildFullDelivery = (main, subs) => {
   return d;
 };
 
-export const loadSubs = async (conn, deliveryId) => {
-  const results = await Promise.all([
-    conn.query('SELECT value FROM delivery_purposes WHERE delivery_id = ?', [deliveryId]),
-    conn.query('SELECT value FROM delivery_activities WHERE delivery_id = ?', [deliveryId]),
-    conn.query('SELECT value FROM delivery_destinations WHERE delivery_id = ?', [deliveryId]),
-    conn.query('SELECT value FROM delivery_drivers WHERE delivery_id = ?', [deliveryId]),
-    conn.query('SELECT value FROM delivery_helpers WHERE delivery_id = ?', [deliveryId]),
-    conn.query('SELECT value FROM delivery_job_orders WHERE delivery_id = ?', [deliveryId]),
-    conn.query('SELECT value FROM delivery_customer_suppliers WHERE delivery_id = ?', [deliveryId]),
-    conn.query(
-      'SELECT event_type, destination, event_time, destination_index FROM delivery_timeline WHERE delivery_id = ?',
-      [deliveryId],
-    ),
-    conn.query(
-      'SELECT liters, price, amount, gas_station, invoice_no, payment_type, expense_date FROM delivery_fuel WHERE delivery_id = ?',
-      [deliveryId],
-    ),
-    conn.query('SELECT details, amt, expense_date FROM delivery_toll_fees WHERE delivery_id = ?', [deliveryId]),
-    conn.query('SELECT details, amt, expense_date FROM delivery_pier_expenses WHERE delivery_id = ?', [deliveryId]),
-    conn.query('SELECT details, amt, expense_date FROM delivery_repair_maintenance WHERE delivery_id = ?', [deliveryId]),
-    conn.query('SELECT details, amt, expense_date FROM delivery_meal_expenses WHERE delivery_id = ?', [deliveryId]),
-    conn.query('SELECT details, amt, expense_date FROM delivery_load_expenses WHERE delivery_id = ?', [deliveryId]),
-    conn.query('SELECT details, amt, expense_date FROM delivery_contingency WHERE delivery_id = ?', [deliveryId]),
-  ]);
+export const loadSubs = async (_conn, deliveryId) => {
+  const supabase = getSupabase();
   const [
-    purposes,
-    activities,
-    destinations,
-    drivers,
-    helpers,
-    jobOrders,
-    customers,
-    timeline,
-    fuel,
-    toll,
-    pier,
-    repair,
-    meal,
-    load,
-    contingency,
-  ] = results.map((r) => r[0]);
-  return {
-    purposes: purposes,
-    activities: activities,
-    destinations: destinations,
-    drivers: drivers,
-    helpers: helpers,
-    jobOrders: jobOrders,
-    customers: customers,
-    timeline: timeline,
-    fuel: fuel,
-    toll: toll,
-    pier: pier,
-    repair: repair,
-    meal: meal,
-    load: load,
-    contingency: contingency,
-  };
+    purposes, activities, destinations, drivers, helpers,
+    jobOrders, customers, timeline, fuel, toll, pier, repair, meal, load, contingency,
+  ] = await Promise.all([
+    supabase.from('delivery_purposes').select('value').eq('delivery_id', deliveryId).then((r) => r.data || []),
+    supabase.from('delivery_activities').select('value').eq('delivery_id', deliveryId).then((r) => r.data || []),
+    supabase.from('delivery_destinations').select('value').eq('delivery_id', deliveryId).then((r) => r.data || []),
+    supabase.from('delivery_drivers').select('value').eq('delivery_id', deliveryId).then((r) => r.data || []),
+    supabase.from('delivery_helpers').select('value').eq('delivery_id', deliveryId).then((r) => r.data || []),
+    supabase.from('delivery_job_orders').select('value').eq('delivery_id', deliveryId).then((r) => r.data || []),
+    supabase.from('delivery_customer_suppliers').select('value').eq('delivery_id', deliveryId).then((r) => r.data || []),
+    supabase.from('delivery_timeline').select('event_type, destination, event_time, destination_index').eq('delivery_id', deliveryId).then((r) => r.data || []),
+    supabase.from('delivery_fuel').select('liters, price, amount, gas_station, invoice_no, payment_type, expense_date').eq('delivery_id', deliveryId).then((r) => r.data || []),
+    supabase.from('delivery_toll_fees').select('details, amt, expense_date').eq('delivery_id', deliveryId).then((r) => r.data || []),
+    supabase.from('delivery_pier_expenses').select('details, amt, expense_date').eq('delivery_id', deliveryId).then((r) => r.data || []),
+    supabase.from('delivery_repair_maintenance').select('details, amt, expense_date').eq('delivery_id', deliveryId).then((r) => r.data || []),
+    supabase.from('delivery_meal_expenses').select('details, amt, expense_date').eq('delivery_id', deliveryId).then((r) => r.data || []),
+    supabase.from('delivery_load_expenses').select('details, amt, expense_date').eq('delivery_id', deliveryId).then((r) => r.data || []),
+    supabase.from('delivery_contingency').select('details, amt, expense_date').eq('delivery_id', deliveryId).then((r) => r.data || []),
+  ]);
+  return { purposes, activities, destinations, drivers, helpers, jobOrders, customers, timeline, fuel, toll, pier, repair, meal, load, contingency };
 };
 
-export const clearDeliveryChildren = async (conn, deliveryId) => {
+export const clearDeliveryChildren = async (_conn, deliveryId) => {
   const tables = [
-    'delivery_purposes',
-    'delivery_activities',
-    'delivery_destinations',
-    'delivery_drivers',
-    'delivery_helpers',
-    'delivery_job_orders',
-    'delivery_customer_suppliers',
-    'delivery_timeline',
-    'delivery_fuel',
-    'delivery_toll_fees',
-    'delivery_pier_expenses',
-    'delivery_repair_maintenance',
-    'delivery_meal_expenses',
-    'delivery_load_expenses',
-    'delivery_contingency',
+    'delivery_purposes', 'delivery_activities', 'delivery_destinations',
+    'delivery_drivers', 'delivery_helpers', 'delivery_job_orders',
+    'delivery_customer_suppliers', 'delivery_timeline', 'delivery_fuel',
+    'delivery_toll_fees', 'delivery_pier_expenses', 'delivery_repair_maintenance',
+    'delivery_meal_expenses', 'delivery_load_expenses', 'delivery_contingency',
   ];
-  for (const t of tables) {
-    await conn.query(`DELETE FROM \`${t}\` WHERE delivery_id = ?`, [deliveryId]);
-  }
+  const supabase = getSupabase();
+  await Promise.all(tables.map((t) => supabase.from(t).delete().eq('delivery_id', deliveryId)));
 };
 
-export const insertDeliveryChildren = async (conn, deliveryId, body) => {
+export const insertDeliveryChildren = async (_conn, deliveryId, body) => {
+  const supabase = getSupabase();
   const insList = async (table, values) => {
-    for (const value of asStringArray(values)) {
-      if (String(value).trim() === '') continue;
-      await conn.query(`INSERT INTO \`${table}\` (delivery_id, value) VALUES (?, ?)`, [deliveryId, String(value).trim()]);
-    }
+    const rows = asStringArray(values)
+      .filter((v) => String(v).trim() !== '')
+      .map((v) => ({ delivery_id: deliveryId, value: String(v).trim() }));
+    if (rows.length) await supabase.from(table).insert(rows);
   };
-  await insList('delivery_purposes', body.purpose);
-  await insList('delivery_activities', body.activity);
-  await insList('delivery_destinations', body.destination);
-  await insList('delivery_drivers', body.driver);
-  await insList('delivery_helpers', body.helper);
-  await insList('delivery_job_orders', body.jobOrderNo);
-  await insList('delivery_customer_suppliers', body.customerSupplier);
 
-  const timeline = Array.isArray(body.timeline) ? body.timeline : [];
-  for (const t of timeline) {
-    const et = t.type === 'arrival' ? 'arrival' : 'departure';
-    await conn.query(
-      `INSERT INTO delivery_timeline (delivery_id, event_type, destination, event_time, destination_index) VALUES (?,?,?,?,?)`,
-      [deliveryId, et, t.destination ?? null, toDateOrNull(t.timestamp), t.destinationIndex ?? null],
-    );
-  }
+  await Promise.all([
+    insList('delivery_purposes', body.purpose),
+    insList('delivery_activities', body.activity),
+    insList('delivery_destinations', body.destination),
+    insList('delivery_drivers', body.driver),
+    insList('delivery_helpers', body.helper),
+    insList('delivery_job_orders', body.jobOrderNo),
+    insList('delivery_customer_suppliers', body.customerSupplier),
+  ]);
 
-  const fuelArr = Array.isArray(body.fuel) ? body.fuel : [];
-  for (const f of fuelArr) {
-    await conn.query(
-      `INSERT INTO delivery_fuel (delivery_id, liters, price, amount, gas_station, invoice_no, payment_type, expense_date) VALUES (?,?,?,?,?,?,?,?)`,
-      [
-        deliveryId,
-        Number(f.liters) || 0,
-        Number(f.price) || 0,
-        Number(f.amount) || 0,
-        f.gasStation ?? null,
-        f.invoiceNo ?? null,
-        f.paymentType ?? null,
-        toDateOrNull(f.date),
-      ],
-    );
-  }
+  const timeline = (Array.isArray(body.timeline) ? body.timeline : []).map((t) => ({
+    delivery_id: deliveryId,
+    event_type: t.type === 'arrival' ? 'arrival' : 'departure',
+    destination: t.destination ?? null,
+    event_time: toDateOrNull(t.timestamp),
+    destination_index: t.destinationIndex ?? null,
+  }));
+  if (timeline.length) await supabase.from('delivery_timeline').insert(timeline);
+
+  const fuel = (Array.isArray(body.fuel) ? body.fuel : []).map((f) => ({
+    delivery_id: deliveryId,
+    liters: Number(f.liters) || 0,
+    price: Number(f.price) || 0,
+    amount: Number(f.amount) || 0,
+    gas_station: f.gasStation ?? null,
+    invoice_no: f.invoiceNo ?? null,
+    payment_type: f.paymentType ?? null,
+    expense_date: toDateOrNull(f.date),
+  }));
+  if (fuel.length) await supabase.from('delivery_fuel').insert(fuel);
 
   const insExp = async (table, arr) => {
-    const rows = Array.isArray(arr) ? arr : [];
-    for (const row of rows) {
-      await conn.query(`INSERT INTO \`${table}\` (delivery_id, details, amt, expense_date) VALUES (?,?,?,?)`, [
-        deliveryId,
-        row.details ?? null,
-        Number(row.amt) || 0,
-        toDateOrNull(row.date),
-      ]);
-    }
+    const rows = (Array.isArray(arr) ? arr : []).map((row) => ({
+      delivery_id: deliveryId,
+      details: row.details ?? null,
+      amt: Number(row.amt) || 0,
+      expense_date: toDateOrNull(row.date),
+    }));
+    if (rows.length) await supabase.from(table).insert(rows);
   };
-  await insExp('delivery_toll_fees', body.tollFee);
-  await insExp('delivery_pier_expenses', body.pierExpenses);
-  await insExp('delivery_repair_maintenance', body.repairAndMaintenance);
-  await insExp('delivery_meal_expenses', body.mealExpenses);
-  await insExp('delivery_load_expenses', body.loadExpenses);
-  await insExp('delivery_contingency', body.contingency);
+
+  await Promise.all([
+    insExp('delivery_toll_fees', body.tollFee),
+    insExp('delivery_pier_expenses', body.pierExpenses),
+    insExp('delivery_repair_maintenance', body.repairAndMaintenance),
+    insExp('delivery_meal_expenses', body.mealExpenses),
+    insExp('delivery_load_expenses', body.loadExpenses),
+    insExp('delivery_contingency', body.contingency),
+  ]);
 };
 
-export const getDeliveryNumericId = async (pool, param) => {
+export const getDeliveryNumericId = async (_pool, param) => {
   const lk = idLookup(param);
   if (!lk) return null;
-  const [rows] = await pool.query(`SELECT id FROM deliveries WHERE ${lk.clause} LIMIT 1`, lk.params);
-  return rows[0]?.id ?? null;
+  const id = lk.params[0];
+  const supabase = getSupabase();
+  const { data } = await supabase.from('deliveries').select('id').eq('id', id).maybeSingle();
+  return data?.id ?? null;
 };
 
-export const findDeliveryByReferenceNo = async (pool, referenceNo) => {
+export const findDeliveryByReferenceNo = async (_pool, referenceNo) => {
   if (!referenceNo) return null;
-  const [main] = await pool.query('SELECT * FROM deliveries WHERE reference_no = ? LIMIT 1', [String(referenceNo).trim().toUpperCase()]);
-  const row = main[0];
-  if (!row) return null;
-  const subs = await loadSubs(pool, row.id);
-  return buildFullDelivery(row, subs);
+  const ref = String(referenceNo).trim().toUpperCase();
+  const supabase = getSupabase();
+  const { data, error } = await supabase.from('deliveries').select('*').eq('reference_no', ref).maybeSingle();
+  if (error || !data) return null;
+  const subs = await loadSubs(null, data.id);
+  return buildFullDelivery(data, subs);
 };
 
-export const findDeliveryByIdParam = async (pool, param) => {
+export const findDeliveryByIdParam = async (_pool, param) => {
   const lk = idLookup(param);
   if (!lk) return null;
-  const [main] = await pool.query(`SELECT * FROM deliveries WHERE ${lk.clause} LIMIT 1`, lk.params);
-  const row = main[0];
-  if (!row) return null;
-  const subs = await loadSubs(pool, row.id);
-  return buildFullDelivery(row, subs);
+  const id = lk.params[0];
+  const supabase = getSupabase();
+  const { data, error } = await supabase.from('deliveries').select('*').eq('id', id).maybeSingle();
+  if (error || !data) return null;
+  const subs = await loadSubs(null, data.id);
+  return buildFullDelivery(data, subs);
 };
 
-export const listAllDeliveries = async (pool) => {
-  const [rows] = await pool.query('SELECT * FROM deliveries ORDER BY created_at DESC');
+export const listAllDeliveries = async (_pool) => {
+  const supabase = getSupabase();
+  const { data, error } = await supabase.from('deliveries').select('*').order('created_at', { ascending: false });
+  if (error) throw error;
   const out = [];
-  for (const r of rows) {
-    const subs = await loadSubs(pool, r.id);
+  for (const r of data || []) {
+    const subs = await loadSubs(null, r.id);
     out.push(buildFullDelivery(r, subs));
   }
   return out;
 };
 
-export const listDeliveriesSummary = async (pool, limit = 5) => {
-  const [rows] = await pool.query(
-    `SELECT id, reference_no, delivery_type, date_from, date_to, vehicle_equipment, status FROM deliveries ORDER BY created_at DESC LIMIT ?`,
-    [limit],
-  );
+export const listDeliveriesSummary = async (_pool, limit = 5) => {
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from('deliveries')
+    .select('id, reference_no, delivery_type, date_from, date_to, vehicle_equipment, status')
+    .order('created_at', { ascending: false })
+    .limit(Number(limit));
+  if (error) throw error;
   const enriched = [];
-  for (const r of rows) {
-    const subs = await loadSubs(pool, r.id);
-    const d = {
+  for (const r of data || []) {
+    const subs = await loadSubs(null, r.id);
+    enriched.push({
       _id: toApiId(r),
       referenceNo: r.reference_no,
-      destination: subs.destinations.map((x) => x.value),
+      destination: (subs.destinations || []).map((x) => x.value),
       vehicleEquipment: r.vehicle_equipment,
       status: r.status,
       dateFrom: r.date_from,
       dateTo: r.date_to,
-      purpose: subs.purposes.map((x) => x.value),
-    };
-    enriched.push(d);
+      purpose: (subs.purposes || []).map((x) => x.value),
+    });
   }
   return enriched;
 };
 
-export const countDeliveries = async (pool, status = null) => {
-  if (!status) {
-    const [[r]] = await pool.query('SELECT COUNT(*) AS c FROM deliveries');
-    return r.c;
-  }
-  const [[r]] = await pool.query('SELECT COUNT(*) AS c FROM deliveries WHERE status = ?', [status]);
-  return r.c;
+export const countDeliveries = async (_pool, status = null) => {
+  const supabase = getSupabase();
+  let q = supabase.from('deliveries').select('*', { count: 'exact', head: true });
+  if (status) q = q.eq('status', status);
+  const { count, error } = await q;
+  if (error) throw error;
+  return count || 0;
 };
 
-export const runAutoStatusUpdates = async (pool) => {
+export const runAutoStatusUpdates = async (_pool) => {
+  const supabase = getSupabase();
   const startOfToday = new Date();
   startOfToday.setHours(0, 0, 0, 0);
   const endOfToday = new Date();
   endOfToday.setHours(23, 59, 59, 999);
-  await pool.query(
-    `UPDATE deliveries SET status = 'Completed' WHERE status IN ('Pending','In Transit') AND (
-      (date_to IS NOT NULL AND date_to < ?)
-      OR (date_to IS NULL AND date_from IS NOT NULL AND date_from < ?)
-    )`,
-    [startOfToday, startOfToday],
-  );
-  await pool.query(`UPDATE deliveries SET status = 'In Transit' WHERE status = 'Pending' AND date_from IS NOT NULL AND date_from <= ?`, [
-    endOfToday,
-  ]);
+  const stIso = startOfToday.toISOString();
+  const endIso = endOfToday.toISOString();
+  await supabase
+    .from('deliveries')
+    .update({ status: 'Completed' })
+    .in('status', ['Pending', 'In Transit'])
+    .or(`and(date_to.not.is.null,date_to.lt.${stIso}),and(date_to.is.null,date_from.not.is.null,date_from.lt.${stIso})`);
+  await supabase
+    .from('deliveries')
+    .update({ status: 'In Transit' })
+    .eq('status', 'Pending')
+    .not('date_from', 'is', null)
+    .lte('date_from', endIso);
 };
 
-export const latestReferenceNo = async (pool, patternPrefix) => {
-  const like = `${patternPrefix}%`;
-  const [rows] = await pool.query(
-    `SELECT reference_no FROM deliveries WHERE reference_no LIKE ? ORDER BY reference_no DESC LIMIT 1`,
-    [like],
-  );
-  return rows[0]?.reference_no ?? null;
+export const latestReferenceNo = async (_pool, patternPrefix) => {
+  const supabase = getSupabase();
+  const { data } = await supabase
+    .from('deliveries')
+    .select('reference_no')
+    .ilike('reference_no', `${patternPrefix}%`)
+    .order('reference_no', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return data?.reference_no ?? null;
 };
 
-export const insertDelivery = async (pool, body, referenceNo, deliveryCharge) => {
-  const conn = await pool.getConnection();
-  try {
-    await conn.beginTransaction();
-    const [r] = await conn.query(
-      `INSERT INTO deliveries (reference_no, delivery_type, date_from, date_to, vehicle_equipment, tnvs_provider, total_budget, requested_by, status, departure_date, arrival_date, delivery_charge, notes)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-      [
-        referenceNo.toUpperCase(),
-        body.deliveryType ?? null,
-        toDateOrNull(body.dateFrom),
-        toDateOrNull(body.dateTo),
-        body.vehicleEquipment ?? null,
-        body.tnvsProvider ?? null,
-        Number(body.totalBudget) || 0,
-        body.requestedBy ?? null,
-        body.status || 'Pending',
-        toDateOrNull(body.departureDate),
-        toDateOrNull(body.arrivalDate),
-        Number(deliveryCharge) || 0,
-        body.notes ?? null,
-      ],
-    );
-    const id = r.insertId;
-    await insertDeliveryChildren(conn, id, body);
-    await conn.commit();
-    return findDeliveryByIdParam(pool, String(id));
-  } catch (e) {
-    await conn.rollback();
-    throw e;
-  } finally {
-    conn.release();
-  }
+export const insertDelivery = async (_pool, body, referenceNo, deliveryCharge) => {
+  const supabase = getSupabase();
+  const { data: main, error } = await supabase
+    .from('deliveries')
+    .insert({
+      reference_no: referenceNo.toUpperCase(),
+      delivery_type: body.deliveryType ?? null,
+      date_from: toDateOrNull(body.dateFrom)?.toISOString() ?? null,
+      date_to: toDateOrNull(body.dateTo)?.toISOString() ?? null,
+      vehicle_equipment: body.vehicleEquipment ?? null,
+      tnvs_provider: body.tnvsProvider ?? null,
+      total_budget: Number(body.totalBudget) || 0,
+      requested_by: body.requestedBy ?? null,
+      status: body.status || 'Pending',
+      departure_date: toDateOrNull(body.departureDate)?.toISOString() ?? null,
+      arrival_date: toDateOrNull(body.arrivalDate)?.toISOString() ?? null,
+      delivery_charge: Number(deliveryCharge) || 0,
+      notes: body.notes ?? null,
+    })
+    .select()
+    .single();
+  if (error) throw error;
+  await insertDeliveryChildren(null, main.id, body);
+  return findDeliveryByIdParam(null, String(main.id));
 };
 
-export const updateDeliveryFull = async (pool, param, body) => {
+export const updateDeliveryFull = async (_pool, param, body) => {
   const lk = idLookup(param);
   if (!lk) return null;
-  const conn = await pool.getConnection();
-  try {
-    const [existing] = await conn.query(`SELECT id FROM deliveries WHERE ${lk.clause} LIMIT 1`, lk.params);
-    const row = existing[0];
-    if (!row) return null;
-    const id = row.id;
-
-    await conn.beginTransaction();
-    await conn.query(
-      `UPDATE deliveries SET
-        delivery_type = ?, date_from = ?, date_to = ?, vehicle_equipment = ?, tnvs_provider = ?,
-        total_budget = ?, requested_by = ?, status = ?, departure_date = ?, arrival_date = ?,
-        delivery_charge = ?, notes = ?
-       WHERE id = ?`,
-      [
-        body.deliveryType ?? null,
-        toDateOrNull(body.dateFrom),
-        toDateOrNull(body.dateTo),
-        body.vehicleEquipment ?? null,
-        body.tnvsProvider ?? null,
-        Number(body.totalBudget) || 0,
-        body.requestedBy ?? null,
-        body.status || 'Pending',
-        toDateOrNull(body.departureDate),
-        toDateOrNull(body.arrivalDate),
-        Number(body.deliveryCharge) || 0,
-        body.notes ?? null,
-        id,
-      ],
-    );
-    await clearDeliveryChildren(conn, id);
-    await insertDeliveryChildren(conn, id, body);
-    await conn.commit();
-    return findDeliveryByIdParam(pool, String(id));
-  } catch (e) {
-    await conn.rollback();
-    throw e;
-  } finally {
-    conn.release();
-  }
+  const id = lk.params[0];
+  const supabase = getSupabase();
+  const { error } = await supabase
+    .from('deliveries')
+    .update({
+      delivery_type: body.deliveryType ?? null,
+      date_from: toDateOrNull(body.dateFrom)?.toISOString() ?? null,
+      date_to: toDateOrNull(body.dateTo)?.toISOString() ?? null,
+      vehicle_equipment: body.vehicleEquipment ?? null,
+      tnvs_provider: body.tnvsProvider ?? null,
+      total_budget: Number(body.totalBudget) || 0,
+      requested_by: body.requestedBy ?? null,
+      status: body.status || 'Pending',
+      departure_date: toDateOrNull(body.departureDate)?.toISOString() ?? null,
+      arrival_date: toDateOrNull(body.arrivalDate)?.toISOString() ?? null,
+      delivery_charge: Number(body.deliveryCharge) || 0,
+      notes: body.notes ?? null,
+    })
+    .eq('id', id);
+  if (error) throw error;
+  await clearDeliveryChildren(null, id);
+  await insertDeliveryChildren(null, id, body);
+  return findDeliveryByIdParam(null, String(id));
 };
 
-export const deleteDeliveryByParam = async (pool, param) => {
+export const deleteDeliveryByParam = async (_pool, param) => {
   const lk = idLookup(param);
   if (!lk) return null;
-  const [r] = await pool.query(`DELETE FROM deliveries WHERE ${lk.clause}`, lk.params);
-  return r.affectedRows > 0;
+  const id = lk.params[0];
+  const supabase = getSupabase();
+  const { error } = await supabase.from('deliveries').delete().eq('id', id);
+  if (error) throw error;
+  return true;
 };
 
-export const findOverlappingPendingDeliveries = async (pool, vehiclePlate, requestDateFrom, requestDateTo) => {
+export const findOverlappingPendingDeliveries = async (_pool, vehiclePlate, requestDateFrom, requestDateTo) => {
   const rf = new Date(requestDateFrom);
   rf.setHours(0, 0, 0, 0);
   const rt = requestDateTo ? new Date(requestDateTo) : new Date(requestDateFrom);
   rt.setHours(23, 59, 59, 999);
-
-  const [rows] = await pool.query(
-    `SELECT * FROM deliveries
-     WHERE vehicle_equipment = ? AND status = 'Pending'
-     AND (
-       (date_to IS NOT NULL AND date_from IS NOT NULL AND date_to >= ? AND date_from <= ?)
-       OR ((date_to IS NULL) AND date_from IS NOT NULL AND date_from >= ? AND date_from <= ?)
-     )`,
-    [vehiclePlate, rf, rt, rf, rt],
-  );
-
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from('deliveries')
+    .select('*')
+    .eq('vehicle_equipment', vehiclePlate)
+    .eq('status', 'Pending');
+  if (error) throw error;
+  const matching = (data || []).filter((d) => {
+    const df = d.date_from ? new Date(d.date_from) : null;
+    const dt = d.date_to ? new Date(d.date_to) : null;
+    if (dt && df) return dt >= rf && df <= rt;
+    if (!dt && df) return df >= rf && df <= rt;
+    return false;
+  });
   const out = [];
-  for (const r of rows) {
-    const subs = await loadSubs(pool, r.id);
+  for (const r of matching) {
+    const subs = await loadSubs(null, r.id);
     out.push(buildFullDelivery(r, subs));
   }
   return out;

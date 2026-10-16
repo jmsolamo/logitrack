@@ -1,13 +1,12 @@
-import express from 'express';
-import { getPool } from '../db/pool.js';
-import * as purchasesMysql from '../repositories/purchasesMysql.js';
+﻿import express from 'express';
+import * as purchasesRepo from '../repositories/purchases.js';
 
 const router = express.Router();
 
 router.get('/', async (req, res) => {
   try {
-    const pool = getPool();
-    const purchases = await purchasesMysql.listPurchases(pool);
+    const pool = null;
+    const purchases = await purchasesRepo.listPurchases(pool);
     res.json(purchases);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -16,8 +15,8 @@ router.get('/', async (req, res) => {
 
 router.post('/', async (req, res) => {
   try {
-    const pool = getPool();
-    const newPurchase = await purchasesMysql.createPurchase(pool, req.body);
+    const pool = null;
+    const newPurchase = await purchasesRepo.createPurchase(pool, req.body);
     res.status(201).json(newPurchase);
   } catch (error) {
     console.error('Validation Error Details:', JSON.stringify(error, null, 2));
@@ -27,8 +26,8 @@ router.post('/', async (req, res) => {
 
 router.put('/:id', async (req, res) => {
   try {
-    const pool = getPool();
-    const updatedPurchase = await purchasesMysql.updatePurchase(pool, req.params.id, req.body);
+    const pool = null;
+    const updatedPurchase = await purchasesRepo.updatePurchase(pool, req.params.id, req.body);
     if (!updatedPurchase) {
       return res.status(404).json({ message: 'Purchase not found' });
     }
@@ -40,8 +39,8 @@ router.put('/:id', async (req, res) => {
 
 router.delete('/:id', async (req, res) => {
   try {
-    const pool = getPool();
-    const ok = await purchasesMysql.deletePurchase(pool, req.params.id);
+    const pool = null;
+    const ok = await purchasesRepo.deletePurchase(pool, req.params.id);
     if (!ok) {
       return res.status(404).json({ message: 'Purchase not found' });
     }
