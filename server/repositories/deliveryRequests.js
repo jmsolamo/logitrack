@@ -283,3 +283,43 @@ export const listSchedulesData = async (_pool) => {
   ]);
   return { pending: pendingRes.data || [], approved: approvedRes.data || [] };
 };
+
+export const listActiveSchedules = async () => {
+  const supabase = getSupabase();
+  const [deliveriesRes, pendingRequestsRes] = await Promise.all([
+    supabase
+      .from('deliveries')
+      .select('id, vehicle_equipment, date_from, date_to, status')
+      .neq('status', 'Completed'),
+    supabase
+      .from('delivery_requests')
+      .select('id, vehicle_equipment, date_from, date_to, request_status')
+      .eq('request_status', 'Pending'),
+  ]);
+
+  if (deliveriesRes.error) throw deliveriesRes.error;
+  if (pendingRequestsRes.error) throw pendingRequestsRes.error;
+
+  const activeDeliveries = (deliveriesRes.data || [])
+    .filter((r) => r.vehicle_equipment && r.status !== 'Cancelled')
+    .map((r) => ({
+      _id: 'DEL_' + r.id,
+      vehicleEquipment: String(r.vehicle_equipment).trim(),
+      dateFrom: r.date_from,
+      dateTo: r.date_to,
+      requestStatus: 'Approved',
+    }));
+
+  const pendingRequests = (pendingRequestsRes.data || [])
+    .filter((r) => r.vehicle_equipment)
+    .map((r) => ({
+      _id: 'REQ_' + r.id,
+      vehicleEquipment: String(r.vehicle_equipment).trim(),
+      dateFrom: r.date_from,
+      dateTo: r.date_to,
+      requestStatus: 'Pending',
+    }));
+
+  return [...pendingRequests, ...activeDeliveries];
+};
+

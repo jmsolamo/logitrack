@@ -1,4 +1,4 @@
-﻿import express from 'express';
+import express from 'express';
 import * as deliveryRequestsRepo from '../repositories/deliveryRequests.js';
 import * as deliveriesRepo from '../repositories/deliveries.js';
 import * as deliveryChargesRepo from '../repositories/deliveryCharges.js';
@@ -45,22 +45,8 @@ const generateRequestReferenceNo = async (pool) => {
 
 router.get('/schedules', async (req, res) => {
   try {
-    const pool = null;
-    
-    // Fetch Active Deliveries from deliveries table only
-    const [activeDeliveries] = await pool.query(
-      "SELECT id, vehicle_equipment, date_from, date_to, status FROM deliveries WHERE status NOT IN ('Completed', 'Cancelled')"
-    );
-
-    const active = activeDeliveries.map(r => ({
-      _id: 'DEL_' + r.id,
-      vehicleEquipment: r.vehicle_equipment,
-      dateFrom: r.date_from,
-      dateTo: r.date_to,
-      requestStatus: r.status 
-    }));
-
-    res.json(active);
+    const schedules = await deliveryRequestsRepo.listActiveSchedules();
+    res.json(schedules);
   } catch (error) {
     console.error('Error fetching schedules:', error);
     res.status(500).json({ message: 'Server error fetching schedules' });

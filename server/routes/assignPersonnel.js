@@ -1,4 +1,4 @@
-﻿import express from 'express';
+import express from 'express';
 import * as deliveriesRepo from '../repositories/deliveries.js';
 import * as deliveryRequestsRepo from '../repositories/deliveryRequests.js';
 
@@ -23,17 +23,17 @@ router.put('/:id/assign-personnel', async (req, res) => {
 
     let request = null;
     if (delivery.referenceNo) {
-      const [rows] = await pool.query('SELECT * FROM delivery_requests WHERE delivery_reference_no = ? LIMIT 1', [
-        delivery.referenceNo,
-      ]);
-      if (rows[0]) {
-        const fullReq = await deliveryRequestsRepo.buildFullRequest(pool, rows[0]);
+      const requests = await deliveryRequestsRepo.listRequestsFiltered(null, {
+        deliveryReferenceNo: delivery.referenceNo,
+      });
+      if (requests.length > 0) {
+        const fullReq = requests[0];
         if (driver) fullReq.driver = driver;
         if (helper) fullReq.helper = helper;
         if (totalBudget !== undefined) {
           fullReq.totalBudget = (fullReq.totalBudget || 0) + Number(totalBudget);
         }
-        request = await deliveryRequestsRepo.saveRequest(pool, fullReq);
+        request = await deliveryRequestsRepo.saveRequest(null, fullReq);
       }
     }
 
