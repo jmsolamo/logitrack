@@ -92,14 +92,20 @@ export const deleteUserByIdParam = async (_pool, param) => {
 
 export const seedDefaultAdmin = async () => {
   const supabase = getSupabase();
-  const { data } = await supabase.from('users').select('id').eq('username', 'logistic-department').maybeSingle();
-  if (data) return;
-  const hash = await hashPassword('123456');
-  await supabase.from('users').insert({
-    username: 'logistic-department',
-    password_hash: hash,
-    plain_password: '123456',
-    department: 'logistic',
-    role: 'admin',
-  });
+  const seedUser = async (username, password, department, role) => {
+    const { data } = await supabase.from('users').select('id').eq('username', username).maybeSingle();
+    if (data) return;
+    const hash = await hashPassword(password);
+    await supabase.from('users').insert({
+      username,
+      password_hash: hash,
+      plain_password: password,
+      department,
+      role,
+    });
+  };
+
+  await seedUser('logistic-department', '123456', 'logistic', 'admin');
+  await seedUser('demo-admin', '123456', 'logistic', 'admin');
+  await seedUser('demo-requestor', '123456', 'operations', 'requestor');
 };
